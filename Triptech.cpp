@@ -697,7 +697,7 @@ int main(void)
             {
                 if((now - int_tick_ms) >= interval)
                 {
-                    int_tick_ms = now;
+                    int_tick_ms += interval;
                     AdvanceClock();
                 }
             }
