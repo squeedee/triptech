@@ -23,4 +23,7 @@ libs:
 	$(MAKE) -C $(DAISYSP_DIR)
 	$(MAKE) -C $(DAISYSP_DIR)/DaisySP-LGPL
 
-.PHONY: all libs
+lint:
+	clang-format --dry-run --Werror $(CPP_SOURCES)
+
+.PHONY: all libs lint
