@@ -1,0 +1,81 @@
+Reference,Description,Qty,Package,Value,Manufacturer,MPN,DigiKey PN,Mouser PN,Notes
+U_SEED,Daisy Seed Rev7 STM32H750 audio module,1,DIP-40 module,,Electro-Smith,DaisySeed Rev7,,,"Order from Electro-Smith directly"
+J_DC,DC barrel jack 2.1mm center-positive,1,Through-hole,,CUI Devices,PJ-002A,CP-002A-ND,490-PJ-002A,Panel mount horizontal
+Q1,P-MOSFET reverse polarity protection,1,SOT-23,SI2301CDS,Vishay,SI2301CDS-T1-GE3,SI2301CDS-T1-GE3CT-ND,781-SI2301CDS-T1GE3,
+D1,TVS diode overvoltage protection,1,SMB,SMBJ15A,Littelfuse,SMBJ15A,SMBJ15ALFCT-ND,576-SMBJ15A,15V standoff
+R_GATE,Gate pulldown resistor,1,0402,10k,Yageo,RC0402FR-0710KL,311-10.0KLRCT-ND,603-RC0402FR-0710KL,
+C1,Input bulk electrolytic,1,6.3x7.7mm,100u/25V,Panasonic,EEEFK1E101P,PCE3812CT-ND,667-EEEFK1E101P,
+C2,Input ceramic bypass,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+U_REG,5V 3A buck regulator,1,SOT-23-6,TPS54302,Texas Instruments,TPS54302DDCR,296-44831-1-ND,595-TPS54302DDCR,4.5-28V input
+C_BST,Bootstrap capacitor,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+L1,Output inductor 10uH,1,6x4.5mm,10u,Bourns,SRN6045TA-100M,SRN6045TA-100MCT-ND,652-SRN6045TA-100M,3A saturation
+R_EN1,UVLO divider top,1,0402,100k,Yageo,RC0402FR-07100KL,311-100KLRCT-ND,603-RC0402FR-07100KL,
+R_EN2,UVLO divider bottom,1,0402,13.7k,Yageo,RC0402FR-0713K7L,311-13.7KLRCT-ND,603-RC0402FR-0713K7L,1% — enable at ~10V
+R_FB1,FB divider top,1,0402,100k,Yageo,RC0402FR-07100KL,311-100KLRCT-ND,603-RC0402FR-07100KL,1% tolerance
+R_SER,FB series filter resistor,1,0402,49.9R,Yageo,RC0402FR-0749R9L,311-49.9LRCT-ND,603-RC0402FR-0749R9L,1% — between VOUT and FB divider
+C_FF,FB feedforward capacitor,1,0402,75p,Samsung,CL05C750JB5NNNC,1276-1128-1-ND,187-CL05C750JB5NNNC,In parallel with R_FB1
+R_FB2,FB divider bottom (sets 5V output),1,0402,13.3k,Yageo,RC0402FR-0713K3L,311-13.3KLRCT-ND,603-RC0402FR-0713K3L,1% — VOUT=0.6*(1+100k/13.3k)=5.11V
+C_OUT1,Output ceramic 22uF,1,0805,22u,Samsung,CL21A226MQQNNNE,1276-6454-1-ND,187-CL21A226MQQNNNE,
+C_OUT2,Output ceramic 22uF,1,0805,22u,Samsung,CL21A226MQQNNNE,1276-6454-1-ND,187-CL21A226MQQNNNE,
+J_DCDC,±12V DC-DC module,1,SIP-7,,Traco Power,TMA 1212D,1951-1265-ND,495-TMA1212D,+12V_RAW direct to +Vin. COM to GNDA.
+C_12P,+12VA decoupling,1,0805,10u,Samsung,CL21A106KAYNNNE,1276-1044-1-ND,187-CL21A106KAYNNNE,+12VA to GNDA
+C_12N,-12VA decoupling,1,0805,10u,Samsung,CL21A106KAYNNNE,1276-1044-1-ND,187-CL21A106KAYNNNE,-12VA to GNDA
+C_SEED1,Seed VIN bypass,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+C_SEED2,Seed 3V3D bypass,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+R_GND,Star ground bridge AGND-DGND,1,0805,0R,Yageo,RC0805JR-070RL,311-0.0ARCT-ND,603-RC0805JR-070RL,
+DISP1,128x32 white OLED SSD1306 SPI,1,7-pin module 0.91",,,"Generic SSD1306 0.91""",,,Source from AliExpress/Amazon — 7-pin SPI module
+DISP2,128x32 white OLED SSD1306 SPI,1,7-pin module 0.91",,,"Generic SSD1306 0.91""",,,
+DISP3,128x32 white OLED SSD1306 SPI,1,7-pin module 0.91",,,"Generic SSD1306 0.91""",,,
+C_DISP1,Display 1 bypass,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+C_DISP2,Display 2 bypass,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+C_DISP3,Display 3 bypass,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+SW1-SW7,Kailh Choc V1 low-profile mech switch,7,Choc V1,,Kailh,CPG135001S30,,,Source from Kailh or NovelKeys — red/brown/white
+,Kailh Choc V1 hotswap socket,7,,,Kailh,CPG135001S11,,,"PCB-mount hotswap socket for Choc V1"
+,Kailh Choc V1 translucent keycap 1u,7,,,,,,,"For LED underglow visibility"
+ENC1-ENC3,Rotary encoder with push-switch detented,3,Through-hole,,Bourns,PEC11R-4215F-S0024,PEC11R-4215F-S0024-ND,652-PEC11R4215FS24,24 detents
+LED1-LED11,SK6812 Mini-E reverse-mount addressable RGB LED,11,PLCC4 3.5x3.5mm,,WorldSemi,SK6812MINI-E,,,Source from LCSC C5149201 or AliExpress
+R_LED,LED data line series resistor,1,0402,330R,Yageo,RC0402FR-07330RL,311-330LRCT-ND,603-RC0402FR-07330RL,
+C_LED,LED chain bulk capacitor,1,6.3x7.7mm,100u,Panasonic,EEEFK1E101P,PCE3812CT-ND,667-EEEFK1E101P,
+J_MIDI_IN,5-pin DIN female PCB mount,1,Through-hole,,CUI Devices,SDS-50J,CP-7050-ND,490-SDS-50J,Right-angle PCB mount
+J_MIDI_OUT,5-pin DIN female PCB mount,1,Through-hole,,CUI Devices,SDS-50J,CP-7050-ND,490-SDS-50J,
+J_MIDI_THRU,5-pin DIN female PCB mount,1,Through-hole,,CUI Devices,SDS-50J,CP-7050-ND,490-SDS-50J,
+U_OPTO,6N138 optocoupler for MIDI IN,1,DIP-8,,Vishay,6N138,751-1013-5-ND,782-6N138,High-speed opto
+R_MIDI_IN,MIDI IN current limiting,1,0402,220R,Yageo,RC0402FR-07220RL,311-220LRCT-ND,603-RC0402FR-07220RL,
+D_MIDI_PROT,MIDI IN reverse protection diode,1,SOD-323,1N4148,Nexperia,1N4148W-7-F,1N4148W-FDICT-ND,621-1N4148W-7-F,
+R_VB,Opto base pullup,1,0402,4.7k,Yageo,RC0402FR-074K7L,311-4.70KLRCT-ND,603-RC0402FR-074K7L,
+R_MIDI_PU,Opto output pullup,1,0402,270R,Yageo,RC0402FR-07270RL,311-270LRCT-ND,603-RC0402FR-07270RL,
+C_OPTO,Opto VCC bypass,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+R_MO4,MIDI OUT pin 4 series,1,0402,33R,Yageo,RC0402FR-0733RL,311-33.0LRCT-ND,603-RC0402FR-0733RL,3.3V MIDI OUT drive
+R_MO5,MIDI OUT pin 5 series,1,0402,33R,Yageo,RC0402FR-0733RL,311-33.0LRCT-ND,603-RC0402FR-0733RL,
+R_MT4,MIDI THRU pin 4 series,1,0402,33R,Yageo,RC0402FR-0733RL,311-33.0LRCT-ND,603-RC0402FR-0733RL,
+R_MT5,MIDI THRU pin 5 series,1,0402,33R,Yageo,RC0402FR-0733RL,311-33.0LRCT-ND,603-RC0402FR-0733RL,
+J_USB,USB-C receptacle USB 2.0,1,SMD 16-pin,,GCT,USB4085-GF-A,2073-USB4085-GF-ACT-ND,640-USB4085-GF-A,Mid-mount SMD
+R_CC1,USB-C CC1 pulldown (device ID),1,0402,5.1k,Yageo,RC0402FR-075K1L,311-5.10KLRCT-ND,603-RC0402FR-075K1L,
+R_CC2,USB-C CC2 pulldown (device ID),1,0402,5.1k,Yageo,RC0402FR-075K1L,311-5.10KLRCT-ND,603-RC0402FR-075K1L,
+R_USB_DP,USB D+ series impedance,1,0402,22R,Yageo,RC0402FR-0722RL,311-22.0LRCT-ND,603-RC0402FR-0722RL,
+R_USB_DM,USB D- series impedance,1,0402,22R,Yageo,RC0402FR-0722RL,311-22.0LRCT-ND,603-RC0402FR-0722RL,
+C_USB,USB VBUS bypass,1,0402,100n,Samsung,CL05B104KO5NNNC,1276-1001-1-ND,187-CL05B104KO5NNNC,
+R_SHLD,USB shield to GND,1,0402,1M,Yageo,RC0402FR-071ML,311-1.00MLRCT-ND,603-RC0402FR-071ML,
+C_SHLD,USB shield cap,1,0402,4.7n,Samsung,CL05B472KB5NNNC,1276-1045-1-ND,187-CL05B472KB5NNNC,
+R_VBUS,USB VBUS to +5V (DNP),1,0402,0R,Yageo,RC0402JR-070RL,311-0.0ARCT-ND,603-RC0402JR-070RL,DNP — populate only for USB power
+J_IN_L,1/4" TRS jack — Audio Input Left,1,Through-hole,,Neutrik,NRJ6HF,NRJ6HF-ND,550-NRJ6HF,Horizontal PCB mount
+J_IN_R,1/4" TRS jack — Audio Input Right,1,Through-hole,,Neutrik,NRJ6HF,NRJ6HF-ND,550-NRJ6HF,
+J_OUT_L,1/4" TRS jack — Audio Output Left,1,Through-hole,,Neutrik,NRJ6HF,NRJ6HF-ND,550-NRJ6HF,
+J_OUT_R,1/4" TRS jack — Audio Output Right,1,Through-hole,,Neutrik,NRJ6HF,NRJ6HF-ND,550-NRJ6HF,
+U_IN_L,THAT1246 balanced line receiver,1,SOIC-8,,THAT Corporation,THAT1246,THAT1246-ND,,
+U_IN_R,THAT1246 balanced line receiver,1,SOIC-8,,THAT Corporation,THAT1246,THAT1246-ND,,
+U_OUT_L,DRV134 balanced line driver,1,SOIC-8,,Texas Instruments,DRV134UA,296-17872-5-ND,595-DRV134UA,
+U_OUT_R,DRV134 balanced line driver,1,SOIC-8,,Texas Instruments,DRV134UA,296-17872-5-ND,595-DRV134UA,
+JP_IN_L,Input L bypass jumper 1x3,1,2.54mm,,,Sullins,PRPC003SAAN-RC,S1011EC-03-ND,,Default: jumper 1-2
+JP_IN_R,Input R bypass jumper 1x3,1,2.54mm,,,Sullins,PRPC003SAAN-RC,S1011EC-03-ND,,
+JP_OUT_L,Output L bypass jumper 1x3,1,2.54mm,,,Sullins,PRPC003SAAN-RC,S1011EC-03-ND,,Default: jumper 1-2
+JP_OUT_R,Output R bypass jumper 1x3,1,2.54mm,,,Sullins,PRPC003SAAN-RC,S1011EC-03-ND,,
+C_COUPLE_L,Output coupling cap,1,0805,10u,Samsung,CL21A106KAYNNNE,1276-1044-1-ND,187-CL21A106KAYNNNE,DRV134 input coupling
+C_COUPLE_R,Output coupling cap,1,0805,10u,Samsung,CL21A106KAYNNNE,1276-1044-1-ND,187-CL21A106KAYNNNE,DRV134 input coupling
+,2x20 female header 0.1" pitch (Seed socket),2,Through-hole,,Sullins,PPPC201LFBN-RC,S7121-ND,,"2 needed: one per Seed header row"
+,M3x5mm hex standoff,4,,,,,,,PCB mounting standoffs
+,M3x6mm pan head screw,8,,,,,,,4 for standoffs bottom + 4 for lid
+,M3 nut,4,,,,,,,For bottom of standoff screws
+,Jumper cap 2.54mm,4,,,,,,,"For bypass jumper headers (4 needed: 2 in + 2 out)"
+,12V 1A DC wall adapter 2.1mm center-positive,1,,,,,,,"Barrel jack power supply"
+,Rubber feet adhesive,4,,,,,,,Bottom of enclosure

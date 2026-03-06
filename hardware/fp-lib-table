@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "triptech")(type "KiCad")(uri "${KIPRJMOD}/libs/triptech.pretty")(options "")(descr "Triptech project footprints"))
+)

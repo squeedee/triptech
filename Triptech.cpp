@@ -1,6 +1,7 @@
 #include "daisysp.h"
 #include "daisy_pod.h"
 #include <cmath>
+#include <cstring>
 #include <cstdlib>
 
 using namespace daisysp;
@@ -10,53 +11,55 @@ using namespace daisy;
 // Constants
 // ============================================================
 
-static constexpr int      NUM_CH         = 3;   // Ch1=0, Ch2=1, Ch3=2
-static constexpr int      NUM_STEPS      = 16;
-static constexpr int      NUM_PATTERNS   = 16;
-static constexpr int      TICKS_PER_STEP = 6;   // 24 PPQN → 6 ticks per 16th note
+static constexpr int NUM_CH = 3; // Ch1=0, Ch2=1, Ch3=2
+static constexpr int NUM_STEPS = 16;
+static constexpr int NUM_PATTERNS = 16;
+static constexpr int TICKS_PER_STEP = 6; // 24 PPQN → 6 ticks per 16th note
+static constexpr int NUM_PATCHES = 64;
 static constexpr uint32_t TRS_TIMEOUT_MS = 500;
-static constexpr float    HALF_PI        = 1.5707963268f;
+static constexpr float HALF_PI = 1.5707963268f;
 
 // ============================================================
 // Gate Patterns [pattern][step][channel]   (0=Ch1, 1=Ch2, 2=Ch3)
 // ============================================================
 
+// clang-format off
 static const bool kPatterns[NUM_PATTERNS][NUM_STEPS][NUM_CH] = {
-    // 0: Open LP — LP every step
-    {{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},
-     {1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0}},
+    // 0: Cascade — LP→BP→HP sweep with gaps
+    {{1,0,0},{0,1,0},{0,0,1},{0,0,0},{0,0,0},{1,0,0},{0,1,0},{0,0,1},
+     {1,0,0},{0,1,0},{0,0,1},{0,0,0},{0,0,0},{1,0,0},{0,1,0},{0,0,1}},
 
     // 1: Classic — LP quarters / HP 8th-off / BP 16th-fill
     {{1,0,0},{0,1,0},{0,0,1},{0,1,0},{1,0,0},{0,1,0},{0,0,1},{0,1,0},
      {1,0,0},{0,1,0},{0,0,1},{0,1,0},{1,0,0},{0,1,0},{0,0,1},{0,1,0}},
 
-    // 2: LP/HP alternating
-    {{1,0,0},{0,0,1},{1,0,0},{0,0,1},{1,0,0},{0,0,1},{1,0,0},{0,0,1},
-     {1,0,0},{0,0,1},{1,0,0},{0,0,1},{1,0,0},{0,0,1},{1,0,0},{0,0,1}},
+    // 2: Tresillo — 3+3+2 Latin feel / LP accent / BP offbeat / HP running
+    {{1,0,0},{0,0,0},{0,0,1},{0,1,0},{0,0,0},{0,0,1},{1,0,0},{0,0,0},
+     {0,0,1},{0,1,0},{0,0,0},{0,0,1},{1,0,0},{0,0,0},{0,0,1},{0,1,0}},
 
     // 3: Even split — LP/BP/HP/rest cycling
     {{1,0,0},{0,1,0},{0,0,1},{0,0,0},{1,0,0},{0,1,0},{0,0,1},{0,0,0},
      {1,0,0},{0,1,0},{0,0,1},{0,0,0},{1,0,0},{0,1,0},{0,0,1},{0,0,0}},
 
-    // 4: LP first half, BP second half
-    {{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},{1,0,0},
-     {0,1,0},{0,1,0},{0,1,0},{0,1,0},{0,1,0},{0,1,0},{0,1,0},{0,1,0}},
+    // 4: Polymetric — LP quarters / BP ~5ths / HP ~3rds (overlaps on 8, 11)
+    {{1,0,0},{0,1,0},{0,0,1},{0,0,0},{1,0,0},{0,0,1},{0,1,0},{0,0,0},
+     {1,0,1},{0,0,0},{0,0,0},{0,1,1},{1,0,0},{0,0,0},{0,0,1},{0,0,0}},
 
     // 5: Quarter rotation — LP / BP / HP / LP
     {{1,0,0},{0,0,0},{0,0,0},{0,0,0},{0,1,0},{0,0,0},{0,0,0},{0,0,0},
      {0,0,1},{0,0,0},{0,0,0},{0,0,0},{1,0,0},{0,0,0},{0,0,0},{0,0,0}},
 
-    // 6: Open HP — HP every step
-    {{0,0,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},
-     {0,0,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1},{0,0,1}},
+    // 6: Dense stack — layered with simultaneous triggers
+    {{1,0,1},{0,1,0},{0,0,1},{0,1,0},{1,0,0},{0,0,1},{1,1,0},{0,0,1},
+     {1,0,0},{0,1,0},{0,0,1},{0,1,0},{1,0,0},{0,0,1},{1,1,0},{0,0,1}},
 
     // 7: LP→BP→HP rotation every step
     {{1,0,0},{0,1,0},{0,0,1},{1,0,0},{0,1,0},{0,0,1},{1,0,0},{0,1,0},
      {0,0,1},{1,0,0},{0,1,0},{0,0,1},{1,0,0},{0,1,0},{0,0,1},{1,0,0}},
 
-    // 8: LP quarters + BP 8th-offbeats
-    {{1,0,0},{0,0,0},{0,1,0},{0,0,0},{1,0,0},{0,0,0},{0,1,0},{0,0,0},
-     {1,0,0},{0,0,0},{0,1,0},{0,0,0},{1,0,0},{0,0,0},{0,1,0},{0,0,0}},
+    // 8: Shuffle — swing-like paired hits
+    {{1,0,0},{0,1,0},{0,0,1},{1,0,0},{0,0,1},{0,1,0},{0,0,0},{0,0,1},
+     {1,0,0},{0,1,0},{0,0,1},{1,0,0},{0,0,1},{0,1,0},{0,0,0},{0,0,1}},
 
     // 9: Triplet rotation — LP on 0,3,6,9,12,15 / HP on 1,4,7,10,13 / BP on 2,5,8,11,14
     {{1,0,0},{0,0,1},{0,1,0},{1,0,0},{0,0,1},{0,1,0},{1,0,0},{0,0,1},
@@ -78,41 +81,70 @@ static const bool kPatterns[NUM_PATTERNS][NUM_STEPS][NUM_CH] = {
     {{1,0,0},{0,0,0},{1,0,0},{0,0,0},{0,0,0},{0,0,0},{0,1,0},{0,0,0},
      {0,0,1},{0,0,0},{0,0,0},{0,0,0},{0,0,1},{0,0,0},{0,0,0},{0,0,0}},
 
-    // 14: Dotted-8th LP (0,3,6,9,12) + HP fills (2,5,8,11,14)
-    {{1,0,0},{0,0,0},{0,0,1},{1,0,0},{0,0,0},{0,0,1},{1,0,0},{0,0,0},
-     {0,0,1},{1,0,0},{0,0,0},{0,0,1},{1,0,0},{0,0,0},{0,0,1},{0,0,0}},
+    // 14: Call/response — LP burst / BP bridge / HP answer
+    {{1,0,0},{0,0,0},{1,0,0},{0,0,0},{1,0,0},{0,1,0},{0,0,0},{0,1,0},
+     {0,0,1},{0,0,0},{0,0,1},{0,0,0},{0,0,1},{0,1,0},{0,0,0},{0,0,1}},
 
     // 15: Complex syncopated — LP:0,2,9,13 / BP:3,7,11,15 / HP:5,6,12
     {{1,0,0},{0,0,0},{1,0,0},{0,1,0},{0,0,0},{0,0,1},{0,0,1},{0,1,0},
      {0,0,0},{1,0,0},{0,0,0},{0,1,0},{0,0,1},{1,0,0},{0,0,0},{0,1,0}},
 };
+// clang-format on
 
 // ============================================================
 // Per-channel state
 // ============================================================
 
-struct Channel
-{
-    Svf          fltL, fltR;       // SVF: LP/HP/BP/Notch at 12 dB
-    LadderFilter ladL, ladR;       // Ladder: LP/HP/BP at 12 or 24 dB
-    OnePole      poleL, poleR;     // OnePole: LP/HP at 6 dB
+struct ChannelPreset {
+    float cutoff;        // Hz
+    float resonance;     // 0–0.95
+    float drive;         // 1–4 (pre-filter gain)
+    float attack;        // seconds
+    float decay;         // seconds
+    float level;         // 0–1
+    float pan;           // 0=left, 0.5=center, 1=right
+    float lfoAmount;     // -1 to +1 (14-bit bipolar, filter mod)
+    float delayAmount;   // 0–1 (post-amp send to delay)
+    float ampLfoAmount;  // -1 to +1 (amp mod depth)
+    float lfoDuty;       // 0–1 (waveform duty cycle)
+    uint8_t filterType;  // 0=LP, 1=BP, 2=HP, 3=Notch
+    uint8_t filterSlope; // 0=6dB, 1=12dB, 2=24dB
+    uint8_t lfoShape;    // 0=Saw, 1=RevSaw, 2=Tri, 3=Sin, 4=Sq
+    uint8_t lfoParam;    // CC raw value for rate
+    bool lfoSynced;      // true = clock-synced, false = free Hz
+};
+
+struct Preset {
+    ChannelPreset ch[NUM_CH];
+    float bpm;           // 20–300
+    float delayFeedback; // 0–0.95
+    float delayWidth;    // 0=mono, 1=full ping-pong
+    float dryLevel;      // 0–1
+    uint8_t pattern;     // 0–15
+    uint8_t delayParam;  // CC 1 raw value
+    bool delaySynced;    // true = clock-synced divisions, false = free ms
+};
+
+struct PatchStorage {
+    uint32_t version;
+    Preset patches[NUM_PATCHES];
+    bool operator!=(const PatchStorage &o) const {
+        return memcmp(this, &o, sizeof(*this)) != 0;
+    }
+};
+
+static constexpr uint32_t PATCH_VERSION = 2;
+
+struct Channel {
+    Svf fltL, fltR;          // SVF: LP/HP/BP/Notch at 12 dB
+    LadderFilter ladL, ladR; // Ladder: LP/HP/BP at 12 or 24 dB
+    OnePole poleL, poleR;    // OnePole: LP/HP at 6 dB
     AdEnv env;
-    float cutoff;       // Hz
-    float resonance;    // 0–0.95
-    float drive;        // 1–4 (pre-filter gain)
-    float envAmount;    // -1 to +1 (14-bit bipolar)
-    float attack;       // seconds
-    float decay;        // seconds
-    float level;        // 0–1
-    float pan;          // 0=left, 0.5=center, 1=right
-    float lfoAmount;    // -1 to +1 (14-bit bipolar)
-    float delayAmount;  // 0–1  (post-amp send to delay)
-    uint8_t envAmtMsb;    // 14-bit MSB cache for envAmount
-    uint8_t lfoAmtMsb;    // 14-bit MSB cache for lfoAmount
-    uint8_t filterType;   // 0=LP, 1=BP, 2=HP, 3=Notch
-    uint8_t filterSlope;  // 0=6dB, 1=12dB, 2=24dB
-    bool  note_active;
-    bool  env_started;
+    float lfoPhase;      // 0–1 phase accumulator
+    float lfoVal;        // last computed LFO sample
+    uint8_t lfoAmtMsb;  // 14-bit MSB cache for filter lfoAmount
+    bool note_active;
+    bool env_started;
 };
 
 // ============================================================
@@ -126,155 +158,261 @@ struct Channel
 
 // Musical division table: beats per division (1 beat = 1 quarter note)
 static const float kDivBeats[8] = {
-    2.f,        // 1/2
-    4.f/3.f,    // 1/2T
-    1.f,        // 1/4
-    2.f/3.f,    // 1/4T
-    0.5f,       // 1/8
-    1.f/3.f,    // 1/8T
-    0.25f,      // 1/16
-    1.f/6.f,    // 1/16T
+    2.f,       // 1/2
+    4.f / 3.f, // 1/2T
+    1.f,       // 1/4
+    2.f / 3.f, // 1/4T
+    0.5f,      // 1/8
+    1.f / 3.f, // 1/8T
+    0.25f,     // 1/16
+    1.f / 6.f, // 1/16T
 };
 
 static DelayLine<float, 192001> DSY_SDRAM_BSS delayL;
 static DelayLine<float, 192001> DSY_SDRAM_BSS delayR;
 
-static uint8_t delayParam    = 32;    // CC 1 raw value: div index when synced, time when free
-static bool    delaySynced   = true;  // true = clock-synced divisions, false = free ms
-static float   delayFeedback = 0.4f;  // 0–0.95
-static float   delayWidth    = 1.f;   // 0=mono, 1=full ping-pong
-
-static uint8_t lfoParam      = 55;    // CC 16 raw value: Hz when free, div index when synced
-static bool    lfoSynced     = false; // true = clock-synced, false = free Hz
-
-static float   dryLevel      = 0.f;   // 0–1
-
-static DaisyPod       pod;
+static DaisyPod pod;
 static MidiUsbHandler usb_midi;
-static Channel        ch[NUM_CH];
-static Oscillator     lfo;
-static float          sample_rate;
+static PersistentStorage<PatchStorage> patchStorage(pod.seed.qspi);
+static Preset preset;
+static Channel ch[NUM_CH];
+static float sample_rate;
+static uint8_t cur_patch = 0;
 
-static CpuLoadMeter   dspLoad;
-static float          loopLoadAvg   = 0.f;   // smoothed main-loop µs per iteration
-static float          loopPeak      = 0.f;   // peak µs in current 250ms window
-static uint32_t       lastLoadMs    = 0;
-static float          ticksPerUs    = 1.f;    // populated after init
+static CpuLoadMeter dspLoad;
+static float loopLoadAvg = 0.f; // smoothed main-loop µs per iteration
+static float loopPeak = 0.f;    // peak µs in current 250ms window
+static uint32_t lastLoadMs = 0;
+static float ticksPerUs = 1.f; // populated after init
 
-static uint8_t  cur_pattern = 0;
-static uint8_t  cur_step    = 0;
-static int      tick_count  = 0;
-static bool     seq_running = false;
+static uint8_t cur_step = 0;
+static int tick_count = 0;
+static bool seq_running = false;
 
-static bool     trs_active       = false;
-static uint32_t trs_last_ms      = 0;
-static bool     usb_clock_active = false;
-static uint32_t usb_last_ms      = 0;
+static bool trs_active = false;
+static uint32_t trs_last_ms = 0;
+static bool usb_clock_active = false;
+static uint32_t usb_last_ms = 0;
 
 // Internal clock
-static float    bpm           = 120.f;
-static float    lfo_rate      = 1.f;
-static uint32_t int_tick_ms   = 0;   // timestamp of last internal tick
-static uint32_t led2_flash_ms = 0;   // timestamp of last beat flash
-static uint32_t tap_last_ms   = 0;   // timestamp of last tap-tempo tap
-static bool     bypass        = false;
+static uint32_t int_tick_ms = 0;   // timestamp of last internal tick
+static uint32_t led2_flash_ms = 0; // timestamp of last beat flash
+static uint32_t tap_last_ms = 0;   // timestamp of last tap-tempo tap
+static bool bypass = false;
+static bool ch_muted[NUM_CH] = {false, false, false};
 
-// MIDI CC base per channel — 16 CC slots each (offsets 0-12 used)
-static constexpr int     kCcBase[NUM_CH]   = {20, 36, 52};
+// MIDI CC base per channel — 16 CC slots each (offsets 0-15 used)
+static constexpr int kCcBase[NUM_CH] = {20, 36, 52};
 // Note triggers: all on MIDI channel 1 — C4, C#4, D4
 static constexpr uint8_t kTrigNote[NUM_CH] = {60, 61, 62};
+
+// ============================================================
+// Per-channel LFO — phase-accumulator with duty cycle
+// ============================================================
+
+static float LfoSample(float phase, uint8_t shape, float duty) {
+    if (duty < 0.01f) duty = 0.01f;
+    if (duty > 0.99f) duty = 0.99f;
+    switch (shape) {
+    case 0: // Triangle — peak position at duty
+        return (phase < duty) ? -1.f + 2.f * phase / duty
+                              : 1.f - 2.f * (phase - duty) / (1.f - duty);
+    case 1: { // Sine — skewed via phase warp, peak at duty
+        float w = (phase < duty) ? 0.5f * phase / duty
+                                 : 0.5f + 0.5f * (phase - duty) / (1.f - duty);
+        return -cosf(w * 6.283185307f);
+    }
+    case 2: // Square — PWM
+        return (phase < duty) ? 1.f : -1.f;
+    default:
+        return 0.f;
+    }
+}
+
+// ============================================================
+// Default preset factory
+// ============================================================
+
+static void InitChannelLfo(ChannelPreset &cp) {
+    cp.lfoParam = 55;
+    cp.lfoSynced = true;
+    cp.lfoShape = 1; // Sine
+    cp.lfoDuty = 0.5f;
+    cp.ampLfoAmount = 0.f;
+}
+
+static Preset DefaultPreset() {
+    Preset p = {};
+    p.bpm = 120.f;
+    p.delayParam = 32;
+    p.delaySynced = true;
+    p.delayFeedback = 0.4f;
+    p.delayWidth = 1.f;
+    p.dryLevel = 0.f;
+    p.pattern = 0;
+
+    // Ch1 — LP, center
+    p.ch[0].cutoff = 800.f;
+    p.ch[0].resonance = 0.5f;
+    p.ch[0].drive = 1.f;
+    p.ch[0].attack = 0.005f;
+    p.ch[0].decay = 0.2f;
+    p.ch[0].level = 0.7f;
+    p.ch[0].pan = 0.5f;
+    p.ch[0].lfoAmount = 0.f;
+    p.ch[0].delayAmount = 0.f;
+    p.ch[0].filterType = 0;
+    p.ch[0].filterSlope = 1;
+    InitChannelLfo(p.ch[0]);
+
+    // Ch2 — BP, left
+    p.ch[1].cutoff = 2000.f;
+    p.ch[1].resonance = 0.5f;
+    p.ch[1].drive = 1.f;
+    p.ch[1].attack = 0.005f;
+    p.ch[1].decay = 0.2f;
+    p.ch[1].level = 0.7f;
+    p.ch[1].pan = 0.25f;
+    p.ch[1].lfoAmount = 0.f;
+    p.ch[1].delayAmount = 0.f;
+    p.ch[1].filterType = 1;
+    p.ch[1].filterSlope = 1;
+    InitChannelLfo(p.ch[1]);
+
+    // Ch3 — HP, right
+    p.ch[2].cutoff = 1200.f;
+    p.ch[2].resonance = 0.5f;
+    p.ch[2].drive = 1.f;
+    p.ch[2].attack = 0.005f;
+    p.ch[2].decay = 0.2f;
+    p.ch[2].level = 0.7f;
+    p.ch[2].pan = 0.75f;
+    p.ch[2].lfoAmount = 0.f;
+    p.ch[2].delayAmount = 0.f;
+    p.ch[2].filterType = 2;
+    p.ch[2].filterSlope = 1;
+    InitChannelLfo(p.ch[2]);
+
+    return p;
+}
 
 // ============================================================
 // Helpers
 // ============================================================
 
-static float CcLin(uint8_t v, float lo, float hi)
-{
-    return lo + (v / 127.f) * (hi - lo);
+static float CcLin(uint8_t v, float lo, float hi) { return lo + (v / 127.f) * (hi - lo); }
+
+static float CcLog(uint8_t v, float lo, float hi) { return lo * powf(hi / lo, v / 127.f); }
+
+static uint8_t CcLinInv(float val, float lo, float hi) {
+    return (uint8_t)(fclamp((val - lo) / (hi - lo) * 127.f, 0.f, 127.f) + 0.5f);
 }
 
-static float CcLog(uint8_t v, float lo, float hi)
-{
-    return lo * powf(hi / lo, v / 127.f);
+static uint8_t CcLogInv(float val, float lo, float hi) {
+    return (uint8_t)(fclamp(logf(val / lo) / logf(hi / lo) * 127.f, 0.f, 127.f) + 0.5f);
 }
 
-static uint8_t CcLinInv(float val, float lo, float hi)
-{
-    return (uint8_t)fclamp((val - lo) / (hi - lo) * 127.f, 0.f, 127.f);
+static inline float fasttanh(float x) {
+    if (x > 3.f)
+        return 1.f;
+    if (x < -3.f)
+        return -1.f;
+    float x2 = x * x;
+    return x * (27.f + x2) / (27.f + 9.f * x2);
 }
 
-static uint8_t CcLogInv(float val, float lo, float hi)
-{
-    return (uint8_t)fclamp(logf(val / lo) / logf(hi / lo) * 127.f, 0.f, 127.f);
-}
-
-static void SendCC(uint8_t cc, uint8_t val)
-{
-    uint8_t msg[3] = { 0xB0, cc, val };
+static void SendCC(uint8_t cc, uint8_t val) {
+    uint8_t msg[3] = {0xB0, cc, val};
     pod.midi.SendMessage(msg, 3);
     usb_midi.SendMessage(msg, 3);
 }
 
-static void SendNoteOn(uint8_t note, uint8_t vel)
-{
-    uint8_t msg[3] = { 0x90, note, vel };
+static void SendProgramChange(uint8_t prog) {
+    uint8_t msg[2] = {0xC0, prog};
+    pod.midi.SendMessage(msg, 2);
+    usb_midi.SendMessage(msg, 2);
+}
+
+static void SendNoteOn(uint8_t note, uint8_t vel) {
+    uint8_t msg[3] = {0x90, note, vel};
     pod.midi.SendMessage(msg, 3);
     usb_midi.SendMessage(msg, 3);
 }
 
-static void SendNoteOff(uint8_t note)
-{
-    uint8_t msg[3] = { 0x80, note, 0 };
+static void SendNoteOff(uint8_t note) {
+    uint8_t msg[3] = {0x80, note, 0};
     pod.midi.SendMessage(msg, 3);
     usb_midi.SendMessage(msg, 3);
 }
 
-static void SendAllState()
-{
-    SendCC(1,  delayParam);
-    SendCC(2,  CcLinInv(delayFeedback, 0.f, 0.95f));
-    SendCC(3,  CcLinInv(delayWidth,    0.f, 1.f));
-    SendCC(4,  CcLinInv(dryLevel,      0.f, 1.f));
-    SendCC(6,  delaySynced ? 127 : 0);
-    SendCC(7,  lfoSynced   ? 127 : 0);
-    SendCC(16, lfoParam);
-    SendCC(14, cur_pattern * 8);
+static void SendAllState() {
+    SendCC(1, preset.delayParam);
+    SendCC(2, CcLinInv(preset.delayFeedback, 0.f, 0.95f));
+    SendCC(3, CcLinInv(preset.delayWidth, 0.f, 1.f));
+    SendCC(4, CcLinInv(preset.dryLevel, 0.f, 1.f));
+    SendCC(6, preset.delaySynced ? 127 : 0);
+    SendCC(14, preset.pattern * 8);
     SendCC(15, seq_running ? 127 : 0);
     SendCC(18, bypass ? 127 : 0);
-    SendCC(19, (uint8_t)((fclamp(bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f));
-    for(int c = 0; c < NUM_CH; c++)
-    {
+    SendCC(19, (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f));
+    SendCC(68, (ch_muted[0] ? 1 : 0) | (ch_muted[1] ? 2 : 0) | (ch_muted[2] ? 4 : 0));
+    SendProgramChange(cur_patch);
+    for (int c = 0; c < NUM_CH; c++) {
         int base = kCcBase[c];
-        SendCC(base + 0, CcLogInv(ch[c].cutoff,    100.f,   20000.f));
-        SendCC(base + 1, CcLinInv(ch[c].resonance, 0.f,     0.95f));
-        SendCC(base + 2, CcLinInv(ch[c].drive,     1.f,     4.f));
-        { uint16_t v14 = (uint16_t)fclamp((ch[c].envAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f);
-          SendCC(base + 3,  v14 >> 7);
-          SendCC(base + 11, v14 & 0x7F); }
-        SendCC(base + 4, CcLogInv(ch[c].attack,    0.001f,  2.f));
-        SendCC(base + 5, CcLogInv(ch[c].decay,     0.01f,   4.f));
-        SendCC(base + 6, CcLinInv(ch[c].level,     0.f,     1.f));
-        SendCC(base + 7, CcLinInv(ch[c].pan,       0.f,     1.f));
-        { uint16_t v14 = (uint16_t)fclamp((ch[c].lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f);
-          SendCC(base + 8,  v14 >> 7);
-          SendCC(base + 12, v14 & 0x7F); }
-        SendCC(base + 9,  ch[c].filterType  * 32);
-        SendCC(base + 10, ch[c].filterSlope * 63);
-        SendCC(base + 13, CcLinInv(ch[c].delayAmount, 0.f, 1.f));
+        SendCC(base + 0, CcLogInv(preset.ch[c].cutoff, 100.f, 20000.f));
+        SendCC(base + 1, CcLinInv(preset.ch[c].resonance, 0.f, 0.95f));
+        SendCC(base + 2, CcLinInv(preset.ch[c].drive, 1.f, 4.f));
+        SendCC(base + 4, CcLogInv(preset.ch[c].attack, 0.001f, 2.f));
+        SendCC(base + 5, CcLogInv(preset.ch[c].decay, 0.01f, 2.f));
+        SendCC(base + 6, CcLinInv(preset.ch[c].level, 0.f, 1.f));
+        SendCC(base + 7, CcLinInv(preset.ch[c].pan, 0.f, 1.f));
+        {
+            uint16_t v14 =
+                (uint16_t)(fclamp((preset.ch[c].lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f) + 0.5f);
+            SendCC(base + 8, v14 >> 7);
+            SendCC(base + 12, v14 & 0x7F);
+        }
+        SendCC(base + 9, preset.ch[c].filterType * 32);
+        SendCC(base + 10, preset.ch[c].filterSlope * 63);
+        SendCC(base + 13, CcLinInv(preset.ch[c].delayAmount, 0.f, 1.f));
+        SendCC(base + 3, preset.ch[c].lfoParam);
+        SendCC(base + 11, preset.ch[c].lfoShape * 21 + (preset.ch[c].lfoSynced ? 64 : 0));
+        SendCC(base + 14, CcLinInv(preset.ch[c].lfoDuty, 0.f, 1.f));
+        SendCC(base + 15, CcLinInv(preset.ch[c].ampLfoAmount, -1.f, 1.f));
     }
+}
+
+// ============================================================
+// Patch management
+// ============================================================
+
+static void LoadPatch(uint8_t idx) {
+    if (idx >= NUM_PATCHES) return;
+    cur_patch = idx;
+    preset = patchStorage.GetSettings().patches[idx];
+    SendAllState();
+}
+
+static void SavePatch(uint8_t idx) {
+    if (idx >= NUM_PATCHES) return;
+    cur_patch = idx;
+    PatchStorage &store = patchStorage.GetSettings();
+    store.patches[idx] = preset;
+    patchStorage.Save(); // brief audio glitch possible during flash write
+    SendProgramChange(cur_patch); // echo back saved location
+    SendCC(87, idx);              // confirm save to controller
 }
 
 // ============================================================
 // Gate trigger
 // ============================================================
 
-static void TriggerGate(int c)
-{
-    ch[c].env.SetTime(ADENV_SEG_ATTACK, ch[c].attack);
-    ch[c].env.SetTime(ADENV_SEG_DECAY,  ch[c].decay);
+static void TriggerGate(int c) {
+    ch[c].env.SetTime(ADENV_SEG_ATTACK, preset.ch[c].attack);
+    ch[c].env.SetTime(ADENV_SEG_DECAY, preset.ch[c].decay);
     ch[c].env.Trigger();
-    if(ch[c].note_active)
-        SendNoteOff(kTrigNote[c]);  // cut off any still-open note
+    if (ch[c].note_active)
+        SendNoteOff(kTrigNote[c]); // cut off any still-open note
     SendNoteOn(kTrigNote[c], 100);
     ch[c].note_active = true;
     ch[c].env_started = false;
@@ -284,18 +422,15 @@ static void TriggerGate(int c)
 // Sequencer step (called every TICKS_PER_STEP MIDI clocks)
 // ============================================================
 
-static void AdvanceClock()
-{
+static void AdvanceClock() {
     tick_count++;
-    if(tick_count >= TICKS_PER_STEP)
-    {
+    if (tick_count >= TICKS_PER_STEP) {
         tick_count = 0;
-        cur_step   = (cur_step + 1) % NUM_STEPS;
-        if(cur_step % 4 == 0)
+        cur_step = (cur_step + 1) % NUM_STEPS;
+        if (cur_step % 4 == 0)
             led2_flash_ms = System::GetNow();
-        for(int c = 0; c < NUM_CH; c++)
-        {
-            if(kPatterns[cur_pattern][cur_step][c])
+        for (int c = 0; c < NUM_CH; c++) {
+            if (kPatterns[preset.pattern][cur_step][c])
                 TriggerGate(c);
         }
     }
@@ -305,61 +440,108 @@ static void AdvanceClock()
 // MIDI CC handler
 // ============================================================
 
-static void HandleCC(uint8_t ctrl, uint8_t val)
-{
-    switch(ctrl)
-    {
-        case 1:  delayParam    = val;                         return;
-        case 2:  delayFeedback = CcLin(val, 0.f, 0.95f);    return;
-        case 3:  delayWidth    = CcLin(val, 0.f, 1.f);      return;
-        case 4:  dryLevel      = CcLin(val, 0.f, 1.f);      return;
-        case 6:  delaySynced   = (val >= 64);                return;
-        case 7:  lfoSynced     = (val >= 64);                return;
-        case 14: cur_pattern = (val * NUM_PATTERNS) / 128;   return;
-        case 15: seq_running = (val >= 64);                return;
-        case 16: lfoParam = val;
-                 if(!lfoSynced) { lfo_rate = CcLog(val, 0.1f, 20.f); lfo.SetFreq(lfo_rate); }
-                 return;
-        case 18: bypass = (val >= 64);                     return;
-        case 19: bpm = 20.f + (val / 127.f) * 280.f;     return;
-        case 119: SendAllState();                          return;
-        default: break;
+static void HandleCC(uint8_t ctrl, uint8_t val) {
+    switch (ctrl) {
+    case 1:
+        preset.delayParam = val;
+        return;
+    case 2:
+        preset.delayFeedback = CcLin(val, 0.f, 0.95f);
+        return;
+    case 3:
+        preset.delayWidth = CcLin(val, 0.f, 1.f);
+        return;
+    case 4:
+        preset.dryLevel = CcLin(val, 0.f, 1.f);
+        return;
+    case 6:
+        preset.delaySynced = (val >= 64);
+        return;
+    case 14:
+        preset.pattern = (val * NUM_PATTERNS) / 128;
+        return;
+    case 15:
+        seq_running = (val >= 64);
+        return;
+    case 18:
+        bypass = (val >= 64);
+        return;
+    case 19:
+        preset.bpm = 20.f + (val / 127.f) * 280.f;
+        return;
+    case 68: // per-channel mute bitmask
+        for (int c = 0; c < NUM_CH; c++)
+            ch_muted[c] = (val >> c) & 1;
+        return;
+    case 87: // save current preset to patch index
+        SavePatch(val);
+        return;
+    case 119:
+        SendAllState();
+        return;
+    default:
+        break;
     }
 
-    for(int c = 0; c < NUM_CH; c++)
-    {
+    for (int c = 0; c < NUM_CH; c++) {
         int offset = (int)ctrl - kCcBase[c];
-        if(offset < 0 || offset > 13) continue;
-        switch(offset)
-        {
-            case 0: ch[c].cutoff    = CcLog(val, 100.f, 20000.f); break;
-            case 1: ch[c].resonance = CcLin(val, 0.f, 0.95f);     break;
-            case 2: ch[c].drive     = CcLin(val, 1.f, 4.f);       break;
-            case 3: // env amount MSB
-                ch[c].envAmtMsb = val;
-                ch[c].envAmount = ((uint16_t)val << 7) / 16383.5f * 2.f - 1.f;
-                break;
-            case 4: ch[c].attack    = CcLog(val, 0.001f, 2.f);    break;
-            case 5: ch[c].decay     = CcLog(val, 0.01f, 4.f);     break;
-            case 6: ch[c].level     = CcLin(val, 0.f, 1.f);       break;
-            case 7: ch[c].pan       = CcLin(val, 0.f, 1.f);       break;
-            case 8: // lfo amount MSB
-                ch[c].lfoAmtMsb = val;
-                ch[c].lfoAmount = ((uint16_t)val << 7) / 16383.5f * 2.f - 1.f;
-                break;
-            case 9:  ch[c].filterType  = val < 32 ? 0 : val < 64 ? 1 : val < 96 ? 2 : 3; break;
-            case 10: ch[c].filterSlope = val < 43 ? 0 : val < 85 ? 1 : 2; break;
-            case 11: { // env amount LSB
-                uint16_t v14 = ((uint16_t)ch[c].envAmtMsb << 7) | val;
-                ch[c].envAmount = v14 / 16383.5f * 2.f - 1.f;
-                break;
-            }
-            case 12: { // lfo amount LSB
-                uint16_t v14 = ((uint16_t)ch[c].lfoAmtMsb << 7) | val;
-                ch[c].lfoAmount = v14 / 16383.5f * 2.f - 1.f;
-                break;
-            }
-            case 13: ch[c].delayAmount = CcLin(val, 0.f, 1.f); break;
+        if (offset < 0 || offset > 15)
+            continue;
+        switch (offset) {
+        case 0:
+            preset.ch[c].cutoff = CcLog(val, 100.f, 20000.f);
+            break;
+        case 1:
+            preset.ch[c].resonance = CcLin(val, 0.f, 0.95f);
+            break;
+        case 2:
+            preset.ch[c].drive = CcLin(val, 1.f, 4.f);
+            break;
+        case 3:
+            preset.ch[c].lfoParam = val;
+            break;
+        case 4:
+            preset.ch[c].attack = CcLog(val, 0.001f, 2.f);
+            break;
+        case 5:
+            preset.ch[c].decay = CcLog(val, 0.01f, 2.f);
+            break;
+        case 6:
+            preset.ch[c].level = CcLin(val, 0.f, 1.f);
+            break;
+        case 7:
+            preset.ch[c].pan = CcLin(val, 0.f, 1.f);
+            break;
+        case 8: // lfo amount MSB
+            ch[c].lfoAmtMsb = val;
+            preset.ch[c].lfoAmount = ((uint16_t)val << 7) / 16383.5f * 2.f - 1.f;
+            break;
+        case 9:
+            preset.ch[c].filterType = val < 32 ? 0 : val < 64 ? 1 : val < 96 ? 2 : 3;
+            break;
+        case 10:
+            preset.ch[c].filterSlope = val < 43 ? 0 : val < 85 ? 1 : 2;
+            break;
+        case 12: { // lfo amount LSB
+            uint16_t v14 = ((uint16_t)ch[c].lfoAmtMsb << 7) | val;
+            preset.ch[c].lfoAmount = v14 / 16383.5f * 2.f - 1.f;
+            break;
+        }
+        case 11: {
+            preset.ch[c].lfoSynced = (val >= 64);
+            uint8_t raw = val & 0x3F;
+            preset.ch[c].lfoShape = raw / 21 > 2 ? 2 : raw / 21;
+            break;
+        }
+        case 13:
+            preset.ch[c].delayAmount = CcLin(val, 0.f, 1.f);
+            break;
+        case 14:
+            preset.ch[c].lfoDuty = CcLin(val, 0.f, 1.f);
+            break;
+        case 15:
+            preset.ch[c].ampLfoAmount = CcLin(val, -1.f, 1.f);
+            break;
         }
     }
 }
@@ -369,69 +551,58 @@ static void HandleCC(uint8_t ctrl, uint8_t val)
 // TRS clock is authoritative; USB clock is ignored while TRS is active
 // ============================================================
 
-template <typename Handler>
-static void ProcessMidi(Handler& midi, bool from_trs)
-{
-    while(midi.HasEvents())
-    {
-        MidiEvent msg      = midi.PopEvent();
-        bool allow_trans   = from_trs || !trs_active;
+template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs) {
+    while (midi.HasEvents()) {
+        MidiEvent msg = midi.PopEvent();
+        bool allow_trans = from_trs || !trs_active;
 
-        if(msg.type == SystemRealTime)
-        {
-            switch(msg.srt_type)
-            {
-                case TimingClock:
-                    if(from_trs)
-                    {
-                        trs_active  = true;
-                        trs_last_ms = System::GetNow();
-                    }
-                    else
-                    {
-                        usb_clock_active = true;
-                        usb_last_ms      = System::GetNow();
-                    }
-                    if(allow_trans && seq_running)
-                        AdvanceClock();
-                    break;
+        if (msg.type == SystemRealTime) {
+            switch (msg.srt_type) {
+            case TimingClock:
+                if (from_trs) {
+                    trs_active = true;
+                    trs_last_ms = System::GetNow();
+                } else {
+                    usb_clock_active = true;
+                    usb_last_ms = System::GetNow();
+                }
+                if (allow_trans && seq_running)
+                    AdvanceClock();
+                break;
 
-                case Start:
-                    if(allow_trans)
-                    {
-                        seq_running = true;
-                        cur_step    = 0;
-                        tick_count  = 0;
-                    }
-                    break;
+            case Start:
+                if (allow_trans) {
+                    seq_running = true;
+                    cur_step = 0;
+                    tick_count = 0;
+                }
+                break;
 
-                case Stop:
-                    if(allow_trans)
-                        seq_running = false;
-                    break;
+            case Stop:
+                if (allow_trans)
+                    seq_running = false;
+                break;
 
-                case Continue:
-                    if(allow_trans)
-                        seq_running = true;
-                    break;
+            case Continue:
+                if (allow_trans)
+                    seq_running = true;
+                break;
 
-                default: break;
+            default:
+                break;
             }
-        }
-        else if(msg.type == ControlChange)
-        {
+        } else if (msg.type == ControlChange) {
             auto cc = msg.AsControlChange();
             HandleCC(cc.control_number, cc.value);
-        }
-        else if(msg.type == NoteOn)
-        {
+        } else if (msg.type == ProgramChange) {
+            auto pc = msg.AsProgramChange();
+            if (pc.program < NUM_PATCHES)
+                LoadPatch(pc.program);
+        } else if (msg.type == NoteOn) {
             auto note = msg.AsNoteOn();
-            if(note.velocity > 0 && msg.channel == 0)
-            {
-                for(int c = 0; c < NUM_CH; c++)
-                {
-                    if(note.note == kTrigNote[c])
-                    {
+            if (note.velocity > 0 && msg.channel == 0) {
+                for (int c = 0; c < NUM_CH; c++) {
+                    if (note.note == kTrigNote[c]) {
                         TriggerGate(c);
                         break;
                     }
@@ -445,14 +616,11 @@ static void ProcessMidi(Handler& midi, bool from_trs)
 // Audio callback — non-interleaved stereo
 // ============================================================
 
-static void AudioCallback(const float* const* in, float** out, size_t size)
-{
+static void AudioCallback(const float *const *in, float **out, size_t size) {
     dspLoad.OnBlockStart();
 
-    if(bypass)
-    {
-        for(size_t i = 0; i < size; i++)
-        {
+    if (bypass) {
+        for (size_t i = 0; i < size; i++) {
             out[0][i] = in[0][i];
             out[1][i] = in[1][i];
         }
@@ -461,143 +629,157 @@ static void AudioCallback(const float* const* in, float** out, size_t size)
     }
 
     // Per-block: update filter + delay coefficients once, cache pan/mode flags.
-    static float last_lfo_val = 0.f;
     float panL[NUM_CH], panR[NUM_CH];
-    bool  use6[NUM_CH], use24[NUM_CH];
+    bool use6[NUM_CH], use24[NUM_CH];
 
     // Delay time: synced to clock divisions or free ms
     {
-        float delaySec = delaySynced
-            ? kDivBeats[delayParam / 16] * 60.f / bpm
-            : CcLog(delayParam, 0.01f, 2.f);          // 10 ms – 2000 ms
+        float delaySec = preset.delaySynced
+                             ? kDivBeats[preset.delayParam / 16] * 60.f / preset.bpm
+                             : CcLog(preset.delayParam, 0.01f, 2.f); // 10 ms – 2000 ms
         size_t delaySmps = (size_t)fclamp(delaySec * sample_rate, 1.f, 192000.f);
         delayL.SetDelay(delaySmps);
         delayR.SetDelay(delaySmps);
     }
 
-    // LFO freq: synced to clock divisions or free Hz
-    if(lfoSynced)
-    {
-        float lfoFreq = bpm / (60.f * kDivBeats[lfoParam / 16]);
-        lfo.SetFreq(lfoFreq);
+    // Per-channel LFO phase increment
+    float lfoInc[NUM_CH];
+    for (int c = 0; c < NUM_CH; c++) {
+        float lfoFreq;
+        if (preset.ch[c].lfoSynced) {
+            lfoFreq = preset.bpm / (60.f * kDivBeats[preset.ch[c].lfoParam / 16]);
+        } else {
+            lfoFreq = CcLog(preset.ch[c].lfoParam, 0.1f, 20.f);
+        }
+        lfoInc[c] = lfoFreq / sample_rate;
     }
 
-    for(int c = 0; c < NUM_CH; c++)
-    {
+    for (int c = 0; c < NUM_CH; c++) {
         // 6 dB: OnePole — LP or HP only (BP/Notch fall back to SVF 12 dB)
-        use6[c]  = ch[c].filterSlope == 0
-                   && ch[c].filterType != 1   // not BP
-                   && ch[c].filterType != 3;  // not Notch
+        use6[c] = preset.ch[c].filterSlope == 0 && preset.ch[c].filterType != 1 // not BP
+                  && preset.ch[c].filterType != 3;                              // not Notch
         // 24 dB: Ladder — LP, HP, BP (Notch not available, falls back to SVF 12 dB)
-        use24[c] = ch[c].filterSlope == 2 && ch[c].filterType != 3;
+        use24[c] = preset.ch[c].filterSlope == 2 && preset.ch[c].filterType != 3;
 
-        float freq = ch[c].cutoff * (1.f + ch[c].lfoAmount * last_lfo_val * 0.5f);
+        float freq = preset.ch[c].cutoff * (1.f + preset.ch[c].lfoAmount * ch[c].lfoVal * 0.5f);
         freq = fclamp(freq, 100.f, sample_rate / 3.f - 1.f);
 
-        if(use6[c])
-        {
+        if (use6[c]) {
             float normF = freq / sample_rate;
             ch[c].poleL.SetFrequency(normF);
             ch[c].poleR.SetFrequency(normF);
-            OnePole::FilterMode pm = ch[c].filterType == 2
-                ? OnePole::FILTER_MODE_HIGH_PASS : OnePole::FILTER_MODE_LOW_PASS;
+            OnePole::FilterMode pm = preset.ch[c].filterType == 2 ? OnePole::FILTER_MODE_HIGH_PASS
+                                                                  : OnePole::FILTER_MODE_LOW_PASS;
             ch[c].poleL.SetFilterMode(pm);
             ch[c].poleR.SetFilterMode(pm);
-        }
-        else if(use24[c])
-        {
+        } else if (use24[c]) {
             LadderFilter::FilterMode lm;
-            switch(ch[c].filterType)
-            {
-                case 1:  lm = LadderFilter::FilterMode::BP24; break;
-                case 2:  lm = LadderFilter::FilterMode::HP24; break;
-                default: lm = LadderFilter::FilterMode::LP24; break;
+            switch (preset.ch[c].filterType) {
+            case 1:
+                lm = LadderFilter::FilterMode::BP24;
+                break;
+            case 2:
+                lm = LadderFilter::FilterMode::HP24;
+                break;
+            default:
+                lm = LadderFilter::FilterMode::LP24;
+                break;
             }
             ch[c].ladL.SetFilterMode(lm);
             ch[c].ladR.SetFilterMode(lm);
             ch[c].ladL.SetFreq(freq);
             ch[c].ladR.SetFreq(freq);
-            ch[c].ladL.SetRes(ch[c].resonance);
-            ch[c].ladR.SetRes(ch[c].resonance);
-            ch[c].ladL.SetInputDrive(ch[c].drive);
-            ch[c].ladR.SetInputDrive(ch[c].drive);
-        }
-        else
-        {
+            ch[c].ladL.SetRes(preset.ch[c].resonance);
+            ch[c].ladR.SetRes(preset.ch[c].resonance);
+            ch[c].ladL.SetInputDrive(preset.ch[c].drive);
+            ch[c].ladR.SetInputDrive(preset.ch[c].drive);
+        } else {
             // 12 dB SVF — LP, HP, BP, or Notch; also fallback for unsupported combos
             ch[c].fltL.SetFreq(freq);
             ch[c].fltR.SetFreq(freq);
-            ch[c].fltL.SetRes(ch[c].resonance);
-            ch[c].fltR.SetRes(ch[c].resonance);
+            ch[c].fltL.SetRes(preset.ch[c].resonance);
+            ch[c].fltR.SetRes(preset.ch[c].resonance);
         }
 
-        panL[c] = cosf(ch[c].pan * HALF_PI);
-        panR[c] = sinf(ch[c].pan * HALF_PI);
+        panL[c] = cosf(preset.ch[c].pan * HALF_PI);
+        panR[c] = sinf(preset.ch[c].pan * HALF_PI);
     }
 
-    for(size_t i = 0; i < size; i++)
-    {
-        last_lfo_val = lfo.Process();   // advance LFO every sample; value used next block
+    for (size_t i = 0; i < size; i++) {
+        // Advance per-channel LFOs
+        for (int c = 0; c < NUM_CH; c++) {
+            ch[c].lfoPhase += lfoInc[c];
+            if (ch[c].lfoPhase >= 1.f) ch[c].lfoPhase -= 1.f;
+            ch[c].lfoVal = LfoSample(ch[c].lfoPhase, preset.ch[c].lfoShape, preset.ch[c].lfoDuty);
+        }
+
         float inL = in[0][i];
         float inR = in[1][i];
 
         // Accumulate channel mix separately — used as sidechain source
         float chanL = 0.f, chanR = 0.f, delaySend = 0.f;
 
-        for(int c = 0; c < NUM_CH; c++)
-        {
+        for (int c = 0; c < NUM_CH; c++) {
             float filtL, filtR;
 
-            if(use6[c])
-            {
-                filtL = ch[c].poleL.Process(inL * ch[c].drive);
-                filtR = ch[c].poleR.Process(inR * ch[c].drive);
-            }
-            else if(use24[c])
-            {
-                // LadderFilter applies drive internally via SetInputDrive
+            if (use6[c]) {
+                filtL = ch[c].poleL.Process(inL * preset.ch[c].drive);
+                filtR = ch[c].poleR.Process(inR * preset.ch[c].drive);
+            } else if (use24[c]) {
+                // drive applied via SetInputDrive() in the per-block setup above, not here
                 filtL = ch[c].ladL.Process(inL);
                 filtR = ch[c].ladR.Process(inR);
-            }
-            else
-            {
-                ch[c].fltL.Process(inL * ch[c].drive);
-                ch[c].fltR.Process(inR * ch[c].drive);
-                switch(ch[c].filterType)
-                {
-                    case 1:  filtL = ch[c].fltL.Band();  filtR = ch[c].fltR.Band();  break;
-                    case 2:  filtL = ch[c].fltL.High();  filtR = ch[c].fltR.High();  break;
-                    case 3:  filtL = ch[c].fltL.Notch(); filtR = ch[c].fltR.Notch(); break;
-                    default: filtL = ch[c].fltL.Low();   filtR = ch[c].fltR.Low();   break;
+            } else {
+                ch[c].fltL.Process(inL * preset.ch[c].drive);
+                ch[c].fltR.Process(inR * preset.ch[c].drive);
+                switch (preset.ch[c].filterType) {
+                case 1:
+                    filtL = ch[c].fltL.Band();
+                    filtR = ch[c].fltR.Band();
+                    break;
+                case 2:
+                    filtL = ch[c].fltL.High();
+                    filtR = ch[c].fltR.High();
+                    break;
+                case 3:
+                    filtL = ch[c].fltL.Notch();
+                    filtR = ch[c].fltR.Notch();
+                    break;
+                default:
+                    filtL = ch[c].fltL.Low();
+                    filtR = ch[c].fltR.Low();
+                    break;
                 }
             }
 
-            float env  = ch[c].env.Process() * ch[c].envAmount;
-            float chL  = filtL * env * ch[c].level;
-            float chR  = filtR * env * ch[c].level;
+            float env = ch[c].env.Process();
+            float lvl = fclamp(preset.ch[c].level + preset.ch[c].ampLfoAmount * ch[c].lfoVal, 0.f, 1.f);
+            if (ch_muted[c]) lvl = 0.f;
+            float chL = filtL * env * lvl;
+            float chR = filtR * env * lvl;
             chanL += chL * panL[c];
             chanR += chR * panR[c];
-            delaySend += (chL + chR) * 0.5f * ch[c].delayAmount;
+            delaySend += (chL + chR) * 0.5f * preset.ch[c].delayAmount;
         }
 
         // Ping-pong delay: L fed by send + R×feedback; R fed by L×feedback
         float dL = delayL.Read();
         float dR = delayR.Read();
-        delayL.Write(delaySend + dR * delayFeedback);
-        delayR.Write(dL * delayFeedback);
+        delayL.Write(delaySend + dR * preset.delayFeedback);
+        delayR.Write(dL * preset.delayFeedback);
 
         // Width: 0 = mono (L+R mixed to centre), 1 = full stereo ping-pong
-        float wBlend = (1.f - delayWidth) * 0.5f;
+        float wBlend = (1.f - preset.delayWidth) * 0.5f;
         float delOutL = dL * (1.f - wBlend) + dR * wBlend;
         float delOutR = dR * (1.f - wBlend) + dL * wBlend;
 
         // Final mix: channels + delay + dry
-        float outL = chanL + delOutL + inL * dryLevel;
-        float outR = chanR + delOutR + inR * dryLevel;
+        float outL = chanL + delOutL + inL * preset.dryLevel;
+        float outR = chanR + delOutR + inR * preset.dryLevel;
 
         // Soft clip — handles summing of multiple channels gracefully
-        out[0][i] = tanhf(outL);
-        out[1][i] = tanhf(outR);
+        out[0][i] = fasttanh(outL);
+        out[1][i] = fasttanh(outR);
     }
 
     dspLoad.OnBlockEnd();
@@ -607,14 +789,13 @@ static void AudioCallback(const float* const* in, float** out, size_t size)
 // Main
 // ============================================================
 
-int main(void)
-{
+int main(void) {
     pod.Init();
     pod.SetAudioBlockSize(48);
     sample_rate = pod.AudioSampleRate();
 
     // --- Init load meters ---
-    dspLoad.Init(sample_rate, 48, 10.f);  // 10 Hz cutoff — fast enough for 250ms windows
+    dspLoad.Init(sample_rate, 48, 10.f); // 10 Hz cutoff — fast enough for 250ms windows
     ticksPerUs = System::GetTickFreq() / 1000000.f;
 
     // --- Init delay lines ---
@@ -622,8 +803,7 @@ int main(void)
     delayR.Init();
 
     // --- Init DSP ---
-    for(int c = 0; c < NUM_CH; c++)
-    {
+    for (int c = 0; c < NUM_CH; c++) {
         ch[c].fltL.Init(sample_rate);
         ch[c].fltR.Init(sample_rate);
         ch[c].ladL.Init(sample_rate);
@@ -633,36 +813,25 @@ int main(void)
         ch[c].env.Init(sample_rate);
         ch[c].env.SetMin(0.f);
         ch[c].env.SetMax(1.f);
+        ch[c].lfoPhase = 0.f;
+        ch[c].lfoVal = 0.f;
         ch[c].note_active = false;
         ch[c].env_started = false;
     }
 
-    // LP defaults — panned slightly left
-    ch[0].cutoff = 800.f;  ch[0].resonance = 0.5f; ch[0].drive = 1.f;
-    ch[0].envAmount = 1.f; ch[0].attack = 0.005f;  ch[0].decay = 0.2f;
-    ch[0].level = 0.7f;    ch[0].pan = 0.5f;       ch[0].lfoAmount = 0.f;
-    ch[0].delayAmount = 0.f;
-    ch[0].filterType = 0;  ch[0].filterSlope = 1;  // LP, 12 dB
-
-    // Ch2 defaults — panned left
-    ch[1].cutoff = 2000.f; ch[1].resonance = 0.5f; ch[1].drive = 1.f;
-    ch[1].envAmount = 1.f; ch[1].attack = 0.005f;  ch[1].decay = 0.2f;
-    ch[1].level = 0.7f;    ch[1].pan = 0.25f;      ch[1].lfoAmount = 0.f;
-    ch[1].delayAmount = 0.f;
-    ch[1].filterType = 1;  ch[1].filterSlope = 1;  // BP, 12 dB
-
-    // Ch3 defaults — panned right
-    ch[2].cutoff = 1200.f; ch[2].resonance = 0.5f; ch[2].drive = 1.f;
-    ch[2].envAmount = 1.f; ch[2].attack = 0.005f;  ch[2].decay = 0.2f;
-    ch[2].level = 0.7f;    ch[2].pan = 0.75f;      ch[2].lfoAmount = 0.f;
-    ch[2].delayAmount = 0.f;
-    ch[2].filterType = 2;  ch[2].filterSlope = 1;  // HP, 12 dB
-
-    // --- Init LFO ---
-    lfo.Init(sample_rate);
-    lfo.SetWaveform(Oscillator::WAVE_SIN);
-    lfo.SetFreq(1.f);
-    lfo.SetAmp(1.f);
+    // --- Init patch storage (QSPI flash) ---
+    {
+        PatchStorage defaults;
+        defaults.version = PATCH_VERSION;
+        Preset dp = DefaultPreset();
+        for (int i = 0; i < NUM_PATCHES; i++)
+            defaults.patches[i] = dp;
+        patchStorage.Init(defaults);
+    }
+    if (patchStorage.GetSettings().version != PATCH_VERSION)
+        patchStorage.RestoreDefaults();
+    // Load patch 0
+    preset = patchStorage.GetSettings().patches[0];
 
     // --- Init MIDI ---
     pod.midi.StartReceive();
@@ -679,15 +848,14 @@ int main(void)
     int_tick_ms = System::GetNow();
 
     // --- Main loop ---
-    while(true)
-    {
+    while (true) {
         uint32_t loopStart = System::GetTick();
-        uint32_t now       = System::GetNow();
+        uint32_t now = System::GetNow();
 
         // Clock source timeouts
-        if(trs_active       && (now - trs_last_ms) > TRS_TIMEOUT_MS)
+        if (trs_active && (now - trs_last_ms) > TRS_TIMEOUT_MS)
             trs_active = false;
-        if(usb_clock_active && (now - usb_last_ms) > TRS_TIMEOUT_MS)
+        if (usb_clock_active && (now - usb_last_ms) > TRS_TIMEOUT_MS)
             usb_clock_active = false;
 
         bool midi_active = trs_active || usb_clock_active;
@@ -697,39 +865,30 @@ int main(void)
         usb_midi.Listen();
 
         // Process events
-        ProcessMidi(pod.midi,  true);
+        ProcessMidi(pod.midi, true);
         ProcessMidi(usb_midi, false);
 
         // Internal clock — only when no MIDI clock is present
-        if(!midi_active)
-        {
-            uint32_t interval = (uint32_t)(60000.f / (bpm * 24.f));
-            if(seq_running)
-            {
-                if((now - int_tick_ms) >= interval)
-                {
-                    int_tick_ms = now;
+        if (!midi_active) {
+            uint32_t interval = (uint32_t)(60000.f / (preset.bpm * 24.f));
+            if (seq_running) {
+                if ((now - int_tick_ms) >= interval) {
+                    int_tick_ms += interval;
                     AdvanceClock();
                 }
-            }
-            else
-            {
-                int_tick_ms = now;  // keep fresh so start is immediate
+            } else {
+                int_tick_ms = now; // keep fresh so start is immediate
             }
         }
 
         // Send NoteOff when each channel's envelope has completed
-        for(int c = 0; c < NUM_CH; c++)
-        {
-            if(ch[c].note_active)
-            {
+        for (int c = 0; c < NUM_CH; c++) {
+            if (ch[c].note_active) {
                 float v = ch[c].env.GetValue();
-                if(!ch[c].env_started)
-                {
-                    if(v > 0.001f) ch[c].env_started = true;
-                }
-                else if(v < 0.001f)
-                {
+                if (!ch[c].env_started) {
+                    if (v > 0.001f)
+                        ch[c].env_started = true;
+                } else if (v < 0.001f) {
                     SendNoteOff(kTrigNote[c]);
                     ch[c].note_active = false;
                 }
@@ -740,73 +899,59 @@ int main(void)
         pod.ProcessDigitalControls();
 
         // Button 1: toggle start / stop (stop resets to step 0)
-        if(pod.button1.RisingEdge())
-        {
+        if (pod.button1.RisingEdge()) {
             seq_running = !seq_running;
-            if(!seq_running)
-            {
-                cur_step   = 0;
+            if (!seq_running) {
+                cur_step = 0;
                 tick_count = 0;
             }
             SendCC(15, seq_running ? 127 : 0);
         }
 
         // Button 2: tap tempo — sets BPM from interval between taps (< 2 s apart)
-        if(pod.button2.RisingEdge())
-        {
+        if (pod.button2.RisingEdge()) {
             uint32_t gap = now - tap_last_ms;
-            if(gap > 0 && gap < 2000)
-                bpm = fclamp(60000.f / (float)gap, 20.f, 300.f);
+            if (gap > 0 && gap < 2000)
+                preset.bpm = fclamp(60000.f / (float)gap, 20.f, 300.f);
             tap_last_ms = now;
-            uint8_t bpm_cc = (uint8_t)((fclamp(bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
+            uint8_t bpm_cc = (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
             SendCC(19, bpm_cc);
         }
 
         // Encoder click: toggle bypass
-        if(pod.encoder.RisingEdge())
-        {
+        if (pod.encoder.RisingEdge()) {
             bypass = !bypass;
             SendCC(18, bypass ? 127 : 0);
         }
 
         // Encoder turn: select pattern
         int enc = pod.encoder.Increment();
-        if(enc != 0)
-        {
-            cur_pattern = (uint8_t)((cur_pattern + NUM_PATTERNS + enc) % NUM_PATTERNS);
-            SendCC(14, cur_pattern * 8);
+        if (enc != 0) {
+            preset.pattern = (uint8_t)((preset.pattern + NUM_PATTERNS + enc) % NUM_PATTERNS);
+            SendCC(14, preset.pattern * 8);
         }
 
         // LED 1: envelope brightness per channel (LP=blue, BP=green, HP=red)
-        pod.led1.Set(
-            ch[2].env.GetValue(),   // red   = HP
-            ch[1].env.GetValue(),   // green = BP
-            ch[0].env.GetValue()    // blue  = LP
+        pod.led1.Set(ch[2].env.GetValue(), // red   = HP
+                     ch[1].env.GetValue(), // green = BP
+                     ch[0].env.GetValue()  // blue  = LP
         );
 
         // LED 2:
         //   Bypass              → solid white
         //   MIDI clock active   → solid green while running, off while stopped
         //   Internal clock mode → red beat-pulse while running, dim red while stopped
-        if(bypass)
-        {
+        if (bypass) {
             pod.led2.Set(1.f, 1.f, 1.f);
-        }
-        else if(midi_active)
-        {
+        } else if (midi_active) {
             pod.led2.Set(0.f, seq_running ? 1.f : 0.f, 0.f);
-        }
-        else
-        {
-            if(seq_running)
-            {
-                uint32_t elapsed  = now - led2_flash_ms;
-                float    red      = (elapsed < 100) ? (1.f - elapsed / 100.f) : 0.f;
+        } else {
+            if (seq_running) {
+                uint32_t elapsed = now - led2_flash_ms;
+                float red = (elapsed < 100) ? (1.f - elapsed / 100.f) : 0.f;
                 pod.led2.Set(red, 0.f, 0.f);
-            }
-            else
-            {
-                pod.led2.Set(0.15f, 0.f, 0.f);  // dim red = internal clock mode, stopped
+            } else {
+                pod.led2.Set(0.15f, 0.f, 0.f); // dim red = internal clock mode, stopped
             }
         }
 
@@ -814,11 +959,11 @@ int main(void)
 
         // Smooth main-loop iteration time (µs) and track per-window peak
         float loopUs = (System::GetTick() - loopStart) / ticksPerUs;
-        loopLoadAvg  = 0.05f * loopUs + 0.95f * loopLoadAvg;
-        if(loopUs > loopPeak) loopPeak = loopUs;
+        loopLoadAvg = 0.05f * loopUs + 0.95f * loopLoadAvg;
+        if (loopUs > loopPeak)
+            loopPeak = loopUs;
 
-        if((now - lastLoadMs) >= 250)
-        {
+        if ((now - lastLoadMs) >= 250) {
             lastLoadMs = now;
             // DSP: CC 10 = avg, CC 11 = peak (0–127 = 0–100 %)
             SendCC(10, (uint8_t)fclamp(dspLoad.GetAvgCpuLoad() * 127.f, 0.f, 127.f));
@@ -826,7 +971,7 @@ int main(void)
             dspLoad.Reset();
             // Loop: CC 12 = avg, CC 13 = peak (0–127 = 0–500 µs)
             SendCC(12, (uint8_t)fclamp(loopLoadAvg / 500.f * 127.f, 0.f, 127.f));
-            SendCC(13, (uint8_t)fclamp(loopPeak    / 500.f * 127.f, 0.f, 127.f));
+            SendCC(13, (uint8_t)fclamp(loopPeak / 500.f * 127.f, 0.f, 127.f));
             loopPeak = 0.f;
         }
     }

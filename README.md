@@ -13,7 +13,7 @@ CC. A browser-based controller (`controller.html`) provides a full GUI with bidi
 sync.
 
 Each channel has a selectable filter type (LP / BP / HP / Notch) and slope (6 / 12 / 24 dB/oct).
-Envelope amount and LFO amount are bipolar (±100%) with 14-bit resolution.
+Envelope amount is unipolar (0–100%) with 7-bit resolution. LFO amount is bipolar (±100%) with 14-bit resolution.
 
 Button 1 starts and stops the sequencer. Button 2 sets the internal BPM via tap tempo.
 The encoder selects patterns. Clicking the encoder toggles bypass.
@@ -79,7 +79,7 @@ The device echoes each NoteOn back and sends NoteOff when the channel's envelope
 | +0     | Cutoff                  | 100–20000 Hz (log)         | 800 Hz      | 2000 Hz     | 1200 Hz     |
 | +1     | Resonance               | 0–0.95                     | 0.5         | 0.5         | 0.5         |
 | +2     | Drive (pre-filter gain) | ×1–×4                      | ×1          | ×1          | ×1          |
-| +3     | Env amount MSB          | 14-bit bipolar, −1 to +1   | +100%       | +100%       | +100%       |
+| +3     | Env amount              | 7-bit unipolar, 0–100%     | 100%        | 100%        | 100%        |
 | +4     | Attack                  | 1 ms–2 s (log)             | 5 ms        | 5 ms        | 5 ms        |
 | +5     | Decay                   | 10 ms–4 s (log)            | 200 ms      | 200 ms      | 200 ms      |
 | +6     | Level                   | 0–1                        | 0.7         | 0.7         | 0.7         |
@@ -87,10 +87,9 @@ The device echoes each NoteOn back and sends NoteOff when the channel's envelope
 | +8     | LFO amount MSB          | 14-bit bipolar, −1 to +1   | 0%          | 0%          | 0%          |
 | +9     | Filter type             | 0=LP, 32=BP, 64=HP, 96=Notch | LP        | BP          | HP          |
 | +10    | Filter slope            | 0=6 dB, 63=12 dB, 126=24 dB | 12 dB      | 12 dB       | 12 dB       |
-| +11    | Env amount LSB          | 14-bit pair with +3        | —           | —           | —           |
 | +12    | LFO amount LSB          | 14-bit pair with +8        | —           | —           | —           |
 
-Offsets +3/+11 form a 14-bit pair (MSB sent first, then LSB). Same for +8/+12.
+Offset +8/+12 forms a 14-bit pair for LFO amount (MSB sent first, then LSB).
 
 Examples: Ch1 cutoff = CC 20, Ch2 pan = CC 43, Ch3 LFO amount = CC 60.
 
@@ -118,9 +117,11 @@ Send CC 119 (any value) to request a full state dump of all parameters.
 
 ## Web Controller
 
-Open `controller.html` in a browser with Web MIDI support (Chrome / Edge). Select the Daisy as
+Open [./desktop-controller.html](./desktop-controller.html) in a browser with Web MIDI support (Chrome / Edge). Select the Daisy as
 both MIDI In and MIDI Out — the page auto-selects it on load. Click **Sync** to pull current
 device state into the UI at any time.
+
+For an emulation of the desktop module, open [expanded-controller.html](./expanded-controller.html)
 
 ### Controller Keyboard Shortcuts
 

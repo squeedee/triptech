@@ -560,6 +560,114 @@ select:focus { outline: none; border-color: #44445a; }
   color: var(--dim);
 }
 
+/* ──────────────────────────────────────────
+   Patch management strip
+────────────────────────────────────────── */
+.patch-strip {
+  display: flex;
+  align-items: center;
+  padding: 12px 22px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.patch-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.patch-btn {
+  width: 36px; height: 30px;
+  background: #1c1c28;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: #44445a;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .12s;
+}
+.patch-btn:hover { border-color: #44445a; color: #8888aa; }
+.patch-btn.active {
+  background: #151e2e;
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 7px rgba(119,153,255,.25);
+}
+.patch-btn.bank-mode {
+  border-color: #aa6622;
+  color: #aa6622;
+}
+.patch-btn.save-target {
+  border-color: #aa7733;
+  color: #aa7733;
+}
+.patch-btn.save-target:hover {
+  border-color: #ffaa44;
+  color: #ffaa44;
+  box-shadow: 0 0 7px rgba(255,170,68,.25);
+}
+
+.patch-bank-btn {
+  padding: 6px 14px;
+  background: #111118;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--dim);
+  font-size: 9px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.patch-bank-btn:hover { border-color: #44445a; color: #8888aa; }
+.patch-bank-btn.on {
+  background: #1a1410;
+  border-color: #cc7722;
+  color: #cc7722;
+}
+
+.patch-bank-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  min-width: 56px;
+}
+
+.patch-save-btn {
+  padding: 6px 16px;
+  margin-left: auto;
+  background: #1a1410;
+  border: 1px solid #3a2a1a;
+  border-radius: 4px;
+  color: #aa7733;
+  font-size: 9px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.patch-save-btn:hover { border-color: #cc8844; color: #cc8844; }
+.patch-save-btn.on {
+  background: #2a1a08;
+  border-color: #cc8844;
+  color: #cc8844;
+}
+.patch-save-btn.flash {
+  background: #2a2010;
+  border-color: #ffaa44;
+  color: #ffaa44;
+  box-shadow: 0 0 10px rgba(255,170,68,.2);
+}
+
 </style>
 </head>
 <body>
@@ -643,6 +751,15 @@ select:focus { outline: none; border-color: #44445a; }
     </div>
   </div>
 
+  <!-- Patch management -->
+  <div class="patch-strip">
+    <div class="strip-lbl">Patches</div>
+    <button class="patch-bank-btn" id="patch-bank-btn">Bank</button>
+    <div class="patch-bank-lbl" id="patch-bank-lbl">Bank 1</div>
+    <div class="patch-btns" id="patch-btns"></div>
+    <button class="patch-save-btn" id="patch-save-btn">Save</button>
+  </div>
+
   <!-- Channels -->
   <div class="channels">
     <div class="channel ch1" id="ch1">
@@ -677,6 +794,9 @@ select:focus { outline: none; border-color: #44445a; }
       <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">1 / 2 / 3</td><td style="color:#c8c8d0;">Trigger Ch 1 / 2 / 3</td></tr>
       <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Shift 1/2/3</td><td style="color:#c8c8d0;">Mute Ch 1 / 2 / 3</td></tr>
       <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Ctrl 1/2/3</td><td style="color:#c8c8d0;">Solo Ch 1 / 2 / 3</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">F1–F8</td><td style="color:#c8c8d0;">Load patch 1–8</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Shift F1–F8</td><td style="color:#c8c8d0;">Select bank 1–8</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Ctrl/Cmd S</td><td style="color:#c8c8d0;">Toggle save mode</td></tr>
       <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">?</td><td style="color:#c8c8d0;">This help</td></tr>
     </table>
     <div style="margin-top:18px;font-size:9px;color:#44445a;text-align:center;">Press Escape or click outside to close</div>
@@ -791,6 +911,13 @@ function onMidiIn(e) {
   const [status, data1, data2] = e.data;
   const type = status & 0xF0;
   if (type === 0xB0) { handleIncomingCC(data1, data2); return; }
+  if (type === 0xC0) { // Program Change
+    activePatch = data1;
+    patchBank = Math.floor(data1 / 8);
+    document.getElementById('patch-bank-lbl').textContent = 'Bank ' + (patchBank + 1);
+    updatePatchBtnHighlight();
+    return;
+  }
   if (type === 0x90 || type === 0x80) {
     const on = type === 0x90 && data2 > 0;
     const ci = TRIG_NOTES.indexOf(data1);
@@ -834,7 +961,7 @@ const FMT = {
   drive:   cc => '×' + linMap(cc, 1, 4).toFixed(2),
   level:   cc => (cc / 127).toFixed(2),
   attack:  cc => { const v = logMap(cc,.001,2);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
-  decay:   cc => { const v = logMap(cc,.01, 4);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
+  decay:   cc => { const v = logMap(cc,.01, 2);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
   pan:     cc => { const d = cc - 63.5; if (Math.abs(d)<4) return 'CTR'; const p=Math.round(Math.abs(d)/63.5*100); return d<0?`L${p}`:`R${p}`; },
   lfoRate: cc => logMap(cc, .1, 20).toFixed(1)+' Hz',
   pct:     cc => Math.round(cc/127*100)+'%',
@@ -1003,29 +1130,96 @@ let patBtns = [];
   }
 })();
 
+// ── Patch management ─────────────────────────────────────────────────────────
+let patchBank = 0;       // visual bank (0–7), UI-only
+let activePatch = 0;     // absolute patch index (0–63)
+let saveMode = false;
+const patchBtns = [];
+
+function sendProgramChange(prog) {
+  if (midiOut) midiOut.send([0xC0 | midiCh, prog & 0x7f]);
+}
+
+function updatePatchBtnHighlight() {
+  const bankStart = patchBank * 8;
+  patchBtns.forEach((b, i) => {
+    b.classList.toggle('active', !saveMode && (bankStart + i) === activePatch);
+  });
+}
+
+function exitSaveMode() {
+  saveMode = false;
+  document.getElementById('patch-save-btn').classList.remove('on');
+  patchBtns.forEach(b => b.classList.remove('save-target'));
+  updatePatchBtnHighlight();
+}
+
+function enterSaveMode() {
+  saveMode = true;
+  document.getElementById('patch-save-btn').classList.add('on');
+  patchBtns.forEach(b => { b.classList.remove('active'); b.classList.add('save-target'); });
+}
+
+(function buildPatchBtns() {
+  const container = document.getElementById('patch-btns');
+  for (let i = 0; i < 8; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'patch-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = i + 1;
+    btn.addEventListener('click', () => {
+      if (bankShift) {
+        // Select bank
+        patchBank = i;
+        document.getElementById('patch-bank-lbl').textContent = 'Bank ' + (i + 1);
+        bankShift = false;
+        document.getElementById('patch-bank-btn').classList.remove('on');
+        patchBtns.forEach(b => b.classList.remove('bank-mode'));
+        updatePatchBtnHighlight();
+      } else if (saveMode) {
+        // Save to this slot
+        sendCC(87, patchBank * 8 + i);
+        exitSaveMode();
+      } else {
+        // Load patch
+        const absIdx = patchBank * 8 + i;
+        activePatch = absIdx;
+        sendProgramChange(absIdx);
+        updatePatchBtnHighlight();
+      }
+    });
+    container.appendChild(btn);
+    patchBtns.push(btn);
+  }
+})();
+
+let bankShift = false;
+document.getElementById('patch-bank-btn').addEventListener('click', function() {
+  if (saveMode) { exitSaveMode(); return; }
+  bankShift = !bankShift;
+  this.classList.toggle('on', bankShift);
+  patchBtns.forEach(b => b.classList.toggle('bank-mode', bankShift));
+});
+
+// Save button: enter save mode
+document.getElementById('patch-save-btn').addEventListener('click', function() {
+  if (saveMode) { exitSaveMode(); return; }
+  enterSaveMode();
+});
+
 // ── Global knobs ──────────────────────────────────────────────────────────────
 const globalKnobMap = {};
 
 // Sync mode state
 let delaySynced = true;
-let lfoSynced   = false;
 
 // Buttons that need updating when sync state arrives from device
 let delaySyncBtn = null;
-let lfoSyncBtn   = null;
 
 function applyDelaySyncMode(synced) {
   delaySynced = synced;
   if (delaySyncBtn) delaySyncBtn.classList.toggle('on', synced);
   const k = globalKnobMap[1];
   if (k) { k.fmt = synced ? 'delayDiv' : 'delayFre'; k._draw(); }
-}
-
-function applyLfoSyncMode(synced) {
-  lfoSynced = synced;
-  if (lfoSyncBtn) lfoSyncBtn.classList.toggle('on', synced);
-  const k = globalKnobMap[16];
-  if (k) { k.fmt = synced ? 'lfoSync' : 'lfoRate'; k._draw(); }
 }
 
 function makeSyncGroup(row, knobOpts, cc, getSynced, onToggle) {
@@ -1047,10 +1241,6 @@ function makeSyncGroup(row, knobOpts, cc, getSynced, onToggle) {
 
 (function buildGlobals() {
   const row = document.getElementById('global-knobs');
-  lfoSyncBtn = makeSyncGroup(row,
-    { cc: 16, dflt: 55, label: 'LFO RATE', fmt: 'lfoRate', color: '#7799ff', size: 'md', globalVal: true },
-    7, () => lfoSynced, applyLfoSyncMode
-  );
   globalKnobMap[4] = new Knob({ parent: row, cc: 4, dflt: 0, label: 'DRY', fmt: 'level', color: '#7799ff', size: 'md', globalVal: true });
 })();
 
@@ -1076,18 +1266,24 @@ const ROWS = [
     ], knobs: [
     { off:0, label:'FREQ',   fmt:'cutoff', size:'lg' },
     { off:1, label:'Q',      fmt:'res',    size:'md' },
-    { off:8, label:'LFO AMT',fmt:'bipct',  size:'sm' },
+    { off:8, label:'LFO AMT',fmt:'bipct',  size:'sm', lsb:12 },
   ]},
   { sec: 'Amp', knobs: [
     { off:2, label:'DRIVE',  fmt:'drive',  size:'sm' },
-    { off:3, label:'AMOUNT', fmt:'bipct',  size:'sm' },
     { off:4, label:'ATTACK', fmt:'attack', size:'sm' },
     { off:5, label:'DECAY',  fmt:'decay',  size:'sm' },
+  ]},
+  { sec: 'LFO', selectors: [
+      { off:11, label:'Shape', options:[['Tri',0],['Sin',21],['Sq',42]], dflts:[21,21,21], lfoSync:true },
+    ], knobs: [
+    { off:3,  label:'RATE',    fmt:'lfoSync', size:'md' },
+    { off:14, label:'DUTY',    fmt:'pct',     size:'sm' },
+    { off:15, label:'AMP MOD', fmt:'bipct',   size:'sm' },
   ]},
   { sec: 'Mixer', knobs: [
     { off:7,  label:'PAN',   fmt:'pan',   size:'sm' },
     { off:6,  label:'LEVEL', fmt:'level', size:'sm' },
-    { off:13, label:'SEND',  fmt:'level', size:'sm' },
+    { off:13, label:'DELAY SEND', fmt:'level', size:'sm' },
   ]},
 ];
 
@@ -1102,13 +1298,15 @@ const DFLTS = {
   0: [50, 72, 60],   // cutoff: LP 800Hz, BP 2kHz, HP 1.2kHz
   1: [67, 67, 67],   // resonance 0.5
   2: [0,  0,  0],    // drive ×1
-  3: [127,127,127],  // env amount 1.0
   4: [27, 27, 27],   // attack 5ms
   5: [63, 63, 63],   // decay 200ms
   6: [89, 89, 89],   // level 0.7
   7: [63, 31, 95],   // pan: LP center, BP 25%L, HP 25%R
-  8: [64, 64, 64],   // lfo amount 0%
+  3: [55, 55, 55],   // LFO rate
+  8: [64, 64, 64],   // lfo amount 0% (center = no modulation)
   13: [0,  0,  0],   // delay send 0
+  14: [64, 64, 64],  // LFO duty 50%
+  15: [64, 64, 64],  // amp LFO amount 0%
 };
 
 // ── Mute / Solo ───────────────────────────────────────────────────────────────
@@ -1119,6 +1317,8 @@ const levelKnobs = [null, null, null];
 const chKnobs    = [[], [], []];
 // chSelectors[ci][offset] → <select> element for offsets 9 (type) and 10 (slope)
 const chSelectors = [[], [], []];
+const chLfoSynced = [true, true, true];
+const lfoSyncBtns = [null, null, null];
 const muteBtns   = [];
 const soloBtns   = [];
 const trigBtns   = [];
@@ -1148,14 +1348,13 @@ function updateSlopeAvailability(ci) {
 
 function anySolo() { return soloed.some(Boolean); }
 
-function effectiveLevelCC(ci) {
-  if (muted[ci]) return 0;
-  if (anySolo() && !soloed[ci]) return 0;
-  return levelKnobs[ci] ? levelKnobs[ci].val : 0;
-}
-
-function sendAllLevels() {
-  for (let i = 0; i < 3; i++) sendCC(CH_BASE[i] + 6, effectiveLevelCC(i));
+function sendMuteMask() {
+  let mask = 0;
+  for (let i = 0; i < 3; i++) {
+    const eff = muted[i] || (anySolo() && !soloed[i]);
+    if (eff) mask |= (1 << i);
+  }
+  sendCC(68, mask);
 }
 
 (function buildChannels() {
@@ -1174,7 +1373,7 @@ function sendAllLevels() {
     muteBtn.addEventListener('click', () => {
       muted[ci] = !muted[ci];
       muteBtn.classList.toggle('on', muted[ci]);
-      sendAllLevels();
+      sendMuteMask();
     });
 
     const soloBtn = document.createElement('button');
@@ -1183,7 +1382,7 @@ function sendAllLevels() {
     soloBtn.addEventListener('click', () => {
       soloed[ci] = !soloed[ci];
       soloBtn.classList.toggle('on', soloed[ci]);
-      sendAllLevels();
+      sendMuteMask();
     });
 
     const trigBtn = document.createElement('button');
@@ -1218,7 +1417,7 @@ function sendAllLevels() {
       if (selectors) {
         const selRow = document.createElement('div');
         selRow.className = 'ch-sel-row';
-        selectors.forEach(({ off, label, options, dflts }) => {
+        selectors.forEach(({ off, label, options, dflts, lfoSync: hasLfoSync }) => {
           const wrap = document.createElement('div');
           wrap.className = 'ch-sel-wrap';
           const lbl = document.createElement('span');
@@ -1233,12 +1432,29 @@ function sendAllLevels() {
           });
           sel.value = dflts[ci];
           const ccNum = CH_BASE[ci] + off;
-          sel.addEventListener('change', () => {
-            sendCC(ccNum, +sel.value);
-            if (off === 9) updateSlopeAvailability(ci);
-          });
+          if (hasLfoSync) {
+            const sendShapeSync = () => sendCC(ccNum, (+sel.value) + (chLfoSynced[ci] ? 64 : 0));
+            sel.addEventListener('change', sendShapeSync);
+            const syncBtn = document.createElement('button');
+            syncBtn.className = 'sync-btn' + (chLfoSynced[ci] ? ' on' : '');
+            syncBtn.textContent = 'sync';
+            syncBtn.addEventListener('click', () => {
+              chLfoSynced[ci] = !chLfoSynced[ci];
+              syncBtn.classList.toggle('on', chLfoSynced[ci]);
+              sendShapeSync();
+              const rateKnob = chKnobs[ci][3];
+              if (rateKnob) { rateKnob.fmt = chLfoSynced[ci] ? 'lfoSync' : 'lfoRate'; rateKnob._draw(); }
+            });
+            lfoSyncBtns[ci] = syncBtn;
+            wrap.append(lbl, sel, syncBtn);
+          } else {
+            sel.addEventListener('change', () => {
+              sendCC(ccNum, +sel.value);
+              if (off === 9) updateSlopeAvailability(ci);
+            });
+            wrap.append(lbl, sel);
+          }
           chSelectors[ci][off] = sel;
-          wrap.append(lbl, sel);
           selRow.appendChild(wrap);
         });
         el.appendChild(selRow);
@@ -1246,11 +1462,11 @@ function sendAllLevels() {
       }
       const rowEl = document.createElement('div');
       rowEl.className = 'knob-row';
-      knobs.forEach(({ off, label, fmt, size }) => {
+      knobs.forEach(({ off, label, fmt, size, lsb }) => {
         const knob = new Knob({
           parent: rowEl,
           cc:   CH_BASE[ci] + off,
-          cc2:  (off === 3) ? CH_BASE[ci] + 11 : (off === 8) ? CH_BASE[ci] + 12 : null,
+          cc2:  lsb != null ? CH_BASE[ci] + lsb : null,
           dflt: DFLTS[off][ci],
           label,
           fmt,
@@ -1258,15 +1474,7 @@ function sendAllLevels() {
           size,
         });
         chKnobs[ci][off] = knob;
-        // Level knob (offset 6): intercept sends to respect mute/solo
-        if (off === 6) {
-          levelKnobs[ci] = knob;
-          knob.set = function(v, send = true) {
-            this.val = Math.max(0, Math.min(127, Math.round(v)));
-            this._draw();
-            if (send) sendCC(this.cc, effectiveLevelCC(ci));
-          };
-        }
+        if (off === 6) levelKnobs[ci] = knob;
       });
       el.appendChild(rowEl);
     });
@@ -1292,6 +1500,28 @@ document.addEventListener('keydown', e => {
   // B = bypass
   if (e.code === 'KeyB' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
     e.preventDefault(); document.getElementById('bypass-btn').click(); return;
+  }
+
+  // Ctrl/Cmd+S = toggle save mode
+  if (e.code === 'KeyS' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+    e.preventDefault(); document.getElementById('patch-save-btn').click(); return;
+  }
+
+  // F1–F8: load patch (normal), select bank (shift), save to slot (save mode)
+  const fi = e.code.match(/^F(\d)$/);
+  if (fi) {
+    const idx = parseInt(fi[1]) - 1;
+    if (idx >= 0 && idx < 8) {
+      e.preventDefault();
+      if (e.shiftKey && !saveMode) {
+        patchBank = idx;
+        document.getElementById('patch-bank-lbl').textContent = 'Bank ' + (idx + 1);
+        updatePatchBtnHighlight();
+      } else {
+        patchBtns[idx].click(); // delegates to load or save depending on mode
+      }
+      return;
+    }
   }
 
   // 1/2/3 = trigger, Shift = mute, Ctrl/Cmd = solo
@@ -1327,7 +1557,6 @@ function handleIncomingCC(cc, val) {
   // Global knobs (delay + dry)
   if (cc >= 1 && cc <= 4) { globalKnobMap[cc]?.set(val, false); return; }
   if (cc === 6) { applyDelaySyncMode(val >= 64); return; }
-  if (cc === 7) { applyLfoSyncMode(val >= 64);   return; }
   // Pattern select
   if (cc === 14) {
     const pat = Math.floor(val / 8);
@@ -1347,6 +1576,25 @@ function handleIncomingCC(cc, val) {
   if (cc === 18) {
     bypassed = val >= 64;
     document.getElementById('bypass-btn').classList.toggle('on', bypassed);
+    return;
+  }
+  // Channel mute bitmask
+  if (cc === 68) {
+    for (let i = 0; i < 3; i++) {
+      muted[i] = !!(val & (1 << i));
+      muteBtns[i]?.classList.toggle('on', muted[i]);
+    }
+    return;
+  }
+  // Patch save confirmation
+  if (cc === 87) {
+    activePatch = val;
+    patchBank = Math.floor(val / 8);
+    document.getElementById('patch-bank-lbl').textContent = 'Bank ' + (patchBank + 1);
+    updatePatchBtnHighlight();
+    const btn = document.getElementById('patch-save-btn');
+    btn.classList.add('flash');
+    setTimeout(() => btn.classList.remove('flash'), 400);
     return;
   }
   // VU meters
@@ -1389,27 +1637,28 @@ function handleIncomingCC(cc, val) {
   // Per-channel knobs and selectors
   for (let ci = 0; ci < 3; ci++) {
     const off = cc - CH_BASE[ci];
-    if (off >= 0 && off <= 13) {
-      if (off === 3) { // env amount MSB
-        msbCache[cc] = val;
-        chKnobs[ci][3]?.set14(val << 7, false);
-      } else if (off === 8) { // lfo amount MSB
-        msbCache[cc] = val;
-        chKnobs[ci][8]?.set14(val << 7, false);
-      } else if (off === 11) { // env amount LSB
-        const v14 = ((msbCache[CH_BASE[ci] + 3] ?? 127) << 7) | val;
-        chKnobs[ci][3]?.set14(v14, false);
-      } else if (off === 12) { // lfo amount LSB
-        const v14 = ((msbCache[CH_BASE[ci] + 8] ?? 63) << 7) | val;
-        chKnobs[ci][8]?.set14(v14, false);
-      } else if (off <= 8) {
-        chKnobs[ci][off]?.set(val, false);
-      } else { // off === 9 or 10 (selectors)
+    if (off >= 0 && off <= 15) {
+      if (off === 9 || off === 10) { // filter selectors
         const sel = chSelectors[ci][off];
         if (sel) {
           snapToOptions(sel, val);
           if (off === 9) updateSlopeAvailability(ci);
         }
+      } else if (off === 11) { // shape+sync packed
+        chLfoSynced[ci] = val >= 64;
+        if (lfoSyncBtns[ci]) lfoSyncBtns[ci].classList.toggle('on', chLfoSynced[ci]);
+        const sel = chSelectors[ci][11];
+        if (sel) snapToOptions(sel, val & 0x3F);
+        const rateKnob = chKnobs[ci][3];
+        if (rateKnob) { rateKnob.fmt = chLfoSynced[ci] ? 'lfoSync' : 'lfoRate'; rateKnob._draw(); }
+      } else if (off === 8) { // lfo amount MSB (14-bit)
+        msbCache[cc] = val;
+        chKnobs[ci][8]?.set(val, false);
+      } else if (off === 12) { // lfo amount LSB (14-bit)
+        const v14 = ((msbCache[CH_BASE[ci] + 8] ?? 64) << 7) | val;
+        chKnobs[ci][8]?.set14(v14, false);
+      } else {
+        chKnobs[ci][off]?.set(val, false);
       }
       return;
     }
