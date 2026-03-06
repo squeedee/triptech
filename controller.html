@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triptech</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ch1:      #22dd66;
+  --ch2:      #ffcc00;
+  --ch3:      #ff4433;
+  --accent:  #7799ff;
+  --bg:      #0a0a10;
+  --panel:   #191920;
+  --panel2:  #141419;
+  --panel3:  #111116;
+  --border:  #28283a;
+  --border2: #32324a;
+  --text:    #c8c8d0;
+  --dim:     #44445a;
+  --track:   #22222e;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 16px;
+  gap: 0;
+}
+
+/* ──────────────────────────────────────────
+   Device shell
+────────────────────────────────────────── */
+.device {
+  width: 1020px;
+  max-width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 80px rgba(0,0,0,.85),
+    inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+/* ──────────────────────────────────────────
+   Header
+────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  padding: 14px 22px;
+  background: var(--panel3);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.branding { flex: 1 1 auto; }
+
+.device-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: #e0e0e8;
+}
+
+.device-sub {
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #33334a;
+  margin-top: 3px;
+}
+
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.field-lbl {
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+select {
+  background: #1c1c28;
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 5px 24px 5px 9px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2344445a'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+}
+select:focus { outline: none; border-color: #44445a; }
+
+.run-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 18px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  background: #111a11;
+  border: 1px solid #1a3a1a;
+  color: #3a8a3a;
+}
+.run-btn .led {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #2a5a2a;
+  transition: all .15s;
+}
+.run-btn.on {
+  background: #132213;
+  border-color: #33cc33;
+  color: #55ff55;
+  box-shadow: 0 0 10px rgba(51,204,51,.15);
+}
+.run-btn.on .led {
+  background: #55ff55;
+  box-shadow: 0 0 8px #55ff55;
+}
+
+.bypass-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 18px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+  background: #111118;
+  border: 1px solid #2a2a3a;
+  color: #5a5a7a;
+}
+.bypass-btn .led {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #2a2a3a;
+  transition: all .15s;
+}
+.bypass-btn.on {
+  background: #1a1a26;
+  border-color: #bbbbee;
+  color: #ddddff;
+  box-shadow: 0 0 10px rgba(180,180,255,.15);
+}
+.bypass-btn.on .led {
+  background: #ddddff;
+  box-shadow: 0 0 8px #ddddff;
+}
+
+.ch-btns {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.ch-dot { margin-left: 8px; }
+
+.mute-btn, .solo-btn {
+  width: 22px; height: 22px;
+  border-radius: 3px;
+  border: 1px solid var(--border2);
+  background: #1c1c28;
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all .12s;
+}
+.mute-btn:hover  { border-color: #ff8866; color: #ff8866; }
+.solo-btn:hover  { border-color: #ffdd44; color: #ffdd44; }
+.trig-btn:hover  { border-color: currentColor; opacity: 1; }
+.mute-btn.on { background: #2a1010; border-color: #ff4433; color: #ff6655; box-shadow: 0 0 6px rgba(255,68,51,.3); }
+.solo-btn.on { background: #2a2400; border-color: #ffcc00; color: #ffdd55; box-shadow: 0 0 6px rgba(255,204,0,.3); }
+.trig-btn { opacity: .5; }
+.trig-btn:active { opacity: 1; }
+
+.no-midi-warn {
+  font-size: 9px;
+  padding: 4px 10px;
+  background: #2a0e0e;
+  border: 1px solid #4a2020;
+  border-radius: 4px;
+  color: #cc5555;
+  display: none;
+}
+
+.midi-menu { position: relative; }
+
+.midi-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: #111118;
+  border: 1px solid var(--border2);
+  color: var(--dim);
+  transition: all .15s;
+}
+.midi-menu-btn:hover { border-color: #44445a; color: #8888aa; }
+.midi-menu-btn.open  { border-color: #44445a; color: #c8c8d0; }
+
+.midi-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--panel3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 14px 16px;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 50;
+  box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  min-width: 240px;
+}
+.midi-dropdown.open { display: flex; }
+
+.midi-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.midi-row .field-lbl {
+  width: 64px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.midi-row select { flex: 1; }
+
+/* ──────────────────────────────────────────
+   Global strip
+────────────────────────────────────────── */
+.global-strip {
+  display: flex;
+  align-items: center;
+  padding: 14px 22px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.strip-block { display: flex; flex-direction: column; gap: 7px; }
+
+.strip-lbl {
+  font-size: 7px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.pattern-grid {
+  display: flex;
+  gap: 3px;
+}
+
+.pat-btn {
+  width: 32px; height: 32px;
+  background: #1c1c28;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: #33334a;
+  font-size: 9px;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .1s;
+}
+.pat-btn:hover  { border-color: #44445a; color: #8888aa; }
+.pat-btn.active {
+  background: #151e2e;
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 7px rgba(119,153,255,.25);
+}
+
+.global-knob-row {
+  display: flex;
+  gap: 22px;
+  align-items: flex-end;
+}
+
+/* ──────────────────────────────────────────
+   Channel columns
+────────────────────────────────────────── */
+.channels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.channel {
+  padding: 18px 18px 20px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.channel:last-child { border-right: none; }
+
+/* coloured top accent bar */
+.channel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.channel.ch1 { background: linear-gradient(180deg, rgba(34,221,102,.04) 0%, transparent 120px); }
+.channel.ch1::before { background: var(--ch1); box-shadow: 0 0 12px rgba(34,221,102,.4); }
+.channel.ch2 { background: linear-gradient(180deg, rgba(255,204,0,.04) 0%, transparent 120px); }
+.channel.ch2::before { background: var(--ch2); box-shadow: 0 0 12px rgba(255,204,0,.4); }
+.channel.ch3 { background: linear-gradient(180deg, rgba(255,68,51,.04) 0%, transparent 120px); }
+.channel.ch3::before { background: var(--ch3); box-shadow: 0 0 12px rgba(255,68,51,.4); }
+
+.ch-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 0 6px;
+}
+
+.ch-name {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.ch-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-left: 8px;
+}
+
+.channel.ch1 .ch-name { color: var(--ch1); }
+.channel.ch2 .ch-name { color: var(--ch2); }
+.channel.ch3 .ch-name { color: var(--ch3); }
+
+/* Trigger LED — dim by default, bright when gate fires */
+.ch-dot { transition: background .08s, box-shadow .08s; }
+.channel.ch1 .ch-dot  { background: rgba(34,221,102,.12);  box-shadow: none; }
+.channel.ch2 .ch-dot  { background: rgba(255,204,0,.12);   box-shadow: none; }
+.channel.ch3 .ch-dot  { background: rgba(255,68,51,.12);   box-shadow: none; }
+.channel.ch1 .ch-dot.active { background: var(--ch1); box-shadow: 0 0 8px var(--ch1); }
+.channel.ch2 .ch-dot.active { background: var(--ch2); box-shadow: 0 0 8px var(--ch2); }
+.channel.ch3 .ch-dot.active { background: var(--ch3); box-shadow: 0 0 8px var(--ch3); }
+
+/* ──────────────────────────────────────────
+   Knob layout
+────────────────────────────────────────── */
+.knob-row {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+
+.ch-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0 14px;
+}
+
+.ch-section-lbl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 7px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 10px 0 8px;
+}
+
+.ch-sec-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  display: block;
+}
+
+.ch-sel-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.ch-sel-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ch-sel-lbl {
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.ch-type-sel {
+  padding: 3px 18px 3px 6px;
+  font-size: 9px;
+}
+.channel.ch1 .ch-type-sel { border-color: rgba(34,221,102,.35); }
+.channel.ch2 .ch-type-sel { border-color: rgba(255,204,0,.35); }
+.channel.ch3 .ch-type-sel { border-color: rgba(255,68,51,.35); }
+
+/* ──────────────────────────────────────────
+   Individual knob
+────────────────────────────────────────── */
+.knob-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: ns-resize;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.knob-lbl {
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--dim);
+  text-align: center;
+  transition: color .12s;
+}
+
+.knob-val {
+  font-size: 8px;
+  text-align: center;
+  min-width: 42px;
+  white-space: nowrap;
+  transition: color .12s;
+}
+
+.channel.ch1 .knob-val { color: rgba(34,221,102,.75);  }
+.channel.ch2 .knob-val { color: rgba(255,204,0,.75);   }
+.channel.ch3 .knob-val { color: rgba(255,68,51,.75);   }
+
+.knob-wrap:hover .knob-lbl { color: #8888aa; }
+.knob-wrap:active .knob-lbl { color: #aaaac8; }
+
+/* global knob values */
+.gv { color: rgba(119,153,255,.75) !important; }
+
+/* ──────────────────────────────────────────
+   VU meters
+────────────────────────────────────────── */
+.sync-btn {
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border2);
+  background: #111118;
+  color: var(--dim);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .12s;
+}
+.sync-btn.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #111a2a;
+}
+
+.vu-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 90px;
+}
+
+.vu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.vu-track {
+  height: 5px;
+  border-radius: 3px;
+  position: relative;
+  background: linear-gradient(to right,
+    #22dd66 0%, #22dd66 50%,
+    #ffcc00 72%, #ff4433 90%, #ff4433 100%
+  );
+}
+
+.vu-overlay {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  background: var(--track);
+  border-radius: 0 3px 3px 0;
+  transition: width 120ms;
+  width: 100%;
+}
+
+.vu-peak-mark {
+  position: absolute;
+  top: -1px; bottom: -1px;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: rgba(255,255,255,.75);
+  display: none;
+  transition: left 120ms;
+}
+
+.vu-val {
+  font-size: 8px;
+  color: var(--dim);
+}
+
+</style>
+</head>
+<body>
+
+<div class="device">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="branding">
+      <div class="device-name">Triptech</div>
+      <div class="device-sub">By: Rasheed Abdul-Aziz</div>
+    </div>
+    <div class="ctrl-row">
+      <div class="vu-wrap">
+        <div class="vu-header">
+          <div class="strip-lbl">DSP</div>
+          <div class="vu-val" id="dsp-val">—</div>
+        </div>
+        <div class="vu-track">
+          <div class="vu-overlay" id="dsp-overlay"></div>
+          <div class="vu-peak-mark" id="dsp-peak"></div>
+        </div>
+      </div>
+      <div class="vu-wrap">
+        <div class="vu-header">
+          <div class="strip-lbl">Loop</div>
+          <div class="vu-val" id="loop-val">—</div>
+        </div>
+        <div class="vu-track">
+          <div class="vu-overlay" id="loop-overlay"></div>
+          <div class="vu-peak-mark" id="loop-peak"></div>
+        </div>
+      </div>
+      <div class="midi-menu">
+        <button class="midi-menu-btn" id="midi-menu-btn">⚙ MIDI</button>
+        <div class="midi-dropdown" id="midi-dropdown">
+          <div class="midi-row">
+            <span class="field-lbl">MIDI Out</span>
+            <select id="out-sel"></select>
+          </div>
+          <div class="midi-row">
+            <span class="field-lbl">MIDI In</span>
+            <select id="in-sel"></select>
+          </div>
+          <div class="midi-row">
+            <span class="field-lbl">Channel</span>
+            <select id="ch-sel"></select>
+          </div>
+          <div class="midi-row">
+            <button id="sync-btn" class="bypass-btn" title="Request all state from device">Sync</button>
+            <span id="no-midi" class="no-midi-warn">No Web MIDI</span>
+          </div>
+        </div>
+      </div>
+      <button class="bypass-btn" id="bypass-btn">
+        <span class="led"></span>Bypass
+      </button>
+      <button class="run-btn" id="run-btn">
+        <span class="led"></span>Run
+      </button>
+    </div>
+  </div>
+
+  <!-- Global strip -->
+  <div class="global-strip">
+    <div class="strip-block">
+      <div class="strip-lbl">Gate Pattern</div>
+      <div class="pattern-grid" id="pat-grid"></div>
+    </div>
+    <div class="strip-block">
+      <div class="strip-lbl">Global</div>
+      <div class="global-knob-row" id="global-knobs"></div>
+    </div>
+    <div class="strip-block">
+      <div class="strip-lbl">Delay</div>
+      <div class="global-knob-row" id="delay-knobs"></div>
+    </div>
+    <div class="strip-block">
+      <div class="strip-lbl">BPM</div>
+      <div id="bpm-display" style="font-size:13px;color:rgba(119,153,255,.75);min-width:60px;">—</div>
+    </div>
+  </div>
+
+  <!-- Channels -->
+  <div class="channels">
+    <div class="channel ch1" id="ch1">
+      <div class="ch-header">
+        <span class="ch-name">Channel 1</span>
+        <span class="ch-dot"></span>
+      </div>
+    </div>
+    <div class="channel ch2" id="ch2">
+      <div class="ch-header">
+        <span class="ch-name">Channel 2</span>
+        <span class="ch-dot"></span>
+      </div>
+    </div>
+    <div class="channel ch3" id="ch3">
+      <div class="ch-header">
+        <span class="ch-name">Channel 3</span>
+        <span class="ch-dot"></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Help dialog -->
+<div id="help-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;">
+  <div style="background:#191920;border:1px solid #32324a;border-radius:8px;padding:28px 36px;min-width:320px;box-shadow:0 20px 60px rgba(0,0,0,.8);">
+    <div style="font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#e0e0e8;margin-bottom:18px;">Keyboard Shortcuts</div>
+    <table style="border-collapse:collapse;width:100%;font-size:11px;">
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Space</td><td style="color:#c8c8d0;">Run / Stop</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">B</td><td style="color:#c8c8d0;">Bypass</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">1 / 2 / 3</td><td style="color:#c8c8d0;">Trigger Ch 1 / 2 / 3</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Shift 1/2/3</td><td style="color:#c8c8d0;">Mute Ch 1 / 2 / 3</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Ctrl 1/2/3</td><td style="color:#c8c8d0;">Solo Ch 1 / 2 / 3</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">?</td><td style="color:#c8c8d0;">This help</td></tr>
+    </table>
+    <div style="margin-top:18px;font-size:9px;color:#44445a;text-align:center;">Press Escape or click outside to close</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── MIDI ──────────────────────────────────────────────────────────────────────
+let midi = null, midiOut = null, midiIn = null, midiCh = 0;
+
+function sendCC(cc, val) {
+  if (midiOut) midiOut.send([0xB0 | midiCh, cc & 0x7f, Math.max(0, Math.min(127, Math.round(val)))]);
+}
+
+function refreshOutputs() {
+  const sel = document.getElementById('out-sel');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  if (!midi || !midi.outputs.size) {
+    sel.innerHTML = '<option value="">— no outputs —</option>';
+    midiOut = null;
+    return;
+  }
+  midi.outputs.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.id;
+    opt.textContent = o.name;
+    sel.appendChild(opt);
+  });
+  if (prev && midi.outputs.has(prev)) {
+    sel.value = prev;
+  } else {
+    const daisy = [...midi.outputs.values()].find(o => /daisy|seed/i.test(o.name));
+    if (daisy) sel.value = daisy.id;
+  }
+  midiOut = midi.outputs.get(sel.value) || null;
+}
+
+function refreshInputs() {
+  const sel = document.getElementById('in-sel');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— none —</option>';
+  if (!midi) return;
+  midi.inputs.forEach(i => {
+    const opt = document.createElement('option');
+    opt.value = i.id;
+    opt.textContent = i.name;
+    sel.appendChild(opt);
+  });
+  if (prev && midi.inputs.has(prev)) {
+    sel.value = prev;
+  } else {
+    // Auto-select Daisy/Seed if nothing was previously chosen
+    const daisy = [...midi.inputs.values()].find(i => /daisy|seed/i.test(i.name));
+    if (daisy) sel.value = daisy.id;
+  }
+  if (midiIn) midiIn.onmidimessage = null;
+  midiIn = midi.inputs.get(sel.value) || null;
+  if (midiIn) {
+    midiIn.onmidimessage = onMidiIn;
+    // Ask device to send all current state (give port time to open)
+    setTimeout(() => sendCC(119, 0), 500);
+  }
+}
+
+(function initMidi() {
+  if (!navigator.requestMIDIAccess) {
+    document.getElementById('no-midi').style.display = '';
+    return;
+  }
+  navigator.requestMIDIAccess().then(m => {
+    midi = m;
+    refreshOutputs();
+    refreshInputs();
+    m.onstatechange = () => { refreshOutputs(); refreshInputs(); };
+  }).catch(() => { document.getElementById('no-midi').style.display = ''; });
+})();
+
+document.getElementById('out-sel').addEventListener('change', e => {
+  midiOut = midi ? (midi.outputs.get(e.target.value) || null) : null;
+});
+
+document.getElementById('in-sel').addEventListener('change', e => {
+  if (midiIn) midiIn.onmidimessage = null;
+  midiIn = midi ? (midi.inputs.get(e.target.value) || null) : null;
+  if (midiIn) {
+    midiIn.onmidimessage = onMidiIn;
+    setTimeout(() => sendCC(119, 0), 500);
+  }
+});
+
+// Note numbers that map to each channel (C4, C#4, D4)
+const TRIG_NOTES = [60, 61, 62];
+
+// References to the trigger LEDs, populated after DOM is ready
+const chDots = ['ch1', 'ch2', 'ch3'].map(id =>
+  document.querySelector('#' + id + ' .ch-dot')
+);
+
+function requestSync() {
+  sendCC(119, 0);
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('on');
+  setTimeout(() => btn.classList.remove('on'), 300);
+}
+
+document.getElementById('sync-btn').addEventListener('click', requestSync);
+
+function onMidiIn(e) {
+  const [status, data1, data2] = e.data;
+  const type = status & 0xF0;
+  if (type === 0xB0) { handleIncomingCC(data1, data2); return; }
+  if (type === 0x90 || type === 0x80) {
+    const on = type === 0x90 && data2 > 0;
+    const ci = TRIG_NOTES.indexOf(data1);
+    if (ci >= 0) chDots[ci].classList.toggle('active', on);
+  }
+}
+
+(function buildChSel() {
+  const sel = document.getElementById('ch-sel');
+  for (let i = 1; i <= 16; i++) {
+    const o = document.createElement('option');
+    o.value = i - 1; o.textContent = i; sel.appendChild(o);
+  }
+  sel.addEventListener('change', e => { midiCh = +e.target.value; });
+})();
+
+// ── Run/Stop ──────────────────────────────────────────────────────────────────
+let running = false;
+document.getElementById('run-btn').addEventListener('click', function() {
+  running = !running;
+  this.classList.toggle('on', running);
+  this.lastChild.data = running ? 'Stop' : 'Run';
+  sendCC(15, running ? 127 : 0);
+});
+
+// ── Bypass ────────────────────────────────────────────────────────────────────
+let bypassed = false;
+document.getElementById('bypass-btn').addEventListener('click', function() {
+  bypassed = !bypassed;
+  this.classList.toggle('on', bypassed);
+  sendCC(18, bypassed ? 127 : 0);
+});
+
+// ── Display formatters ────────────────────────────────────────────────────────
+const logMap = (cc, lo, hi) => lo * Math.pow(hi / lo, cc / 127);
+const linMap = (cc, lo, hi) => lo + (cc / 127) * (hi - lo);
+
+const FMT = {
+  cutoff:  cc => { const v = logMap(cc,100,20000); return v>=1000 ? (v/1000).toFixed(1)+' kHz' : v.toFixed(0)+' Hz'; },
+  res:     cc => linMap(cc, 0, 0.95).toFixed(2),
+  drive:   cc => '×' + linMap(cc, 1, 4).toFixed(2),
+  level:   cc => (cc / 127).toFixed(2),
+  attack:  cc => { const v = logMap(cc,.001,2);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
+  decay:   cc => { const v = logMap(cc,.01, 4);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
+  pan:     cc => { const d = cc - 63.5; if (Math.abs(d)<4) return 'CTR'; const p=Math.round(Math.abs(d)/63.5*100); return d<0?`L${p}`:`R${p}`; },
+  lfoRate: cc => logMap(cc, .1, 20).toFixed(1)+' Hz',
+  pct:     cc => Math.round(cc/127*100)+'%',
+  bipct:   cc => { const p = Math.max(-100, Math.min(100, Math.round((cc - 64) / 63 * 100))); return (p > 0 ? '+' : '') + p + '%'; },
+  delayDiv: cc => ['1/2','1/2T','1/4','1/4T','1/8','1/8T','1/16','1/16T'][Math.min(7, cc >> 4)],
+  delayFre: cc => { const v = logMap(cc, 10, 2000); return v >= 1000 ? (v/1000).toFixed(2)+'s' : Math.round(v)+'ms'; },
+  lfoSync:  cc => ['1/2','1/2T','1/4','1/4T','1/8','1/8T','1/16','1/16T'][Math.min(7, cc >> 4)],
+};
+
+// ── SVG knob ──────────────────────────────────────────────────────────────────
+const START = 135, SWEEP = 270;
+
+function pt(cx, cy, r, deg) {
+  const a = (deg - 90) * Math.PI / 180;
+  return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+}
+
+function arc(cx, cy, r, a0, a1) {
+  if (a1 <= a0 + 0.01) return '';
+  const [x0,y0] = pt(cx,cy,r,a0), [x1,y1] = pt(cx,cy,r,a1);
+  const large = (a1-a0) > 180 ? 1 : 0;
+  return `M${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)}`;
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+class Knob {
+  constructor({ parent, cc, cc2 = null, dflt, label, fmt, color, size = 'md', globalVal = false }) {
+    this.cc     = cc;
+    this.cc2    = cc2;
+    this.dflt   = dflt;
+    this.val    = dflt;
+    this.fmt    = fmt;
+    this.color  = color;
+    this.global = globalVal;
+
+    const SZ = size === 'lg' ? 64 : size === 'sm' ? 42 : 52;
+    const R  = size === 'lg' ? 25 : size === 'sm' ? 16 : 20;
+    const SW = size === 'lg' ? 4.5 : 3.2;
+    this.cx = SZ/2; this.cy = SZ/2; this.R = R; this.SW = SW;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'knob-wrap';
+
+    // Label
+    const lbl = document.createElement('div');
+    lbl.className = 'knob-lbl';
+    lbl.textContent = label;
+
+    // SVG
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('width', SZ); svg.setAttribute('height', SZ);
+    svg.setAttribute('viewBox', `0 0 ${SZ} ${SZ}`);
+    svg.style.display = 'block';
+    svg.style.overflow = 'visible';
+
+    // Track circle
+    this.trackEl = document.createElementNS(SVG_NS, 'path');
+    this.trackEl.setAttribute('d', arc(this.cx, this.cy, R, START, START+SWEEP));
+    this.trackEl.setAttribute('fill', 'none');
+    this.trackEl.setAttribute('stroke', '#20202e');
+    this.trackEl.setAttribute('stroke-width', SW);
+    this.trackEl.setAttribute('stroke-linecap', 'round');
+
+    // Value arc
+    this.arcEl = document.createElementNS(SVG_NS, 'path');
+    this.arcEl.setAttribute('fill', 'none');
+    this.arcEl.setAttribute('stroke', color);
+    this.arcEl.setAttribute('stroke-width', SW);
+    this.arcEl.setAttribute('stroke-linecap', 'round');
+
+    // Knob body circle
+    const body = document.createElementNS(SVG_NS, 'circle');
+    body.setAttribute('cx', this.cx); body.setAttribute('cy', this.cy);
+    body.setAttribute('r', R - SW - 2);
+    body.setAttribute('fill', '#2c2c3c');
+    body.setAttribute('stroke', '#3a3a50');
+    body.setAttribute('stroke-width', '1');
+
+    // Indicator dot
+    this.dotEl = document.createElementNS(SVG_NS, 'circle');
+    this.dotEl.setAttribute('r', SW * 0.9);
+    this.dotEl.setAttribute('fill', '#e0e0e8');
+
+    svg.append(this.trackEl, this.arcEl, body, this.dotEl);
+
+    // Value display
+    this.valEl = document.createElement('div');
+    this.valEl.className = 'knob-val' + (globalVal ? ' gv' : '');
+
+    wrap.append(lbl, svg, this.valEl);
+    parent.appendChild(wrap);
+
+    this._draw();
+    this._events(svg);
+  }
+
+  _draw() {
+    const { cx, cy, R } = this;
+    const endA = START + (this.val / 127) * SWEEP;
+    this.arcEl.setAttribute('d', arc(cx, cy, R, START, endA));
+    const [dx, dy] = pt(cx, cy, R - this.SW * 0.5, endA);
+    this.dotEl.setAttribute('cx', dx.toFixed(2));
+    this.dotEl.setAttribute('cy', dy.toFixed(2));
+    this.valEl.textContent = FMT[this.fmt](this.val);
+  }
+
+  set(v, send = true) {
+    this.val = Math.max(0, Math.min(127, Math.round(v)));
+    this._draw();
+    if (send) {
+      if (this.cc2 !== null) {
+        const v14 = Math.round(this.val / 127 * 16383);
+        sendCC(this.cc,  v14 >> 7);
+        sendCC(this.cc2, v14 & 0x7F);
+      } else {
+        sendCC(this.cc, this.val);
+      }
+    }
+  }
+
+  set14(v14, send = false) {
+    this.val = Math.round(v14 / 16383 * 127);
+    this._draw();
+    if (send && this.cc2 !== null) {
+      sendCC(this.cc,  v14 >> 7);
+      sendCC(this.cc2, v14 & 0x7F);
+    }
+  }
+
+  _events(svg) {
+    let y0, v0;
+    svg.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      svg.setPointerCapture(e.pointerId);
+      y0 = e.clientY; v0 = this.val;
+    });
+    svg.addEventListener('pointermove', e => {
+      if (e.buttons === 0) return;
+      this.set(v0 + (y0 - e.clientY) * 0.65);
+    });
+    svg.addEventListener('wheel', e => {
+      e.preventDefault();
+      this.set(this.val - Math.sign(e.deltaY));
+    }, { passive: false });
+    svg.addEventListener('dblclick', () => this.set(this.dflt));
+  }
+}
+
+// ── Pattern grid ──────────────────────────────────────────────────────────────
+let activePat = 0;
+let patBtns = [];
+(function buildPatGrid() {
+  const grid = document.getElementById('pat-grid');
+  for (let i = 0; i < 16; i++) {
+    const b = document.createElement('button');
+    b.className = 'pat-btn' + (i === 0 ? ' active' : '');
+    b.textContent = i;
+    b.addEventListener('click', () => {
+      activePat = i;
+      patBtns.forEach((el, j) => el.classList.toggle('active', j === i));
+      sendCC(14, i * 8); // each pattern = 8 CC values apart
+    });
+    grid.appendChild(b);
+    patBtns.push(b);
+  }
+})();
+
+// ── Global knobs ──────────────────────────────────────────────────────────────
+const globalKnobMap = {};
+
+// Sync mode state
+let delaySynced = true;
+let lfoSynced   = false;
+
+// Buttons that need updating when sync state arrives from device
+let delaySyncBtn = null;
+let lfoSyncBtn   = null;
+
+function applyDelaySyncMode(synced) {
+  delaySynced = synced;
+  if (delaySyncBtn) delaySyncBtn.classList.toggle('on', synced);
+  const k = globalKnobMap[1];
+  if (k) { k.fmt = synced ? 'delayDiv' : 'delayFre'; k._draw(); }
+}
+
+function applyLfoSyncMode(synced) {
+  lfoSynced = synced;
+  if (lfoSyncBtn) lfoSyncBtn.classList.toggle('on', synced);
+  const k = globalKnobMap[16];
+  if (k) { k.fmt = synced ? 'lfoSync' : 'lfoRate'; k._draw(); }
+}
+
+function makeSyncGroup(row, knobOpts, cc, getSynced, onToggle) {
+  const grp = document.createElement('div');
+  grp.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;';
+  const knob = new Knob({ parent: grp, ...knobOpts });
+  globalKnobMap[knobOpts.cc] = knob;
+  const btn = document.createElement('button');
+  btn.className = 'sync-btn' + (getSynced() ? ' on' : '');
+  btn.textContent = 'sync';
+  btn.addEventListener('click', () => {
+    onToggle(!getSynced());
+    sendCC(cc, getSynced() ? 127 : 0);
+  });
+  grp.appendChild(btn);
+  row.appendChild(grp);
+  return btn;
+}
+
+(function buildGlobals() {
+  const row = document.getElementById('global-knobs');
+  lfoSyncBtn = makeSyncGroup(row,
+    { cc: 16, dflt: 55, label: 'LFO RATE', fmt: 'lfoRate', color: '#7799ff', size: 'md', globalVal: true },
+    7, () => lfoSynced, applyLfoSyncMode
+  );
+  globalKnobMap[4] = new Knob({ parent: row, cc: 4, dflt: 0, label: 'DRY', fmt: 'level', color: '#7799ff', size: 'md', globalVal: true });
+})();
+
+(function buildDelay() {
+  const row = document.getElementById('delay-knobs');
+  // CC 1: delay time/div — default index 2 (1/4 note) → CC value 32
+  delaySyncBtn = makeSyncGroup(row,
+    { cc: 1, dflt: 32, label: 'TIME', fmt: 'delayDiv', color: '#7799ff', size: 'sm', globalVal: true },
+    6, () => delaySynced, applyDelaySyncMode
+  );
+  // CC 2: feedback — default 0.4 → ≈ 53
+  globalKnobMap[2] = new Knob({ parent: row, cc: 2,  dflt: 53,  label: 'FDBK',  fmt: 'level', color: '#7799ff', size: 'sm', globalVal: true });
+  // CC 3: width — default 1.0 → 127
+  globalKnobMap[3] = new Knob({ parent: row, cc: 3,  dflt: 127, label: 'WIDTH', fmt: 'level', color: '#7799ff', size: 'sm', globalVal: true });
+})();
+
+// ── Channel knob definitions ──────────────────────────────────────────────────
+// Row layout: each entry is { sec?, knobs[] }
+const ROWS = [
+  { sec: 'Filter', selectors: [
+      { off:9,  label:'Type',  options:[['LP',0],['BP',32],['HP',64],['Notch',96]],  dflts:[0,32,64] },
+      { off:10, label:'Slope', options:[['6 dB',0],['12 dB',63],['24 dB',126]], dflts:[63,63,63] },
+    ], knobs: [
+    { off:0, label:'FREQ',   fmt:'cutoff', size:'lg' },
+    { off:1, label:'Q',      fmt:'res',    size:'md' },
+    { off:8, label:'LFO AMT',fmt:'bipct',  size:'sm' },
+  ]},
+  { sec: 'Amp', knobs: [
+    { off:2, label:'DRIVE',  fmt:'drive',  size:'sm' },
+    { off:3, label:'AMOUNT', fmt:'bipct',  size:'sm' },
+    { off:4, label:'ATTACK', fmt:'attack', size:'sm' },
+    { off:5, label:'DECAY',  fmt:'decay',  size:'sm' },
+  ]},
+  { sec: 'Mixer', knobs: [
+    { off:7,  label:'PAN',   fmt:'pan',   size:'sm' },
+    { off:6,  label:'LEVEL', fmt:'level', size:'sm' },
+    { off:13, label:'SEND',  fmt:'level', size:'sm' },
+  ]},
+];
+
+// [LP, BP, HP]
+const CH_COLOR  = ['#22dd66', '#ffcc00', '#ff4433'];
+const CH_BASE   = [20, 36, 52];
+const CH_EL     = ['ch1', 'ch2', 'ch3'];
+
+// Default CC values per parameter offset per channel [LP, BP, HP]
+// Derived from firmware defaults
+const DFLTS = {
+  0: [50, 72, 60],   // cutoff: LP 800Hz, BP 2kHz, HP 1.2kHz
+  1: [67, 67, 67],   // resonance 0.5
+  2: [0,  0,  0],    // drive ×1
+  3: [127,127,127],  // env amount 1.0
+  4: [27, 27, 27],   // attack 5ms
+  5: [63, 63, 63],   // decay 200ms
+  6: [89, 89, 89],   // level 0.7
+  7: [63, 31, 95],   // pan: LP center, BP 25%L, HP 25%R
+  8: [64, 64, 64],   // lfo amount 0%
+  13: [0,  0,  0],   // delay send 0
+};
+
+// ── Mute / Solo ───────────────────────────────────────────────────────────────
+const muted      = [false, false, false];
+const soloed     = [false, false, false];
+const levelKnobs = [null, null, null];
+// chKnobs[ci][offset] → Knob instance (populated in buildChannels)
+const chKnobs    = [[], [], []];
+// chSelectors[ci][offset] → <select> element for offsets 9 (type) and 10 (slope)
+const chSelectors = [[], [], []];
+const muteBtns   = [];
+const soloBtns   = [];
+const trigBtns   = [];
+
+function snapToOptions(sel, val) {
+  const closest = [...sel.options]
+    .map(o => +o.value)
+    .reduce((a, b) => Math.abs(b - val) < Math.abs(a - val) ? b : a);
+  sel.value = closest;
+}
+
+function updateSlopeAvailability(ci) {
+  const typeSel  = chSelectors[ci][9];
+  const slopeSel = chSelectors[ci][10];
+  if (!typeSel || !slopeSel) return;
+  const typeVal = +typeSel.value;
+  const type = typeVal < 32 ? 0 : typeVal < 64 ? 1 : typeVal < 96 ? 2 : 3;
+  const opt6   = slopeSel.querySelector('option[value="0"]');
+  const opt24  = slopeSel.querySelector('option[value="126"]');
+  const canDo6  = type === 0 || type === 2; // LP or HP only
+  const canDo24 = type !== 3;               // not Notch
+  opt6.disabled  = !canDo6;
+  opt24.disabled = !canDo24;
+  if (+slopeSel.value === 0   && !canDo6)  { slopeSel.value = '63';  sendCC(CH_BASE[ci] + 10, 63);  }
+  if (+slopeSel.value === 126 && !canDo24) { slopeSel.value = '63';  sendCC(CH_BASE[ci] + 10, 63);  }
+}
+
+function anySolo() { return soloed.some(Boolean); }
+
+function effectiveLevelCC(ci) {
+  if (muted[ci]) return 0;
+  if (anySolo() && !soloed[ci]) return 0;
+  return levelKnobs[ci] ? levelKnobs[ci].val : 0;
+}
+
+function sendAllLevels() {
+  for (let i = 0; i < 3; i++) sendCC(CH_BASE[i] + 6, effectiveLevelCC(i));
+}
+
+(function buildChannels() {
+  for (let ci = 0; ci < 3; ci++) {
+    const el = document.getElementById(CH_EL[ci]);
+
+    // Add M/S buttons into the existing ch-header
+    const header  = el.querySelector('.ch-header');
+    const dot     = header.querySelector('.ch-dot');
+    const btnsDiv = document.createElement('div');
+    btnsDiv.className = 'ch-btns';
+
+    const muteBtn = document.createElement('button');
+    muteBtn.className = 'mute-btn'; muteBtn.textContent = 'M';
+    muteBtn.title = 'Mute';
+    muteBtn.addEventListener('click', () => {
+      muted[ci] = !muted[ci];
+      muteBtn.classList.toggle('on', muted[ci]);
+      sendAllLevels();
+    });
+
+    const soloBtn = document.createElement('button');
+    soloBtn.className = 'solo-btn'; soloBtn.textContent = 'S';
+    soloBtn.title = 'Solo';
+    soloBtn.addEventListener('click', () => {
+      soloed[ci] = !soloed[ci];
+      soloBtn.classList.toggle('on', soloed[ci]);
+      sendAllLevels();
+    });
+
+    const trigBtn = document.createElement('button');
+    trigBtn.className = 'mute-btn trig-btn';
+    trigBtn.textContent = '▶';
+    trigBtn.title = 'Trigger gate';
+    trigBtn.style.color = CH_COLOR[ci];
+    trigBtn.style.borderColor = CH_COLOR[ci];
+    trigBtn.addEventListener('click', () => {
+      if (midiOut) midiOut.send([0x90, TRIG_NOTES[ci], 100]);
+    });
+
+    muteBtns.push(muteBtn);
+    soloBtns.push(soloBtn);
+    trigBtns.push(trigBtn);
+    btnsDiv.append(muteBtn, soloBtn, trigBtn);
+    header.insertBefore(btnsDiv, dot);
+
+    ROWS.forEach(({ sec, selectors, knobs }, ri) => {
+      if (sec) {
+        const secLbl = document.createElement('div');
+        secLbl.className = 'ch-section-lbl';
+        const lineL = document.createElement('span');
+        lineL.className = 'ch-sec-line';
+        const secTitle = document.createElement('span');
+        secTitle.textContent = sec;
+        const lineR = document.createElement('span');
+        lineR.className = 'ch-sec-line';
+        secLbl.append(lineL, secTitle, lineR);
+        el.appendChild(secLbl);
+      }
+      if (selectors) {
+        const selRow = document.createElement('div');
+        selRow.className = 'ch-sel-row';
+        selectors.forEach(({ off, label, options, dflts }) => {
+          const wrap = document.createElement('div');
+          wrap.className = 'ch-sel-wrap';
+          const lbl = document.createElement('span');
+          lbl.className = 'ch-sel-lbl';
+          lbl.textContent = label;
+          const sel = document.createElement('select');
+          sel.className = 'ch-type-sel';
+          options.forEach(([text, val]) => {
+            const opt = document.createElement('option');
+            opt.value = val; opt.textContent = text;
+            sel.appendChild(opt);
+          });
+          sel.value = dflts[ci];
+          const ccNum = CH_BASE[ci] + off;
+          sel.addEventListener('change', () => {
+            sendCC(ccNum, +sel.value);
+            if (off === 9) updateSlopeAvailability(ci);
+          });
+          chSelectors[ci][off] = sel;
+          wrap.append(lbl, sel);
+          selRow.appendChild(wrap);
+        });
+        el.appendChild(selRow);
+        updateSlopeAvailability(ci);
+      }
+      const rowEl = document.createElement('div');
+      rowEl.className = 'knob-row';
+      knobs.forEach(({ off, label, fmt, size }) => {
+        const knob = new Knob({
+          parent: rowEl,
+          cc:   CH_BASE[ci] + off,
+          cc2:  (off === 3) ? CH_BASE[ci] + 11 : (off === 8) ? CH_BASE[ci] + 12 : null,
+          dflt: DFLTS[off][ci],
+          label,
+          fmt,
+          color: CH_COLOR[ci],
+          size,
+        });
+        chKnobs[ci][off] = knob;
+        // Level knob (offset 6): intercept sends to respect mute/solo
+        if (off === 6) {
+          levelKnobs[ci] = knob;
+          knob.set = function(v, send = true) {
+            this.val = Math.max(0, Math.min(127, Math.round(v)));
+            this._draw();
+            if (send) sendCC(this.cc, effectiveLevelCC(ci));
+          };
+        }
+      });
+      el.appendChild(rowEl);
+    });
+  }
+})();
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+const helpOverlay = document.getElementById('help-overlay');
+helpOverlay.addEventListener('click', e => { if (e.target === helpOverlay) helpOverlay.style.display = 'none'; });
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+  // Escape closes help
+  if (e.key === 'Escape') { helpOverlay.style.display = 'none'; return; }
+
+  // Help
+  if (e.key === '?') { e.preventDefault(); helpOverlay.style.display = 'flex'; return; }
+
+  // Space = run/stop
+  if (e.code === 'Space') { e.preventDefault(); document.getElementById('run-btn').click(); return; }
+
+  // B = bypass
+  if (e.code === 'KeyB' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault(); document.getElementById('bypass-btn').click(); return;
+  }
+
+  // 1/2/3 = trigger, Shift = mute, Ctrl/Cmd = solo
+  const ci = ['Digit1','Digit2','Digit3'].indexOf(e.code);
+  if (ci < 0) return;
+  e.preventDefault();
+  if (e.shiftKey)                  muteBtns[ci].click();
+  else if (e.ctrlKey || e.metaKey) soloBtns[ci].click();
+  else                             trigBtns[ci].click();
+});
+
+// ── MIDI menu toggle ──────────────────────────────────────────────────────────
+(function() {
+  const btn      = document.getElementById('midi-menu-btn');
+  const dropdown = document.getElementById('midi-dropdown');
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = dropdown.classList.toggle('open');
+    btn.classList.toggle('open', open);
+  });
+  document.addEventListener('click', e => {
+    if (!dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+      btn.classList.remove('open');
+    }
+  });
+})();
+
+// ── Incoming CC handler (MIDI feedback from device) ───────────────────────────
+const msbCache = {}; // stores last received MSB for 14-bit CC pairs, keyed by CC number
+
+function handleIncomingCC(cc, val) {
+  // Global knobs (delay + dry)
+  if (cc >= 1 && cc <= 4) { globalKnobMap[cc]?.set(val, false); return; }
+  if (cc === 6) { applyDelaySyncMode(val >= 64); return; }
+  if (cc === 7) { applyLfoSyncMode(val >= 64);   return; }
+  // Pattern select
+  if (cc === 14) {
+    const pat = Math.floor(val / 8);
+    activePat = pat;
+    patBtns.forEach((b, i) => b.classList.toggle('active', i === pat));
+    return;
+  }
+  // Run / Stop
+  if (cc === 15) {
+    running = val >= 64;
+    const btn = document.getElementById('run-btn');
+    btn.classList.toggle('on', running);
+    btn.lastChild.data = running ? 'Stop' : 'Run';
+    return;
+  }
+  // Bypass
+  if (cc === 18) {
+    bypassed = val >= 64;
+    document.getElementById('bypass-btn').classList.toggle('on', bypassed);
+    return;
+  }
+  // VU meters
+  if (cc === 10) { // DSP avg
+    const pct = val / 127 * 100;
+    document.getElementById('dsp-overlay').style.width = (100 - pct) + '%';
+    document.getElementById('dsp-val').textContent = Math.round(pct) + '%';
+    return;
+  }
+  if (cc === 11) { // DSP peak
+    const pct = val / 127 * 100;
+    const el = document.getElementById('dsp-peak');
+    el.style.left = Math.min(pct, 97) + '%';
+    el.style.display = 'block';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.display = 'none'; }, 3000);
+    return;
+  }
+  if (cc === 12) { // Loop avg (0–127 = 0–500 µs)
+    const pct = val / 127 * 100;
+    document.getElementById('loop-overlay').style.width = (100 - pct) + '%';
+    document.getElementById('loop-val').textContent = Math.round(val / 127 * 500) + 'µs';
+    return;
+  }
+  if (cc === 13) { // Loop peak
+    const pct = val / 127 * 100;
+    const el = document.getElementById('loop-peak');
+    el.style.left = Math.min(pct, 97) + '%';
+    el.style.display = 'block';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.display = 'none'; }, 3000);
+    return;
+  }
+  // BPM (tap tempo echo)
+  if (cc === 19) {
+    const bpm = Math.round(20 + (val / 127) * 280);
+    document.getElementById('bpm-display').textContent = bpm + ' bpm';
+    return;
+  }
+  // Per-channel knobs and selectors
+  for (let ci = 0; ci < 3; ci++) {
+    const off = cc - CH_BASE[ci];
+    if (off >= 0 && off <= 13) {
+      if (off === 3) { // env amount MSB
+        msbCache[cc] = val;
+        chKnobs[ci][3]?.set14(val << 7, false);
+      } else if (off === 8) { // lfo amount MSB
+        msbCache[cc] = val;
+        chKnobs[ci][8]?.set14(val << 7, false);
+      } else if (off === 11) { // env amount LSB
+        const v14 = ((msbCache[CH_BASE[ci] + 3] ?? 127) << 7) | val;
+        chKnobs[ci][3]?.set14(v14, false);
+      } else if (off === 12) { // lfo amount LSB
+        const v14 = ((msbCache[CH_BASE[ci] + 8] ?? 63) << 7) | val;
+        chKnobs[ci][8]?.set14(v14, false);
+      } else if (off <= 8) {
+        chKnobs[ci][off]?.set(val, false);
+      } else { // off === 9 or 10 (selectors)
+        const sel = chSelectors[ci][off];
+        if (sel) {
+          snapToOptions(sel, val);
+          if (off === 9) updateSlopeAvailability(ci);
+        }
+      }
+      return;
+    }
+  }
+  // Global knobs
+  globalKnobMap[cc]?.set(val, false);
+}
+</script>
+</body>
+</html>
