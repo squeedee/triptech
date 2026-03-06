@@ -100,14 +100,13 @@ struct Channel
     float cutoff;       // Hz
     float resonance;    // 0–0.95
     float drive;        // 1–4 (pre-filter gain)
-    float envAmount;    // -1 to +1 (14-bit bipolar)
+    float envAmount;    // 0–1
     float attack;       // seconds
     float decay;        // seconds
     float level;        // 0–1
     float pan;          // 0=left, 0.5=center, 1=right
     float lfoAmount;    // -1 to +1 (14-bit bipolar)
     float delayAmount;  // 0–1  (post-amp send to delay)
-    uint8_t envAmtMsb;    // 14-bit MSB cache for envAmount
     uint8_t lfoAmtMsb;    // 14-bit MSB cache for lfoAmount
     uint8_t filterType;   // 0=LP, 1=BP, 2=HP, 3=Notch
     uint8_t filterSlope;  // 0=6dB, 1=12dB, 2=24dB
@@ -248,9 +247,7 @@ static void SendAllState()
         SendCC(base + 0, CcLogInv(ch[c].cutoff,    100.f,   20000.f));
         SendCC(base + 1, CcLinInv(ch[c].resonance, 0.f,     0.95f));
         SendCC(base + 2, CcLinInv(ch[c].drive,     1.f,     4.f));
-        { uint16_t v14 = (uint16_t)fclamp((ch[c].envAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f);
-          SendCC(base + 3,  v14 >> 7);
-          SendCC(base + 11, v14 & 0x7F); }
+        SendCC(base + 3,  CcLinInv(ch[c].envAmount, 0.f, 1.f));
         SendCC(base + 4, CcLogInv(ch[c].attack,    0.001f,  2.f));
         SendCC(base + 5, CcLogInv(ch[c].decay,     0.01f,   4.f));
         SendCC(base + 6, CcLinInv(ch[c].level,     0.f,     1.f));
@@ -335,10 +332,7 @@ static void HandleCC(uint8_t ctrl, uint8_t val)
             case 0: ch[c].cutoff    = CcLog(val, 100.f, 20000.f); break;
             case 1: ch[c].resonance = CcLin(val, 0.f, 0.95f);     break;
             case 2: ch[c].drive     = CcLin(val, 1.f, 4.f);       break;
-            case 3: // env amount MSB
-                ch[c].envAmtMsb = val;
-                ch[c].envAmount = ((uint16_t)val << 7) / 16383.5f * 2.f - 1.f;
-                break;
+            case 3: ch[c].envAmount = CcLin(val, 0.f, 1.f); break;
             case 4: ch[c].attack    = CcLog(val, 0.001f, 2.f);    break;
             case 5: ch[c].decay     = CcLog(val, 0.01f, 4.f);     break;
             case 6: ch[c].level     = CcLin(val, 0.f, 1.f);       break;
@@ -349,11 +343,6 @@ static void HandleCC(uint8_t ctrl, uint8_t val)
                 break;
             case 9:  ch[c].filterType  = val < 32 ? 0 : val < 64 ? 1 : val < 96 ? 2 : 3; break;
             case 10: ch[c].filterSlope = val < 43 ? 0 : val < 85 ? 1 : 2; break;
-            case 11: { // env amount LSB
-                uint16_t v14 = ((uint16_t)ch[c].envAmtMsb << 7) | val;
-                ch[c].envAmount = v14 / 16383.5f * 2.f - 1.f;
-                break;
-            }
             case 12: { // lfo amount LSB
                 uint16_t v14 = ((uint16_t)ch[c].lfoAmtMsb << 7) | val;
                 ch[c].lfoAmount = v14 / 16383.5f * 2.f - 1.f;
