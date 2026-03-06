@@ -559,7 +559,7 @@ static void AudioCallback(const float* const* in, float** out, size_t size)
             }
             else if(use24[c])
             {
-                // LadderFilter applies drive internally via SetInputDrive
+                // drive applied via SetInputDrive() in the per-block setup above, not here
                 filtL = ch[c].ladL.Process(inL);
                 filtR = ch[c].ladR.Process(inR);
             }
@@ -649,7 +649,7 @@ int main(void)
     preset.dryLevel = 0.f;
     preset.pattern = 0;
 
-    // LP defaults — panned center
+    // Ch1 defaults — panned center
     preset.ch[0].cutoff = 800.f;  preset.ch[0].resonance = 0.5f; preset.ch[0].drive = 1.f;
     preset.ch[0].envAmount = 1.f; preset.ch[0].attack = 0.005f;  preset.ch[0].decay = 0.2f;
     preset.ch[0].level = 0.7f;    preset.ch[0].pan = 0.5f;       preset.ch[0].lfoAmount = 0.f;
