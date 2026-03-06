@@ -214,6 +214,14 @@ static uint8_t CcLogInv(float val, float lo, float hi)
     return (uint8_t)fclamp(logf(val / lo) / logf(hi / lo) * 127.f, 0.f, 127.f);
 }
 
+static inline float fasttanh(float x)
+{
+    if(x >  3.f) return  1.f;
+    if(x < -3.f) return -1.f;
+    float x2 = x * x;
+    return x * (27.f + x2) / (27.f + 9.f * x2);
+}
+
 static void SendCC(uint8_t cc, uint8_t val)
 {
     uint8_t msg[3] = { 0xB0, cc, val };
@@ -592,8 +600,8 @@ static void AudioCallback(const float* const* in, float** out, size_t size)
         float outR = chanR + delOutR + inR * preset.dryLevel;
 
         // Soft clip — handles summing of multiple channels gracefully
-        out[0][i] = tanhf(outL);
-        out[1][i] = tanhf(outR);
+        out[0][i] = fasttanh(outL);
+        out[1][i] = fasttanh(outR);
     }
 
     dspLoad.OnBlockEnd();
