@@ -40,9 +40,11 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 }
 .hw-btn:hover { border-color: #555; color: #aaa; }
 .hw-btn.on { background: #1a2a1a; border-color: #33cc33; color: #55ff55; }
+.hw-btn.shift-on { background: #2a1a1a; border-color: #ff8844; color: #ffaa66; }
 .hw-btn.bypass-on { background: #1a1a2a; border-color: #aaaaee; color: #ccccff; }
 .hw-btn .led { width: 5px; height: 5px; border-radius: 50%; background: #2a2a3a; transition: all .12s; }
 .hw-btn.on .led { background: #55ff55; box-shadow: 0 0 6px #55ff55; }
+.hw-btn.shift-on .led { background: #ffaa66; box-shadow: 0 0 6px #ffaa66; }
 .hw-btn.bypass-on .led { background: #ccccff; box-shadow: 0 0 6px #ccccff; }
 
 /* Channel + Group select */
@@ -95,11 +97,11 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 .mini-oled-name {
   font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  line-height: 1;
+  line-height: 1; color: #e0e0e0;
 }
 .mini-oled-val {
   font-size: 8px; font-weight: 700; white-space: nowrap;
-  line-height: 1;
+  line-height: 1; color: #e0e0e0;
 }
 .mini-oled-bar-track {
   width: 100%; height: 2px; background: #0a0a14; border-radius: 1px;
@@ -107,8 +109,35 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 }
 .mini-oled-bar-fill {
   height: 100%; border-radius: 1px;
-  transition: width .08s;
+  transition: width .08s; background: #e0e0e0;
 }
+/* Bipolar bar (center-origin) */
+.mini-oled-bar-bipolar {
+  width: 100%; height: 2px; position: relative;
+  background: #0a0a14; border-radius: 1px;
+}
+.mini-oled-bar-bipolar-center {
+  position: absolute; left: 50%; top: -1px;
+  width: 2px; height: 4px; border-radius: 1px;
+  transform: translateX(-50%);
+  background: #e0e0e0; opacity: .4;
+}
+.mini-oled-bar-bipolar-fill {
+  position: absolute; top: 0; height: 100%;
+  border-radius: 1px; transition: left .08s, width .08s;
+  background: #e0e0e0;
+}
+/* Filter type selector */
+.mini-oled-types {
+  display: flex; justify-content: space-between; flex: 1; align-items: flex-end;
+  gap: 2px;
+}
+.mini-oled-type {
+  font-size: 7px; font-weight: 700; letter-spacing: 0.5px;
+  color: #e0e0e0; opacity: .25; transition: opacity .1s;
+}
+.mini-oled-type.active { opacity: 1; }
+
 /* Blank state */
 .mini-oled.blank {
   opacity: .3;
@@ -181,6 +210,7 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
   <div class="transport-row">
     <button class="hw-btn" id="run-btn" onclick="toggleRun()"><span class="led"></span>RUN</button>
     <button class="hw-btn" id="byp-btn" onclick="toggleBypass()"><span class="led"></span>BYP</button>
+    <button class="hw-btn" id="shift-btn" onmousedown="setShift(true)" onmouseup="setShift(false)" onmouseleave="setShift(false)"><span class="led"></span>SFT</button>
   </div>
 
   <div class="select-grid">
@@ -234,8 +264,9 @@ const FMT = {
   drive:    cc => '\u00d7' + linMap(cc, 1, 4).toFixed(2),
   level:    cc => (cc / 127).toFixed(2),
   attack:   cc => { const v = logMap(cc,.001,2);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
-  decay:    cc => { const v = logMap(cc,.01, 4);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
+  decay:    cc => { const v = logMap(cc,.01, 2);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
   pan:      cc => { const d = cc - 63.5; if (Math.abs(d)<4) return 'CTR'; const p=Math.round(Math.abs(d)/63.5*100); return d<0?'L'+p:'R'+p; },
+  pct:      cc => Math.round(cc / 127 * 100) + '%',
   bipct:    cc => { const p = Math.max(-100, Math.min(100, Math.round((cc - 64) / 63 * 100))); return (p > 0 ? '+' : '') + p + '%'; },
   lfoRate:  cc => logMap(cc, .1, 20).toFixed(1)+' Hz',
   lfoSync:  cc => SYNC_DIVS[Math.min(7, cc >> 4)],
@@ -244,6 +275,7 @@ const FMT = {
   bpm:      cc => Math.round(20 + (cc / 127) * 280) + ' bpm',
   pattern:  cc => 'P' + (Math.min(15, cc >> 3) + 1),
   ftype:    cc => ['LP','BP','HP','Notch'][cc < 32 ? 0 : cc < 64 ? 1 : cc < 96 ? 2 : 3],
+  fslope:   cc => ['6 dB','12 dB','24 dB'][cc < 43 ? 0 : cc < 85 ? 1 : 2],
   toggle:   cc => cc >= 64 ? 'ON' : 'OFF',
 };
 
@@ -252,23 +284,25 @@ const FMT = {
 const chParamMeta = [
   // FILTER
   [
-    { name: 'FREQ',    fmt: 'cutoff', dflt: [50,72,60] },
-    { name: 'Q',       fmt: 'res',    dflt: [67,67,67] },
-    { name: 'LFO AMT', fmt: 'bipct',  dflt: [64,64,64] },
-    { name: 'TYPE',    fmt: 'ftype',  dflt: [0,32,64] },
+    { name: 'FREQ', fmt: 'cutoff', dflt: [50,72,60],
+      shift: { name: 'LFO AMT', fmt: 'bipct', dflt: [64,64,64] } },
+    { name: 'Q',    fmt: 'res',    dflt: [67,67,67] },
+    { name: 'TYPE', fmt: 'ftype',  dflt: [0,32,64],
+      shift: { name: 'SLOPE', fmt: 'fslope', dflt: [43,43,43] } },
+    null,
   ],
   // AMP
   [
     { name: 'DRIVE',  fmt: 'drive',  dflt: [0,0,0] },
-    { name: 'AMOUNT', fmt: 'bipct',  dflt: [127,127,127] },
     { name: 'ATTACK', fmt: 'attack', dflt: [27,27,27] },
     { name: 'DECAY',  fmt: 'decay',  dflt: [63,63,63] },
+    null,
   ],
   // MIXER
   [
     { name: 'PAN',   fmt: 'pan',   dflt: [63,31,95] },
     { name: 'LEVEL', fmt: 'level', dflt: [89,89,89] },
-    { name: 'SEND',  fmt: 'level', dflt: [0,0,0] },
+    { name: 'DELAY SEND', fmt: 'level', dflt: [0,0,0] },
     null,
   ],
 ];
@@ -277,16 +311,18 @@ const chParamMeta = [
 const globalParamMeta = [
   // DELAY
   [
-    { name: 'TIME', fmt: 'delayDiv', fmtSync: 'delayDiv', fmtFree: 'delayFre', dflt: 32 },
+    { name: 'TIME', fmt: 'delayDiv', fmtSync: 'delayDiv', fmtFree: 'delayFre', dflt: 32,
+      shift: { name: 'SYNC', fmt: 'toggle', dflt: 127, isSync: 'delay' } },
     { name: 'FDBK', fmt: 'level', dflt: 53 },
     { name: 'WIDTH', fmt: 'level', dflt: 127 },
-    { name: 'SYNC', fmt: 'toggle', dflt: 127, isSync: 'delay' },
+    null,
   ],
   // LFO
   [
-    { name: 'RATE', fmt: 'lfoRate', fmtSync: 'lfoSync', fmtFree: 'lfoRate', dflt: 55 },
+    { name: 'RATE', fmt: 'lfoRate', fmtSync: 'lfoSync', fmtFree: 'lfoRate', dflt: 55,
+      shift: { name: 'SYNC', fmt: 'toggle', dflt: 0, isSync: 'lfo' } },
     { name: 'DRY',  fmt: 'level', dflt: 0 },
-    { name: 'SYNC', fmt: 'toggle', dflt: 0, isSync: 'lfo' },
+    null,
     null,
   ],
   // PATTERN
@@ -315,21 +351,31 @@ const globalPages = [
 let delaySynced = true;
 let lfoSynced = false;
 
+// ── Shift state ──
+let shifted = false;
+
 // ── Values stored as 0-127 CC values ──
 const values = {};
 function vk(ch, grp, pi) { return `${ch}-${grp}-${pi}`; }
+function svk(ch, grp, pi) { return `s-${ch}-${grp}-${pi}`; }  // shift value key
 
 // Initialise with real defaults
 for (let c = 0; c < 3; c++) {
   chParamMeta.forEach((grp, g) => {
     grp.forEach((meta, pi) => {
-      if (meta) values[vk(c, g, pi)] = meta.dflt[c];
+      if (meta) {
+        values[vk(c, g, pi)] = meta.dflt[c];
+        if (meta.shift) values[svk(c, g, pi)] = meta.shift.dflt[c];
+      }
     });
   });
 }
 globalParamMeta.forEach((grp, g) => {
   grp.forEach((meta, pi) => {
-    if (meta) values[vk('g', g, pi)] = meta.dflt;
+    if (meta) {
+      values[vk('g', g, pi)] = meta.dflt;
+      if (meta.shift) values[svk('g', g, pi)] = meta.shift.dflt;
+    }
   });
 });
 
@@ -356,6 +402,18 @@ function fmtVal(meta, cc) {
 // Compute bar percentage (0-100) from a 0-127 CC value
 function barPct(cc) {
   return Math.round(cc / 127 * 100);
+}
+
+// Is this format center-origin (bipolar bar)?
+function isCenterBar(fmt) {
+  return fmt === 'bipct' || fmt === 'pan';
+}
+
+// Compute bipolar bar CSS: returns {left, width} as percentages
+function bipolarBar(cc) {
+  const pct = (cc - 64) / 63 * 50; // -50 to +50 from center
+  if (pct >= 0) return { left: 50, width: Math.min(pct, 50) };
+  return { left: 50 + pct, width: Math.min(-pct, 50) };
 }
 
 function selectCh(ch) {
@@ -393,9 +451,13 @@ function updateDisplay() {
   strip.innerHTML = '';
 
   for (let pi = 0; pi < 4; pi++) {
-    const pm = meta[pi];
-    const active = pm !== null;
-    const cc = active ? (values[vk(curCh, curGrp, pi)] ?? 64) : 0;
+    const basePm = meta[pi];
+    // Resolve shift: if shift is held and this param has a shift alt, use it
+    const useShift = shifted && basePm && basePm.shift;
+    const pm = useShift ? basePm.shift : basePm;
+    const active = pm !== null && pm !== undefined;
+    const key = useShift ? svk(curCh, curGrp, pi) : vk(curCh, curGrp, pi);
+    const cc = active ? (values[key] ?? 64) : 0;
 
     const unit = document.createElement('div');
     unit.className = 'enc-unit';
@@ -406,26 +468,64 @@ function updateDisplay() {
 
     const nameEl = document.createElement('div');
     nameEl.className = 'mini-oled-name';
-    nameEl.style.color = active ? color : 'transparent';
     nameEl.textContent = active ? pm.name : '';
 
-    const valEl = document.createElement('div');
-    valEl.className = 'mini-oled-val';
-    valEl.id = `oval-${pi}`;
-    valEl.style.color = active ? color : 'transparent';
-    valEl.textContent = active ? fmtVal(pm, cc) : '';
+    if (active && (pm.fmt === 'ftype' || pm.fmt === 'fslope')) {
+      // Selector: show options with the selected one highlighted
+      const isType = pm.fmt === 'ftype';
+      const LABELS = isType ? ['LP','BP','HP','NTCH'] : ['6dB','12dB','24dB'];
+      const selIdx = isType
+        ? (cc < 32 ? 0 : cc < 64 ? 1 : cc < 96 ? 2 : 3)
+        : (cc < 43 ? 0 : cc < 85 ? 1 : 2);
+      const row = document.createElement('div');
+      row.className = 'mini-oled-types';
+      row.id = `oval-${pi}`;
+      LABELS.forEach((t, ti) => {
+        const span = document.createElement('span');
+        span.className = 'mini-oled-type' + (ti === selIdx ? ' active' : '');
+        span.textContent = t;
+        row.appendChild(span);
+      });
+      oled.append(nameEl, row);
+    } else if (active && isCenterBar(activeFmt(pm))) {
+      // Bipolar bar: center dot with fill extending left/right
+      const valEl = document.createElement('div');
+      valEl.className = 'mini-oled-val';
+      valEl.id = `oval-${pi}`;
+      valEl.textContent = fmtVal(pm, cc);
 
-    const barTrack = document.createElement('div');
-    barTrack.className = 'mini-oled-bar-track';
+      const track = document.createElement('div');
+      track.className = 'mini-oled-bar-bipolar';
 
-    const barFill = document.createElement('div');
-    barFill.className = 'mini-oled-bar-fill';
-    barFill.id = `obar-${pi}`;
-    barFill.style.width = active ? barPct(cc) + '%' : '0%';
-    barFill.style.background = active ? color : 'transparent';
+      const center = document.createElement('div');
+      center.className = 'mini-oled-bar-bipolar-center';
 
-    barTrack.appendChild(barFill);
-    oled.append(nameEl, valEl, barTrack);
+      const fill = document.createElement('div');
+      fill.className = 'mini-oled-bar-bipolar-fill';
+      fill.id = `obar-${pi}`;
+      const bp = bipolarBar(cc);
+      fill.style.left = bp.left + '%';
+      fill.style.width = bp.width + '%';
+
+      track.append(center, fill);
+      oled.append(nameEl, valEl, track);
+    } else {
+      const valEl = document.createElement('div');
+      valEl.className = 'mini-oled-val';
+      valEl.id = `oval-${pi}`;
+      valEl.textContent = active ? fmtVal(pm, cc) : '';
+
+      const barTrack = document.createElement('div');
+      barTrack.className = 'mini-oled-bar-track';
+
+      const barFill = document.createElement('div');
+      barFill.className = 'mini-oled-bar-fill';
+      barFill.id = `obar-${pi}`;
+      barFill.style.width = active ? barPct(cc) + '%' : '0%';
+
+      barTrack.appendChild(barFill);
+      oled.append(nameEl, valEl, barTrack);
+    }
 
     // Encoder
     const enc = document.createElement('div');
@@ -437,33 +537,68 @@ function updateDisplay() {
     enc.appendChild(dot);
 
     if (active) {
+      const valKey = key; // capture for closures
+
       // SYNC params act as a toggle on click
       if (pm.isSync) {
         enc.style.cursor = 'pointer';
-        enc.addEventListener('click', ((idx, pmRef) => () => {
-          const key = vk(curCh, curGrp, idx);
-          const on = values[key] >= 64;
-          values[key] = on ? 0 : 127;
+        enc.addEventListener('click', ((vk_, pmRef) => () => {
+          const on = values[vk_] >= 64;
+          values[vk_] = on ? 0 : 127;
           if (pmRef.isSync === 'delay') delaySynced = !on;
           if (pmRef.isSync === 'lfo')   lfoSynced   = !on;
           updateDisplay();
-        })(pi, pm));
-      } else {
-        let y0, v0;
-        enc.addEventListener('pointerdown', ((idx) => (e) => {
+        })(valKey, pm));
+      } else if (pm.fmt === 'ftype' || pm.fmt === 'fslope') {
+        // Selector: drag snaps between discrete values
+        const isSel  = pm.fmt === 'ftype';
+        const SEL_CCS = isSel ? [0, 32, 64, 96] : [0, 43, 126];
+        const SEL_N   = SEL_CCS.length;
+        let y0, idx0;
+        enc.addEventListener('pointerdown', ((vk_) => (e) => {
           e.preventDefault(); enc.setPointerCapture(e.pointerId);
-          y0 = e.clientY; v0 = values[vk(curCh, curGrp, idx)] ?? 64;
-        })(pi));
-        enc.addEventListener('pointermove', ((idx, dotEl, pmRef) => (e) => {
+          y0 = e.clientY;
+          const cur = values[vk_] ?? 0;
+          idx0 = SEL_CCS.indexOf(cur);
+          if (idx0 < 0) idx0 = 0;
+        })(valKey));
+        enc.addEventListener('pointermove', ((vk_, dotEl) => (e) => {
+          if (!(e.buttons & 1)) return;
+          const delta = Math.round((y0 - e.clientY) / 30);
+          const ni = Math.max(0, Math.min(SEL_N - 1, idx0 + delta));
+          const ncc = SEL_CCS[ni];
+          values[vk_] = ncc;
+          dotEl.style.transform = `rotate(${(ncc / 127) * 270 - 135}deg)`;
+          const row = document.getElementById(`oval-${pi}`);
+          if (row) row.querySelectorAll('.mini-oled-type').forEach((s, ti) => {
+            s.classList.toggle('active', ti === ni);
+          });
+        })(valKey, dot));
+      } else {
+        const isBipolar = isCenterBar(activeFmt(pm));
+        let y0, v0;
+        enc.addEventListener('pointerdown', ((vk_) => (e) => {
+          e.preventDefault(); enc.setPointerCapture(e.pointerId);
+          y0 = e.clientY; v0 = values[vk_] ?? 64;
+        })(valKey));
+        enc.addEventListener('pointermove', ((vk_, dotEl, pmRef, bip) => (e) => {
           if (!(e.buttons & 1)) return;
           const nv = Math.max(0, Math.min(127, v0 + (y0 - e.clientY) * 0.8));
-          values[vk(curCh, curGrp, idx)] = Math.round(nv);
+          values[vk_] = Math.round(nv);
           dotEl.style.transform = `rotate(${(nv / 127) * 270 - 135}deg)`;
-          const ve = document.getElementById(`oval-${idx}`);
+          const ve = document.getElementById(`oval-${pi}`);
           if (ve) ve.textContent = fmtVal(pmRef, Math.round(nv));
-          const be = document.getElementById(`obar-${idx}`);
-          if (be) be.style.width = barPct(Math.round(nv)) + '%';
-        })(pi, dot, pm));
+          const be = document.getElementById(`obar-${pi}`);
+          if (be) {
+            if (bip) {
+              const bp = bipolarBar(Math.round(nv));
+              be.style.left = bp.left + '%';
+              be.style.width = bp.width + '%';
+            } else {
+              be.style.width = barPct(Math.round(nv)) + '%';
+            }
+          }
+        })(valKey, dot, pm, isBipolar));
       }
     }
 
@@ -487,7 +622,11 @@ function updateMap() {
     grid.innerHTML += `<div class="map-row-label">${targets[ci]}</div>`;
     metaAll.forEach((grp, gi) => {
       const active = c == curCh && gi === curGrp;
-      const names = grp.filter(Boolean).map(m => m.name).join(', ');
+      const names = grp.filter(Boolean).map(m => {
+        let n = m.name;
+        if (shifted && m.shift) n = m.shift.name;
+        return n;
+      }).join(', ');
       grid.innerHTML += `<div class="map-cell${active ? ' highlight' : ''}">${names}</div>`;
     });
   });
@@ -501,6 +640,16 @@ function toggleBypass() {
   bypassed = !bypassed;
   document.getElementById('byp-btn').classList.toggle('bypass-on', bypassed);
 }
+function setShift(on) {
+  if (shifted === on) return;
+  shifted = on;
+  document.getElementById('shift-btn').classList.toggle('shift-on', on);
+  updateDisplay();
+}
+
+// Keyboard: hold Shift key for shift layer
+document.addEventListener('keydown', (e) => { if (e.key === 'Shift') setShift(true); });
+document.addEventListener('keyup',   (e) => { if (e.key === 'Shift') setShift(false); });
 
 updateGroups();
 updateDisplay();

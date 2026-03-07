@@ -97,7 +97,6 @@ struct ChannelPreset {
     float cutoff;        // Hz
     float resonance;     // 0–0.95
     float drive;         // 1–4 (pre-filter gain)
-    float envAmount;     // 0–1
     float attack;        // seconds
     float decay;         // seconds
     float level;         // 0–1
@@ -249,9 +248,8 @@ static void SendAllState() {
         SendCC(base + 0, CcLogInv(preset.ch[c].cutoff, 100.f, 20000.f));
         SendCC(base + 1, CcLinInv(preset.ch[c].resonance, 0.f, 0.95f));
         SendCC(base + 2, CcLinInv(preset.ch[c].drive, 1.f, 4.f));
-        SendCC(base + 3, CcLinInv(preset.ch[c].envAmount, 0.f, 1.f));
         SendCC(base + 4, CcLogInv(preset.ch[c].attack, 0.001f, 2.f));
-        SendCC(base + 5, CcLogInv(preset.ch[c].decay, 0.01f, 4.f));
+        SendCC(base + 5, CcLogInv(preset.ch[c].decay, 0.01f, 2.f));
         SendCC(base + 6, CcLinInv(preset.ch[c].level, 0.f, 1.f));
         SendCC(base + 7, CcLinInv(preset.ch[c].pan, 0.f, 1.f));
         {
@@ -363,14 +361,11 @@ static void HandleCC(uint8_t ctrl, uint8_t val) {
         case 2:
             preset.ch[c].drive = CcLin(val, 1.f, 4.f);
             break;
-        case 3:
-            preset.ch[c].envAmount = CcLin(val, 0.f, 1.f);
-            break;
         case 4:
             preset.ch[c].attack = CcLog(val, 0.001f, 2.f);
             break;
         case 5:
-            preset.ch[c].decay = CcLog(val, 0.01f, 4.f);
+            preset.ch[c].decay = CcLog(val, 0.01f, 2.f);
             break;
         case 6:
             preset.ch[c].level = CcLin(val, 0.f, 1.f);
@@ -591,7 +586,7 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
                 }
             }
 
-            float env = ch[c].env.Process() * preset.ch[c].envAmount;
+            float env = ch[c].env.Process();
             float chL = filtL * env * preset.ch[c].level;
             float chR = filtR * env * preset.ch[c].level;
             chanL += chL * panL[c];
@@ -669,7 +664,6 @@ int main(void) {
     preset.ch[0].cutoff = 800.f;
     preset.ch[0].resonance = 0.5f;
     preset.ch[0].drive = 1.f;
-    preset.ch[0].envAmount = 1.f;
     preset.ch[0].attack = 0.005f;
     preset.ch[0].decay = 0.2f;
     preset.ch[0].level = 0.7f;
@@ -683,7 +677,6 @@ int main(void) {
     preset.ch[1].cutoff = 2000.f;
     preset.ch[1].resonance = 0.5f;
     preset.ch[1].drive = 1.f;
-    preset.ch[1].envAmount = 1.f;
     preset.ch[1].attack = 0.005f;
     preset.ch[1].decay = 0.2f;
     preset.ch[1].level = 0.7f;
@@ -697,7 +690,6 @@ int main(void) {
     preset.ch[2].cutoff = 1200.f;
     preset.ch[2].resonance = 0.5f;
     preset.ch[2].drive = 1.f;
-    preset.ch[2].envAmount = 1.f;
     preset.ch[2].attack = 0.005f;
     preset.ch[2].decay = 0.2f;
     preset.ch[2].level = 0.7f;

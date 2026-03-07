@@ -834,7 +834,7 @@ const FMT = {
   drive:   cc => '×' + linMap(cc, 1, 4).toFixed(2),
   level:   cc => (cc / 127).toFixed(2),
   attack:  cc => { const v = logMap(cc,.001,2);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
-  decay:   cc => { const v = logMap(cc,.01, 4);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
+  decay:   cc => { const v = logMap(cc,.01, 2);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
   pan:     cc => { const d = cc - 63.5; if (Math.abs(d)<4) return 'CTR'; const p=Math.round(Math.abs(d)/63.5*100); return d<0?`L${p}`:`R${p}`; },
   lfoRate: cc => logMap(cc, .1, 20).toFixed(1)+' Hz',
   pct:     cc => Math.round(cc/127*100)+'%',
@@ -1076,18 +1076,16 @@ const ROWS = [
     ], knobs: [
     { off:0, label:'FREQ',   fmt:'cutoff', size:'lg' },
     { off:1, label:'Q',      fmt:'res',    size:'md' },
-    { off:8, label:'LFO AMT',fmt:'bipct',  size:'sm' },
   ]},
   { sec: 'Amp', knobs: [
     { off:2, label:'DRIVE',  fmt:'drive',  size:'sm' },
-    { off:3, label:'AMOUNT', fmt:'bipct',  size:'sm' },
     { off:4, label:'ATTACK', fmt:'attack', size:'sm' },
     { off:5, label:'DECAY',  fmt:'decay',  size:'sm' },
   ]},
   { sec: 'Mixer', knobs: [
     { off:7,  label:'PAN',   fmt:'pan',   size:'sm' },
     { off:6,  label:'LEVEL', fmt:'level', size:'sm' },
-    { off:13, label:'SEND',  fmt:'level', size:'sm' },
+    { off:13, label:'DELAY SEND', fmt:'level', size:'sm' },
   ]},
 ];
 
@@ -1102,12 +1100,10 @@ const DFLTS = {
   0: [50, 72, 60],   // cutoff: LP 800Hz, BP 2kHz, HP 1.2kHz
   1: [67, 67, 67],   // resonance 0.5
   2: [0,  0,  0],    // drive ×1
-  3: [127,127,127],  // env amount 1.0
   4: [27, 27, 27],   // attack 5ms
   5: [63, 63, 63],   // decay 200ms
   6: [89, 89, 89],   // level 0.7
   7: [63, 31, 95],   // pan: LP center, BP 25%L, HP 25%R
-  8: [64, 64, 64],   // lfo amount 0%
   13: [0,  0,  0],   // delay send 0
 };
 
@@ -1250,7 +1246,7 @@ function sendAllLevels() {
         const knob = new Knob({
           parent: rowEl,
           cc:   CH_BASE[ci] + off,
-          cc2:  (off === 3) ? CH_BASE[ci] + 11 : (off === 8) ? CH_BASE[ci] + 12 : null,
+          cc2:  null,
           dflt: DFLTS[off][ci],
           label,
           fmt,
@@ -1390,26 +1386,14 @@ function handleIncomingCC(cc, val) {
   for (let ci = 0; ci < 3; ci++) {
     const off = cc - CH_BASE[ci];
     if (off >= 0 && off <= 13) {
-      if (off === 3) { // env amount MSB
-        msbCache[cc] = val;
-        chKnobs[ci][3]?.set14(val << 7, false);
-      } else if (off === 8) { // lfo amount MSB
-        msbCache[cc] = val;
-        chKnobs[ci][8]?.set14(val << 7, false);
-      } else if (off === 11) { // env amount LSB
-        const v14 = ((msbCache[CH_BASE[ci] + 3] ?? 127) << 7) | val;
-        chKnobs[ci][3]?.set14(v14, false);
-      } else if (off === 12) { // lfo amount LSB
-        const v14 = ((msbCache[CH_BASE[ci] + 8] ?? 63) << 7) | val;
-        chKnobs[ci][8]?.set14(v14, false);
-      } else if (off <= 8) {
-        chKnobs[ci][off]?.set(val, false);
-      } else { // off === 9 or 10 (selectors)
+      if (off === 9 || off === 10) { // selectors
         const sel = chSelectors[ci][off];
         if (sel) {
           snapToOptions(sel, val);
           if (off === 9) updateSlopeAvailability(ci);
         }
+      } else {
+        chKnobs[ci][off]?.set(val, false);
       }
       return;
     }
