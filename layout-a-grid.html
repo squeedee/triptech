@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layout A: Grid Select</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ch1: #22dd66; --ch2: #ffcc00; --ch3: #ff4433; --accent: #7799ff;
+  --bg: #0a0a10; --panel: #191920; --border: #28283a; --text: #c8c8d0; --dim: #44445a;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'SF Mono','Menlo','Consolas',monospace; font-size: 11px;
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  padding: 28px 16px; gap: 24px;
+}
+h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0e0e8; }
+.subtitle { font-size: 10px; color: var(--dim); letter-spacing: 1px; max-width: 600px; text-align: center; line-height: 1.6; }
+
+/* Hardware panel */
+.hw-panel {
+  width: 520px; background: #1a1a22; border: 2px solid #2a2a3a; border-radius: 16px;
+  padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.03);
+  display: flex; flex-direction: column; gap: 20px;
+}
+.hw-label {
+  font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: #33334a;
+  text-align: center;
+}
+
+/* Top row: transport buttons */
+.transport-row {
+  display: flex; justify-content: center; gap: 12px;
+}
+.hw-btn {
+  width: 44px; height: 32px; border-radius: 4px; border: 1px solid #333;
+  background: #222230; color: var(--dim); font-family: inherit; font-size: 8px;
+  font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all .12s;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.hw-btn:hover { border-color: #555; color: #aaa; }
+.hw-btn.on { background: #1a2a1a; border-color: #33cc33; color: #55ff55; }
+.hw-btn.bypass-on { background: #1a1a2a; border-color: #aaaaee; color: #ccccff; }
+.hw-btn .led { width: 5px; height: 5px; border-radius: 50%; background: #2a2a3a; transition: all .12s; }
+.hw-btn.on .led { background: #55ff55; box-shadow: 0 0 6px #55ff55; }
+.hw-btn.bypass-on .led { background: #ccccff; box-shadow: 0 0 6px #ccccff; }
+
+/* Main grid: channel select + group select */
+.select-grid {
+  display: flex; gap: 16px; align-items: flex-start;
+}
+
+/* Channel select column */
+.ch-select {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ch-btn {
+  width: 60px; height: 36px; border-radius: 5px; border: 2px solid #333;
+  background: #1c1c28; color: var(--dim); font-family: inherit; font-size: 9px;
+  font-weight: 700; letter-spacing: 2px; cursor: pointer; transition: all .12s;
+}
+.ch-btn:hover { border-color: #555; }
+.ch-btn.active { color: white; }
+.ch-btn[data-ch="0"].active { border-color: var(--ch1); color: var(--ch1); background: rgba(34,221,102,.08); box-shadow: 0 0 10px rgba(34,221,102,.2); }
+.ch-btn[data-ch="1"].active { border-color: var(--ch2); color: var(--ch2); background: rgba(255,204,0,.08); box-shadow: 0 0 10px rgba(255,204,0,.2); }
+.ch-btn[data-ch="2"].active { border-color: var(--ch3); color: var(--ch3); background: rgba(255,68,51,.08); box-shadow: 0 0 10px rgba(255,68,51,.2); }
+.ch-btn[data-ch="g"].active { border-color: var(--accent); color: var(--accent); background: rgba(119,153,255,.08); box-shadow: 0 0 10px rgba(119,153,255,.2); }
+
+/* Group select row */
+.grp-select {
+  display: flex; flex-direction: column; gap: 6px; flex: 1;
+}
+.grp-row {
+  display: flex; gap: 6px;
+}
+.grp-btn {
+  flex: 1; height: 30px; border-radius: 4px; border: 1px solid #2a2a3a;
+  background: #1c1c28; color: var(--dim); font-family: inherit; font-size: 8px;
+  font-weight: 700; letter-spacing: 1.5px; cursor: pointer; transition: all .12s;
+}
+.grp-btn:hover { border-color: #444; color: #888; }
+.grp-btn.active { border-color: #6677aa; color: #99aacc; background: #1a1a28; }
+
+/* OLED display */
+.oled {
+  background: #020208; border: 2px solid #222; border-radius: 6px;
+  padding: 10px 14px; font-family: inherit;
+  box-shadow: inset 0 0 20px rgba(0,0,0,.8);
+  min-height: 60px;
+}
+.oled-title {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 6px; opacity: .6;
+}
+.oled-params {
+  display: flex; gap: 0; justify-content: space-between;
+}
+.oled-param {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1;
+}
+.oled-param-name {
+  font-size: 7px; letter-spacing: 1px; text-transform: uppercase; opacity: .5;
+}
+.oled-param-val {
+  font-size: 11px; font-weight: 700;
+}
+
+/* Encoder row */
+.encoder-row {
+  display: flex; justify-content: space-between; gap: 12px; padding: 0 10px;
+}
+.encoder-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1;
+}
+.encoder {
+  width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3a3a4a;
+  background: radial-gradient(circle at 40% 35%, #3a3a4a, #222230);
+  cursor: ns-resize; user-select: none; position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+  transition: border-color .12s;
+}
+.encoder:hover { border-color: #555; }
+.encoder-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: #ddd;
+  position: absolute; left: 50%; transform-origin: center 22px;
+}
+.encoder-label {
+  font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim);
+}
+
+/* Page map (bottom) */
+.page-map {
+  display: flex; flex-direction: column; gap: 8px; margin-top: 8px;
+  padding: 16px; background: #111118; border-radius: 8px; border: 1px solid #222;
+  width: 520px;
+}
+.page-map-title {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
+  text-align: center; margin-bottom: 4px;
+}
+.map-grid {
+  display: grid; grid-template-columns: 70px repeat(3, 1fr); gap: 2px; font-size: 8px;
+}
+.map-hdr {
+  padding: 4px 6px; background: #1a1a28; color: var(--dim);
+  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; text-align: center;
+}
+.map-cell {
+  padding: 4px 6px; background: #141419; color: #666; text-align: center;
+  border-radius: 2px; transition: all .15s;
+}
+.map-cell.highlight {
+  background: #1a1e2a; color: var(--accent);
+}
+.map-row-label {
+  padding: 4px 6px; text-align: right; color: var(--dim);
+  font-weight: 700; letter-spacing: 1px;
+}
+
+/* Info panel */
+.info {
+  width: 520px; padding: 16px; background: #111118; border-radius: 8px;
+  border: 1px solid #222; font-size: 10px; color: #666; line-height: 1.7;
+}
+.info strong { color: #999; }
+</style>
+</head>
+<body>
+
+<h1>Layout A: Grid Select</h1>
+<div class="subtitle">
+  4 channel buttons (Ch1/Ch2/Ch3/Global) x 3 group buttons = instant access to any parameter page.
+  4 encoders edit the current page. Max 2 button presses to reach any parameter.
+</div>
+
+<div class="hw-panel">
+  <div class="hw-label">Triptech</div>
+
+  <!-- Transport -->
+  <div class="transport-row">
+    <button class="hw-btn" id="run-btn" onclick="toggleRun()"><span class="led"></span>RUN</button>
+    <button class="hw-btn" id="byp-btn" onclick="toggleBypass()"><span class="led"></span>BYP</button>
+  </div>
+
+  <!-- Channel + Group select -->
+  <div class="select-grid">
+    <div class="ch-select">
+      <div class="hw-label">Channel</div>
+      <button class="ch-btn active" data-ch="0" onclick="selectCh(0)">CH 1</button>
+      <button class="ch-btn" data-ch="1" onclick="selectCh(1)">CH 2</button>
+      <button class="ch-btn" data-ch="2" onclick="selectCh(2)">CH 3</button>
+      <button class="ch-btn" data-ch="g" onclick="selectCh('g')">GLB</button>
+    </div>
+    <div class="grp-select">
+      <div class="hw-label">Group</div>
+      <div class="grp-row" id="grp-row">
+        <button class="grp-btn active" data-grp="0" onclick="selectGrp(0)">FILTER</button>
+        <button class="grp-btn" data-grp="1" onclick="selectGrp(1)">AMP</button>
+        <button class="grp-btn" data-grp="2" onclick="selectGrp(2)">MIXER</button>
+      </div>
+
+      <!-- OLED -->
+      <div class="oled" id="oled">
+        <div class="oled-title" id="oled-title">CH 1 &mdash; FILTER</div>
+        <div class="oled-params" id="oled-params"></div>
+      </div>
+
+      <!-- Encoders -->
+      <div class="encoder-row" id="encoder-row"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Page map -->
+<div class="page-map">
+  <div class="page-map-title">Parameter Map</div>
+  <div class="map-grid" id="map-grid"></div>
+</div>
+
+<div class="info">
+  <strong>Concept:</strong> Inspired by Elektron workflow. Channel buttons along the left select which
+  channel you're editing (or Global for delay/LFO). Group buttons across the top select the parameter
+  group. The 4 encoders always map to 3-4 parameters from that intersection. A small OLED shows
+  current assignments and values.<br><br>
+  <strong>Hardware:</strong> 4 channel buttons + 3 group buttons + 2 transport buttons + 4 rotary encoders + 128x32 OLED<br>
+  <strong>Pros:</strong> Systematic, predictable, max 2 presses to any param, easy to learn<br>
+  <strong>Cons:</strong> 9 buttons total (more hardware), can't tweak two channels simultaneously
+</div>
+
+<script>
+'use strict';
+
+// Parameter definitions per [channel_mode][group]
+// Each page: { title, params: [{ name, value, fmt }] } (max 4 params)
+const CH_NAMES = ['CH 1','CH 2','CH 3'];
+const CH_COLORS = ['#22dd66','#ffcc00','#ff4433','#7799ff'];
+
+const chPages = [
+  // group 0: Filter
+  { title: 'FILTER', params: ['FREQ','Q','LFO AMT','TYPE'] },
+  // group 1: Amp
+  { title: 'AMP', params: ['DRIVE','AMOUNT','ATTACK','DECAY'] },
+  // group 2: Mixer
+  { title: 'MIXER', params: ['PAN','LEVEL','SEND',''] },
+];
+
+const globalPages = [
+  { title: 'DELAY', params: ['TIME','FDBK','WIDTH','SYNC'] },
+  { title: 'LFO', params: ['RATE','DRY','SYNC',''] },
+  { title: 'PATTERN', params: ['PAT','BPM','',''] },
+];
+
+// Simulated values
+const values = {};
+function key(ch, grp, pi) { return `${ch}-${grp}-${pi}`; }
+
+// Init values
+for (let c = 0; c < 3; c++) {
+  chPages.forEach((pg, g) => {
+    pg.params.forEach((p, pi) => {
+      if (p) values[key(c,g,pi)] = Math.round(Math.random()*100);
+    });
+  });
+}
+globalPages.forEach((pg, g) => {
+  pg.params.forEach((p, pi) => {
+    if (p) values[key('g',g,pi)] = Math.round(Math.random()*100);
+  });
+});
+
+let curCh = 0;
+let curGrp = 0;
+let running = false;
+let bypassed = false;
+
+function getColor() {
+  return curCh === 'g' ? CH_COLORS[3] : CH_COLORS[curCh];
+}
+
+function getPages() {
+  return curCh === 'g' ? globalPages : chPages;
+}
+
+function selectCh(ch) {
+  curCh = ch;
+  curGrp = 0;
+  document.querySelectorAll('.ch-btn').forEach(b => b.classList.toggle('active', b.dataset.ch == ch));
+  updateGroups();
+  updateDisplay();
+}
+
+function selectGrp(g) {
+  curGrp = g;
+  document.querySelectorAll('.grp-btn').forEach(b => b.classList.toggle('active', +b.dataset.grp === g));
+  updateDisplay();
+}
+
+function updateGroups() {
+  const pages = getPages();
+  const row = document.getElementById('grp-row');
+  row.innerHTML = '';
+  pages.forEach((pg, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'grp-btn' + (i === curGrp ? ' active' : '');
+    btn.dataset.grp = i;
+    btn.textContent = pg.title;
+    btn.onclick = () => selectGrp(i);
+    row.appendChild(btn);
+  });
+}
+
+function updateDisplay() {
+  const pages = getPages();
+  const pg = pages[curGrp];
+  const color = getColor();
+  const chName = curCh === 'g' ? 'GLOBAL' : CH_NAMES[curCh];
+
+  // OLED
+  document.getElementById('oled-title').innerHTML = `${chName} &mdash; ${pg.title}`;
+  document.getElementById('oled-title').style.color = color;
+  const paramsEl = document.getElementById('oled-params');
+  paramsEl.innerHTML = '';
+  pg.params.forEach((p, pi) => {
+    if (!p) return;
+    const div = document.createElement('div');
+    div.className = 'oled-param';
+    div.innerHTML = `<div class="oled-param-name">${p}</div>
+      <div class="oled-param-val" style="color:${color}" id="oval-${pi}">${values[key(curCh,curGrp,pi)] ?? '—'}</div>`;
+    paramsEl.appendChild(div);
+  });
+
+  // Encoders
+  const encRow = document.getElementById('encoder-row');
+  encRow.innerHTML = '';
+  pg.params.forEach((p, pi) => {
+    if (!p) {
+      const spacer = document.createElement('div');
+      spacer.style.flex = '1';
+      encRow.appendChild(spacer);
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'encoder-wrap';
+    const enc = document.createElement('div');
+    enc.className = 'encoder';
+    const dot = document.createElement('div');
+    dot.className = 'encoder-dot';
+    const v = values[key(curCh,curGrp,pi)] ?? 50;
+    const angle = (v / 100) * 270 - 135;
+    dot.style.transform = `rotate(${angle}deg)`;
+    dot.style.top = '4px';
+    enc.appendChild(dot);
+
+    // Interaction
+    let y0, v0;
+    enc.addEventListener('pointerdown', e => {
+      e.preventDefault(); enc.setPointerCapture(e.pointerId);
+      y0 = e.clientY; v0 = values[key(curCh,curGrp,pi)] ?? 50;
+    });
+    enc.addEventListener('pointermove', e => {
+      if (!(e.buttons & 1)) return;
+      const nv = Math.max(0, Math.min(100, v0 + (y0 - e.clientY) * 0.5));
+      values[key(curCh,curGrp,pi)] = Math.round(nv);
+      const a = (nv / 100) * 270 - 135;
+      dot.style.transform = `rotate(${a}deg)`;
+      const valEl = document.getElementById(`oval-${pi}`);
+      if (valEl) valEl.textContent = Math.round(nv);
+    });
+
+    const lbl = document.createElement('div');
+    lbl.className = 'encoder-label';
+    lbl.textContent = p;
+    wrap.append(enc, lbl);
+    encRow.appendChild(wrap);
+  });
+
+  updateMap();
+}
+
+function updateMap() {
+  const grid = document.getElementById('map-grid');
+  grid.innerHTML = '';
+
+  // Headers
+  const pages = curCh === 'g' ? globalPages : chPages;
+  grid.innerHTML += '<div class="map-hdr"></div>';
+  pages.forEach(pg => { grid.innerHTML += `<div class="map-hdr">${pg.title}</div>`; });
+
+  // Rows
+  const targets = curCh === 'g' ? ['GLOBAL'] : CH_NAMES;
+  const allChs = curCh === 'g' ? ['g'] : [0, 1, 2];
+
+  allChs.forEach((c, ci) => {
+    grid.innerHTML += `<div class="map-row-label">${targets[ci]}</div>`;
+    pages.forEach((pg, gi) => {
+      const active = c == curCh && gi === curGrp;
+      const names = pg.params.filter(Boolean).join(', ');
+      grid.innerHTML += `<div class="map-cell${active ? ' highlight' : ''}">${names}</div>`;
+    });
+  });
+}
+
+function toggleRun() {
+  running = !running;
+  document.getElementById('run-btn').classList.toggle('on', running);
+}
+function toggleBypass() {
+  bypassed = !bypassed;
+  document.getElementById('byp-btn').classList.toggle('bypass-on', bypassed);
+}
+
+updateGroups();
+updateDisplay();
+</script>
+</body>
+</html>

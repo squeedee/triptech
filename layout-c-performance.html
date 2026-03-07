@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layout C: Performance Hybrid</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ch1: #22dd66; --ch2: #ffcc00; --ch3: #ff4433; --accent: #7799ff;
+  --bg: #0a0a10; --panel: #191920; --border: #28283a; --text: #c8c8d0; --dim: #44445a;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'SF Mono','Menlo','Consolas',monospace; font-size: 11px;
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  padding: 28px 16px; gap: 24px;
+}
+h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0e0e8; }
+.subtitle { font-size: 10px; color: var(--dim); letter-spacing: 1px; max-width: 650px; text-align: center; line-height: 1.6; }
+
+.hw-panel {
+  width: 560px; background: #1a1a22; border: 2px solid #2a2a3a; border-radius: 16px;
+  padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.03);
+  display: flex; flex-direction: column; gap: 20px;
+}
+.hw-label {
+  font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: #33334a;
+  text-align: center;
+}
+
+/* Top row: transport + channel buttons */
+.top-row {
+  display: flex; align-items: center; gap: 12px; justify-content: center;
+}
+.hw-btn {
+  height: 30px; border-radius: 4px; border: 1px solid #333;
+  background: #222230; color: var(--dim); font-family: inherit; font-size: 8px;
+  font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all .12s;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 0 12px;
+}
+.hw-btn:hover { border-color: #555; color: #aaa; }
+.hw-btn.on { background: #1a2a1a; border-color: #33cc33; color: #55ff55; }
+.hw-btn.bypass-on { background: #1a1a2a; border-color: #aaaaee; color: #ccccff; }
+.hw-btn .led { width: 5px; height: 5px; border-radius: 50%; background: #2a2a3a; transition: all .12s; }
+.hw-btn.on .led { background: #55ff55; box-shadow: 0 0 6px #55ff55; }
+.hw-btn.bypass-on .led { background: #ccccff; box-shadow: 0 0 6px #ccccff; }
+
+.sep { width: 1px; height: 20px; background: #2a2a3a; }
+
+.ch-btn {
+  width: 48px; height: 30px; border-radius: 4px; border: 2px solid #333;
+  background: #1c1c28; color: var(--dim); font-family: inherit; font-size: 9px;
+  font-weight: 700; letter-spacing: 1.5px; cursor: pointer; transition: all .12s;
+}
+.ch-btn:hover { border-color: #555; }
+.ch-btn.active[data-ch="0"] { border-color: var(--ch1); color: var(--ch1); background: rgba(34,221,102,.06); box-shadow: 0 0 8px rgba(34,221,102,.15); }
+.ch-btn.active[data-ch="1"] { border-color: var(--ch2); color: var(--ch2); background: rgba(255,204,0,.06); box-shadow: 0 0 8px rgba(255,204,0,.15); }
+.ch-btn.active[data-ch="2"] { border-color: var(--ch3); color: var(--ch3); background: rgba(255,68,51,.06); box-shadow: 0 0 8px rgba(255,68,51,.15); }
+
+/* OLED display */
+.oled {
+  background: #020208; border: 2px solid #222; border-radius: 6px;
+  padding: 10px 14px; font-family: inherit;
+  box-shadow: inset 0 0 20px rgba(0,0,0,.8);
+  min-height: 56px;
+}
+.oled-top-row {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;
+}
+.oled-ch { font-size: 10px; font-weight: 700; letter-spacing: 2px; }
+.oled-page { font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase; opacity: .5; }
+.oled-params { display: flex; gap: 0; }
+.oled-half {
+  flex: 1; display: flex; flex-direction: column; gap: 0;
+  padding: 4px 8px; border-radius: 3px;
+}
+.oled-half.fixed { background: rgba(255,255,255,.02); }
+.oled-half-label {
+  font-size: 6px; letter-spacing: 1.5px; text-transform: uppercase; opacity: .35;
+  margin-bottom: 4px;
+}
+.oled-param-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.oled-pname { font-size: 7px; letter-spacing: 1px; text-transform: uppercase; opacity: .5; }
+.oled-pval { font-size: 10px; font-weight: 700; }
+
+/* Main encoder area */
+.encoder-area {
+  display: flex; gap: 12px; align-items: flex-end;
+}
+
+/* Fixed pair (large) */
+.fixed-pair {
+  display: flex; gap: 16px; padding: 12px 16px;
+  background: rgba(255,255,255,.015); border-radius: 10px; border: 1px solid #222;
+}
+.encoder-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.encoder-lg {
+  width: 60px; height: 60px; border-radius: 50%; border: 2px solid #3a3a4a;
+  background: radial-gradient(circle at 40% 35%, #3a3a4a, #222230);
+  cursor: ns-resize; user-select: none; position: relative;
+  box-shadow: 0 4px 14px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.encoder-lg:hover { border-color: #555; }
+.encoder-sm {
+  width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3a4a;
+  background: radial-gradient(circle at 40% 35%, #3a3a4a, #222230);
+  cursor: ns-resize; user-select: none; position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.encoder-sm:hover { border-color: #555; }
+.encoder-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: #ddd;
+  position: absolute; left: 50%;
+}
+.encoder-dot.lg { transform-origin: center 26px; top: 4px; }
+.encoder-dot.sm { transform-origin: center 20px; top: 4px; }
+.encoder-label {
+  font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim);
+}
+.fixed-label {
+  font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase; color: #444;
+  text-align: center; margin-bottom: 4px;
+}
+
+/* Page button between the two pairs */
+.page-section {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 0 4px;
+}
+.page-btn {
+  width: 36px; height: 28px; border-radius: 4px; border: 1px solid #333;
+  background: #222230; color: var(--dim); font-family: inherit; font-size: 8px;
+  font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all .12s;
+  display: flex; align-items: center; justify-content: center;
+}
+.page-btn:hover { border-color: var(--accent); color: var(--accent); }
+.page-dots { display: flex; flex-direction: column; gap: 3px; }
+.page-dot-item {
+  width: 6px; height: 6px; border-radius: 50%; background: #222;
+  transition: all .15s;
+}
+.page-dot-item.active { background: #888; box-shadow: 0 0 4px rgba(255,255,255,.2); }
+
+/* Context pair */
+.ctx-pair {
+  display: flex; gap: 16px; padding: 12px 16px;
+  background: rgba(119,153,255,.015); border-radius: 10px; border: 1px solid #222;
+}
+
+/* Routing diagram */
+.routing {
+  width: 560px; padding: 16px; background: #111118; border-radius: 8px;
+  border: 1px solid #222;
+}
+.routing-title {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
+  text-align: center; margin-bottom: 12px;
+}
+.route-grid {
+  display: grid; grid-template-columns: 80px 1fr 1fr; gap: 2px; font-size: 8px;
+}
+.route-hdr {
+  padding: 5px 8px; background: #1a1a28; color: var(--dim);
+  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; text-align: center;
+}
+.route-cell {
+  padding: 5px 8px; background: #141419; color: #555; text-align: center;
+  border-radius: 2px; transition: all .15s;
+}
+.route-cell.active { background: #1a1e2a; color: var(--accent); }
+.route-label {
+  padding: 5px 8px; text-align: right; color: var(--dim); font-weight: 700; letter-spacing: 1px;
+}
+
+.info {
+  width: 560px; padding: 16px; background: #111118; border-radius: 8px;
+  border: 1px solid #222; font-size: 10px; color: #666; line-height: 1.7;
+}
+.info strong { color: #999; }
+</style>
+</head>
+<body>
+
+<h1>Layout C: Performance Hybrid</h1>
+<div class="subtitle">
+  2 large encoders always control Filter Freq + Q (the most tweaked params during performance).
+  2 smaller encoders are context-sensitive, paged through groups with a single button.
+  Channel select buttons choose which channel the filter knobs affect.
+</div>
+
+<div class="hw-panel">
+  <div class="hw-label">Triptech</div>
+
+  <!-- Top row -->
+  <div class="top-row">
+    <button class="hw-btn" id="run-btn" onclick="toggleRun()"><span class="led"></span>RUN</button>
+    <button class="hw-btn" id="byp-btn" onclick="toggleBypass()"><span class="led"></span>BYP</button>
+    <div class="sep"></div>
+    <button class="ch-btn active" data-ch="0" onclick="selectCh(0)">CH1</button>
+    <button class="ch-btn" data-ch="1" onclick="selectCh(1)">CH2</button>
+    <button class="ch-btn" data-ch="2" onclick="selectCh(2)">CH3</button>
+  </div>
+
+  <!-- OLED -->
+  <div class="oled" id="oled"></div>
+
+  <!-- Encoders: [FREQ] [Q] | PAGE | [ctx1] [ctx2] -->
+  <div class="encoder-area">
+    <div>
+      <div class="fixed-label">Always On</div>
+      <div class="fixed-pair" id="fixed-pair"></div>
+    </div>
+
+    <div class="page-section">
+      <button class="page-btn" onclick="nextPage()" title="Cycle page">PG</button>
+      <div class="page-dots" id="page-dots"></div>
+      <div style="font-size:6px;color:#333;letter-spacing:1px;text-align:center;">PAGE</div>
+    </div>
+
+    <div>
+      <div class="fixed-label" id="ctx-label">Amp</div>
+      <div class="ctx-pair" id="ctx-pair"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Routing diagram -->
+<div class="routing">
+  <div class="routing-title">Encoder Mapping (per page)</div>
+  <div class="route-grid" id="route-grid"></div>
+</div>
+
+<div class="info">
+  <strong>Concept:</strong> Designed for live performance. Filter Freq and Q are always mapped to the two
+  large left encoders &mdash; these are the most expressive, most-tweaked parameters. The two right
+  encoders cycle through pages: Amp (Drive/Amount), Envelope (Atk/Dcy), Mixer (Pan/Level), Send (Send/LFO),
+  and Global (Delay/Dry). Channel buttons select which channel all 4 knobs affect.<br><br>
+  <strong>Hardware:</strong> 4 encoders (2 large + 2 small) + 3 channel buttons + 1 page button + 2 transport buttons + 128x32 OLED<br>
+  <strong>Pros:</strong> Instant access to filter (most important for performance), only 1 press to change channel,
+  1 press to cycle context page, very expressive live<br>
+  <strong>Cons:</strong> Global params (delay/pattern) require paging to page 5, can only edit one channel at a time
+</div>
+
+<script>
+'use strict';
+
+const CH_COLORS = ['#22dd66','#ffcc00','#ff4433'];
+const CH_NAMES = ['CH 1','CH 2','CH 3'];
+
+// Context pages (for the two right encoders)
+const CTX_PAGES = [
+  { name: 'AMP',      params: ['DRIVE','AMOUNT'] },
+  { name: 'ENVELOPE', params: ['ATTACK','DECAY'] },
+  { name: 'MIXER',    params: ['PAN','LEVEL'] },
+  { name: 'SEND/LFO', params: ['SEND','LFO AMT'] },
+  { name: 'GLOBAL',   params: ['DLY TIME','DRY'] },
+];
+
+// Fixed params
+const FIXED = ['FREQ','Q'];
+
+const values = {};
+function vkey(ch, name) { return `${ch}-${name}`; }
+for (let c = 0; c < 3; c++) {
+  FIXED.forEach(p => values[vkey(c,p)] = 50 + Math.round(Math.random()*40));
+  CTX_PAGES.forEach(pg => pg.params.forEach(p => values[vkey(c,p)] = Math.round(Math.random()*100)));
+}
+// Global params are channel-independent
+CTX_PAGES[4].params.forEach(p => values[vkey('g',p)] = Math.round(Math.random()*100));
+
+let curCh = 0;
+let curCtx = 0;
+let running = false, bypassed = false;
+
+function selectCh(ch) {
+  curCh = ch;
+  document.querySelectorAll('.ch-btn').forEach(b => b.classList.toggle('active', +b.dataset.ch === ch));
+  updateAll();
+}
+
+function nextPage() {
+  curCtx = (curCtx + 1) % CTX_PAGES.length;
+  updateAll();
+}
+
+function makeEncoder(parent, size, name, ch, color) {
+  const wrap = document.createElement('div');
+  wrap.className = 'encoder-wrap';
+
+  const enc = document.createElement('div');
+  enc.className = size === 'lg' ? 'encoder-lg' : 'encoder-sm';
+
+  const dot = document.createElement('div');
+  dot.className = `encoder-dot ${size}`;
+  const v = values[vkey(ch, name)] ?? 50;
+  const radius = size === 'lg' ? 26 : 20;
+  dot.style.transformOrigin = `center ${radius}px`;
+  dot.style.transform = `rotate(${(v / 100) * 270 - 135}deg)`;
+  enc.appendChild(dot);
+
+  let y0, v0;
+  enc.addEventListener('pointerdown', e => {
+    e.preventDefault(); enc.setPointerCapture(e.pointerId);
+    y0 = e.clientY; v0 = values[vkey(ch, name)] ?? 50;
+  });
+  enc.addEventListener('pointermove', e => {
+    if (!(e.buttons & 1)) return;
+    const nv = Math.max(0, Math.min(100, v0 + (y0 - e.clientY) * 0.5));
+    values[vkey(ch, name)] = Math.round(nv);
+    dot.style.transform = `rotate(${(nv / 100) * 270 - 135}deg)`;
+    updateOled();
+  });
+
+  const lbl = document.createElement('div');
+  lbl.className = 'encoder-label';
+  lbl.style.color = color;
+  lbl.textContent = name;
+  wrap.append(enc, lbl);
+  parent.appendChild(wrap);
+}
+
+function updateOled() {
+  const color = CH_COLORS[curCh];
+  const pg = CTX_PAGES[curCtx];
+  const oled = document.getElementById('oled');
+
+  const isGlobal = curCtx === CTX_PAGES.length - 1;
+  const ctxCh = isGlobal ? 'g' : curCh;
+
+  oled.innerHTML = `
+    <div class="oled-top-row">
+      <span class="oled-ch" style="color:${color}">${CH_NAMES[curCh]}</span>
+      <span class="oled-page">${pg.name} (${curCtx+1}/${CTX_PAGES.length})</span>
+    </div>
+    <div class="oled-params">
+      <div class="oled-half fixed">
+        <div class="oled-half-label">Fixed</div>
+        ${FIXED.map(p => `
+          <div class="oled-param-row">
+            <span class="oled-pname">${p}</span>
+            <span class="oled-pval" style="color:${color}">${values[vkey(curCh,p)]}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="oled-half">
+        <div class="oled-half-label">${pg.name}</div>
+        ${pg.params.map(p => `
+          <div class="oled-param-row">
+            <span class="oled-pname">${p}</span>
+            <span class="oled-pval" style="color:${isGlobal ? '#7799ff' : color}">${values[vkey(ctxCh,p)]}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function updateAll() {
+  const color = CH_COLORS[curCh];
+  const pg = CTX_PAGES[curCtx];
+  const isGlobal = curCtx === CTX_PAGES.length - 1;
+  const ctxCh = isGlobal ? 'g' : curCh;
+
+  // Fixed encoders
+  const fixed = document.getElementById('fixed-pair');
+  fixed.innerHTML = '';
+  FIXED.forEach(p => makeEncoder(fixed, 'lg', p, curCh, color));
+
+  // Context encoders
+  const ctx = document.getElementById('ctx-pair');
+  ctx.innerHTML = '';
+  pg.params.forEach(p => makeEncoder(ctx, 'sm', p, ctxCh, isGlobal ? '#7799ff' : color));
+
+  // Context label
+  document.getElementById('ctx-label').textContent = pg.name;
+
+  // Page dots
+  const dots = document.getElementById('page-dots');
+  dots.innerHTML = '';
+  CTX_PAGES.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'page-dot-item' + (i === curCtx ? ' active' : '');
+    dots.appendChild(d);
+  });
+
+  updateOled();
+  updateRouteGrid();
+}
+
+function updateRouteGrid() {
+  const grid = document.getElementById('route-grid');
+  grid.innerHTML = '';
+
+  // Headers
+  grid.innerHTML += '<div class="route-hdr">PAGE</div>';
+  grid.innerHTML += '<div class="route-hdr">Enc 3</div>';
+  grid.innerHTML += '<div class="route-hdr">Enc 4</div>';
+
+  CTX_PAGES.forEach((pg, i) => {
+    const active = i === curCtx;
+    grid.innerHTML += `<div class="route-label${active ? '' : ''}" style="${active ? 'color:#99aacc' : ''}">${pg.name}</div>`;
+    pg.params.forEach(p => {
+      grid.innerHTML += `<div class="route-cell${active ? ' active' : ''}">${p}</div>`;
+    });
+  });
+
+  // Note about fixed encoders
+  grid.innerHTML += '<div class="route-label" style="color:#555;grid-column:1/-1;text-align:center;margin-top:4px;font-weight:400;">Encoders 1-2 always: FREQ + Q (of selected channel)</div>';
+}
+
+function toggleRun() {
+  running = !running;
+  document.getElementById('run-btn').classList.toggle('on', running);
+}
+function toggleBypass() {
+  bypassed = !bypassed;
+  document.getElementById('byp-btn').classList.toggle('bypass-on', bypassed);
+}
+
+updateAll();
+</script>
+</body>
+</html>

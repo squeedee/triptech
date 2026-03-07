@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layout B: Scroll Page</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ch1: #22dd66; --ch2: #ffcc00; --ch3: #ff4433; --accent: #7799ff;
+  --bg: #0a0a10; --panel: #191920; --border: #28283a; --text: #c8c8d0; --dim: #44445a;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'SF Mono','Menlo','Consolas',monospace; font-size: 11px;
+  min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+  padding: 28px 16px; gap: 24px;
+}
+h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0e0e8; }
+.subtitle { font-size: 10px; color: var(--dim); letter-spacing: 1px; max-width: 600px; text-align: center; line-height: 1.6; }
+
+.hw-panel {
+  width: 440px; background: #1a1a22; border: 2px solid #2a2a3a; border-radius: 16px;
+  padding: 28px 24px; box-shadow: 0 20px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.03);
+  display: flex; flex-direction: column; gap: 20px;
+}
+.hw-label {
+  font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: #33334a;
+  text-align: center;
+}
+
+/* Transport */
+.transport-row { display: flex; justify-content: center; gap: 12px; }
+.hw-btn {
+  width: 44px; height: 32px; border-radius: 4px; border: 1px solid #333;
+  background: #222230; color: var(--dim); font-family: inherit; font-size: 8px;
+  font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all .12s;
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.hw-btn:hover { border-color: #555; color: #aaa; }
+.hw-btn.on { background: #1a2a1a; border-color: #33cc33; color: #55ff55; }
+.hw-btn.bypass-on { background: #1a1a2a; border-color: #aaaaee; color: #ccccff; }
+.hw-btn .led { width: 5px; height: 5px; border-radius: 50%; background: #2a2a3a; transition: all .12s; }
+.hw-btn.on .led { background: #55ff55; box-shadow: 0 0 6px #55ff55; }
+.hw-btn.bypass-on .led { background: #ccccff; box-shadow: 0 0 6px #ccccff; }
+
+/* OLED display */
+.oled {
+  background: #020208; border: 2px solid #222; border-radius: 6px;
+  padding: 12px 14px; font-family: inherit;
+  box-shadow: inset 0 0 20px rgba(0,0,0,.8);
+  min-height: 80px; display: flex; flex-direction: column; gap: 6px;
+}
+.oled-breadcrumb {
+  font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px;
+}
+.oled-bc-ch { font-weight: 700; }
+.oled-bc-grp { opacity: .6; }
+.oled-bc-arrow { opacity: .3; }
+.oled-params { display: flex; gap: 0; justify-content: space-between; }
+.oled-param { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+.oled-param-name { font-size: 7px; letter-spacing: 1px; text-transform: uppercase; opacity: .5; }
+.oled-param-val { font-size: 12px; font-weight: 700; }
+.oled-page-dots { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
+.oled-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: #222;
+  transition: all .15s;
+}
+.oled-dot.active { background: #888; box-shadow: 0 0 4px rgba(255,255,255,.3); }
+
+/* Encoder layout: nav + 3 param */
+.encoder-section {
+  display: flex; gap: 20px; align-items: flex-start;
+}
+.nav-section {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.nav-encoder {
+  width: 48px; height: 48px; border-radius: 50%; border: 2px solid #4a4a5a;
+  background: radial-gradient(circle at 40% 35%, #4a4a5a, #2a2a38);
+  cursor: pointer; position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.nav-encoder:hover { border-color: var(--accent); }
+.nav-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+  position: absolute; left: 50%; transform-origin: center 20px; top: 4px;
+}
+.nav-arrows {
+  display: flex; gap: 4px;
+}
+.nav-arr {
+  width: 24px; height: 18px; border-radius: 3px; border: 1px solid #333;
+  background: #1c1c28; color: var(--dim); font-size: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit; transition: all .1s;
+}
+.nav-arr:hover { border-color: var(--accent); color: var(--accent); }
+.nav-label { font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase; color: #555; }
+.nav-push-label {
+  font-size: 6px; letter-spacing: 1px; color: #333; text-align: center;
+  margin-top: 2px;
+}
+
+.param-encoders { display: flex; gap: 16px; flex: 1; justify-content: center; }
+.encoder-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.encoder {
+  width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3a3a4a;
+  background: radial-gradient(circle at 40% 35%, #3a3a4a, #222230);
+  cursor: ns-resize; user-select: none; position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.encoder:hover { border-color: #555; }
+.encoder-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: #ddd;
+  position: absolute; left: 50%; transform-origin: center 22px; top: 4px;
+}
+.encoder-label { font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
+
+/* Page list */
+.page-list {
+  width: 440px; display: flex; flex-direction: column; gap: 2px;
+  padding: 16px; background: #111118; border-radius: 8px; border: 1px solid #222;
+}
+.page-list-title {
+  font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
+  text-align: center; margin-bottom: 8px;
+}
+.page-item {
+  display: flex; align-items: center; padding: 6px 10px; border-radius: 4px;
+  transition: all .15s; gap: 12px;
+}
+.page-item.active { background: #1a1e2a; }
+.page-num {
+  font-size: 8px; font-weight: 700; color: #333; width: 20px; text-align: right;
+}
+.page-item.active .page-num { color: #666; }
+.page-ch {
+  font-size: 8px; font-weight: 700; letter-spacing: 1px; width: 40px;
+}
+.page-grp {
+  font-size: 8px; color: #555; letter-spacing: 1px; width: 50px;
+}
+.page-params {
+  font-size: 8px; color: #444; flex: 1;
+}
+.page-item.active .page-grp { color: #888; }
+.page-item.active .page-params { color: #777; }
+.page-indicator {
+  width: 3px; height: 14px; border-radius: 2px; background: transparent;
+}
+.page-item.active .page-indicator { box-shadow: 0 0 6px currentColor; }
+
+.info {
+  width: 440px; padding: 16px; background: #111118; border-radius: 8px;
+  border: 1px solid #222; font-size: 10px; color: #666; line-height: 1.7;
+}
+.info strong { color: #999; }
+</style>
+</head>
+<body>
+
+<h1>Layout B: Scroll Page</h1>
+<div class="subtitle">
+  Minimal hardware. One encoder scrolls through a flat page list, three encoders edit parameters.
+  Push the nav encoder to jump between channel/global sections.
+</div>
+
+<div class="hw-panel">
+  <div class="hw-label">Triptech</div>
+
+  <div class="transport-row">
+    <button class="hw-btn" id="run-btn" onclick="toggleRun()"><span class="led"></span>RUN</button>
+    <button class="hw-btn" id="byp-btn" onclick="toggleBypass()"><span class="led"></span>BYP</button>
+  </div>
+
+  <div class="oled" id="oled"></div>
+
+  <div class="encoder-section">
+    <div class="nav-section">
+      <div class="nav-encoder" id="nav-enc">
+        <div class="nav-dot" id="nav-dot"></div>
+      </div>
+      <div class="nav-arrows">
+        <button class="nav-arr" onclick="navPage(-1)">&uarr;</button>
+        <button class="nav-arr" onclick="navPage(1)">&darr;</button>
+      </div>
+      <div class="nav-label">PAGE</div>
+      <div class="nav-push-label">push: jump section</div>
+    </div>
+    <div class="param-encoders" id="param-encoders"></div>
+  </div>
+</div>
+
+<div class="page-list" id="page-list"></div>
+
+<div class="info">
+  <strong>Concept:</strong> Like a digital synth (Blofeld, Hydrasynth). One nav encoder scrolls a flat
+  list of pages. Three encoders edit the 3 parameters on each page. Push the nav encoder
+  to jump to the next channel/section.<br><br>
+  <strong>Hardware:</strong> 4 rotary encoders (1 with push) + 2 transport buttons + 128x64 OLED<br>
+  <strong>Pros:</strong> Minimal hardware (6 total controls), deep access to everything, compact physical size<br>
+  <strong>Cons:</strong> Slower navigation to distant pages, some pages only have 1-2 params (wasted encoders)
+</div>
+
+<script>
+'use strict';
+
+const PAGES = [
+  { ch: 'CH 1', chIdx: 0, grp: 'FILTER', color: '#22dd66', params: ['FREQ','Q','LFO AMT'] },
+  { ch: 'CH 1', chIdx: 0, grp: 'AMP',    color: '#22dd66', params: ['DRIVE','AMOUNT','ATTACK'] },
+  { ch: 'CH 1', chIdx: 0, grp: 'AMP 2',  color: '#22dd66', params: ['DECAY','TYPE','SLOPE'] },
+  { ch: 'CH 1', chIdx: 0, grp: 'MIXER',  color: '#22dd66', params: ['PAN','LEVEL','SEND'] },
+
+  { ch: 'CH 2', chIdx: 1, grp: 'FILTER', color: '#ffcc00', params: ['FREQ','Q','LFO AMT'] },
+  { ch: 'CH 2', chIdx: 1, grp: 'AMP',    color: '#ffcc00', params: ['DRIVE','AMOUNT','ATTACK'] },
+  { ch: 'CH 2', chIdx: 1, grp: 'AMP 2',  color: '#ffcc00', params: ['DECAY','TYPE','SLOPE'] },
+  { ch: 'CH 2', chIdx: 1, grp: 'MIXER',  color: '#ffcc00', params: ['PAN','LEVEL','SEND'] },
+
+  { ch: 'CH 3', chIdx: 2, grp: 'FILTER', color: '#ff4433', params: ['FREQ','Q','LFO AMT'] },
+  { ch: 'CH 3', chIdx: 2, grp: 'AMP',    color: '#ff4433', params: ['DRIVE','AMOUNT','ATTACK'] },
+  { ch: 'CH 3', chIdx: 2, grp: 'AMP 2',  color: '#ff4433', params: ['DECAY','TYPE','SLOPE'] },
+  { ch: 'CH 3', chIdx: 2, grp: 'MIXER',  color: '#ff4433', params: ['PAN','LEVEL','SEND'] },
+
+  { ch: 'GLOBAL', chIdx: 3, grp: 'DELAY', color: '#7799ff', params: ['TIME','FDBK','WIDTH'] },
+  { ch: 'GLOBAL', chIdx: 3, grp: 'LFO',   color: '#7799ff', params: ['RATE','DRY','PAT'] },
+];
+
+// Section jump targets (first page of each channel)
+const SECTIONS = [0, 4, 8, 12];
+
+const values = {};
+PAGES.forEach((pg, pi) => {
+  pg.params.forEach((p, ei) => {
+    values[`${pi}-${ei}`] = Math.round(Math.random() * 100);
+  });
+});
+
+let curPage = 0;
+let running = false, bypassed = false;
+
+function navPage(delta) {
+  curPage = Math.max(0, Math.min(PAGES.length - 1, curPage + delta));
+  updateAll();
+}
+
+function jumpSection() {
+  // Find current section, go to next
+  let curSec = 0;
+  for (let i = SECTIONS.length - 1; i >= 0; i--) {
+    if (curPage >= SECTIONS[i]) { curSec = i; break; }
+  }
+  curSec = (curSec + 1) % SECTIONS.length;
+  curPage = SECTIONS[curSec];
+  updateAll();
+}
+
+function updateAll() {
+  const pg = PAGES[curPage];
+
+  // OLED
+  const oled = document.getElementById('oled');
+  let dotsHtml = '<div class="oled-page-dots">';
+  PAGES.forEach((_, i) => {
+    dotsHtml += `<div class="oled-dot${i === curPage ? ' active' : ''}"></div>`;
+  });
+  dotsHtml += '</div>';
+
+  oled.innerHTML = `
+    <div class="oled-breadcrumb">
+      <span class="oled-bc-ch" style="color:${pg.color}">${pg.ch}</span>
+      <span class="oled-bc-arrow">&rsaquo;</span>
+      <span class="oled-bc-grp">${pg.grp}</span>
+    </div>
+    <div class="oled-params">
+      ${pg.params.map((p, i) => `
+        <div class="oled-param">
+          <div class="oled-param-name">${p}</div>
+          <div class="oled-param-val" style="color:${pg.color}" id="oval-${i}">${values[`${curPage}-${i}`]}</div>
+        </div>
+      `).join('')}
+    </div>
+    ${dotsHtml}
+  `;
+
+  // Nav encoder rotation
+  const navAngle = (curPage / (PAGES.length - 1)) * 270 - 135;
+  document.getElementById('nav-dot').style.transform = `rotate(${navAngle}deg)`;
+
+  // Param encoders
+  const encRow = document.getElementById('param-encoders');
+  encRow.innerHTML = '';
+  pg.params.forEach((p, ei) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'encoder-wrap';
+    const enc = document.createElement('div');
+    enc.className = 'encoder';
+    const dot = document.createElement('div');
+    dot.className = 'encoder-dot';
+    const v = values[`${curPage}-${ei}`];
+    dot.style.transform = `rotate(${(v / 100) * 270 - 135}deg)`;
+    enc.appendChild(dot);
+
+    let y0, v0;
+    enc.addEventListener('pointerdown', e => {
+      e.preventDefault(); enc.setPointerCapture(e.pointerId);
+      y0 = e.clientY; v0 = values[`${curPage}-${ei}`];
+    });
+    enc.addEventListener('pointermove', e => {
+      if (!(e.buttons & 1)) return;
+      const nv = Math.max(0, Math.min(100, v0 + (y0 - e.clientY) * 0.5));
+      values[`${curPage}-${ei}`] = Math.round(nv);
+      dot.style.transform = `rotate(${(nv / 100) * 270 - 135}deg)`;
+      const valEl = document.getElementById(`oval-${ei}`);
+      if (valEl) valEl.textContent = Math.round(nv);
+    });
+
+    const lbl = document.createElement('div');
+    lbl.className = 'encoder-label';
+    lbl.textContent = p;
+    wrap.append(enc, lbl);
+    encRow.appendChild(wrap);
+  });
+
+  // Page list
+  const list = document.getElementById('page-list');
+  list.innerHTML = '<div class="page-list-title">All Pages (scroll with nav encoder)</div>';
+  PAGES.forEach((pg, i) => {
+    const item = document.createElement('div');
+    item.className = 'page-item' + (i === curPage ? ' active' : '');
+    item.style.cursor = 'pointer';
+    item.onclick = () => { curPage = i; updateAll(); };
+    const indicator = document.createElement('div');
+    indicator.className = 'page-indicator';
+    if (i === curPage) indicator.style.background = pg.color;
+    item.innerHTML = `
+      <div class="page-indicator" style="${i === curPage ? `background:${pg.color}` : ''}"></div>
+      <div class="page-num">${i}</div>
+      <div class="page-ch" style="color:${pg.color}">${pg.ch}</div>
+      <div class="page-grp">${pg.grp}</div>
+      <div class="page-params">${pg.params.join(' / ')}</div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// Nav encoder click = jump section
+document.getElementById('nav-enc').addEventListener('click', jumpSection);
+
+function toggleRun() {
+  running = !running;
+  document.getElementById('run-btn').classList.toggle('on', running);
+}
+function toggleBypass() {
+  bypassed = !bypassed;
+  document.getElementById('byp-btn').classList.toggle('bypass-on', bypassed);
+}
+
+updateAll();
+</script>
+</body>
+</html>
