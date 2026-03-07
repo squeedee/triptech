@@ -21,19 +21,17 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 
 /* Hardware panel */
 .hw-panel {
-  width: 520px; background: #1a1a22; border: 2px solid #2a2a3a; border-radius: 16px;
+  width: 540px; background: #1a1a22; border: 2px solid #2a2a3a; border-radius: 16px;
   padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.03);
-  display: flex; flex-direction: column; gap: 20px;
+  display: flex; flex-direction: column; gap: 18px;
 }
 .hw-label {
   font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: #33334a;
   text-align: center;
 }
 
-/* Top row: transport buttons */
-.transport-row {
-  display: flex; justify-content: center; gap: 12px;
-}
+/* Transport buttons */
+.transport-row { display: flex; justify-content: center; gap: 12px; }
 .hw-btn {
   width: 44px; height: 32px; border-radius: 4px; border: 1px solid #333;
   background: #222230; color: var(--dim); font-family: inherit; font-size: 8px;
@@ -47,15 +45,9 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 .hw-btn.on .led { background: #55ff55; box-shadow: 0 0 6px #55ff55; }
 .hw-btn.bypass-on .led { background: #ccccff; box-shadow: 0 0 6px #ccccff; }
 
-/* Main grid: channel select + group select */
-.select-grid {
-  display: flex; gap: 16px; align-items: flex-start;
-}
-
-/* Channel select column */
-.ch-select {
-  display: flex; flex-direction: column; gap: 6px;
-}
+/* Channel + Group select */
+.select-grid { display: flex; gap: 16px; align-items: flex-start; }
+.ch-select { display: flex; flex-direction: column; gap: 6px; }
 .ch-btn {
   width: 60px; height: 36px; border-radius: 5px; border: 2px solid #333;
   background: #1c1c28; color: var(--dim); font-family: inherit; font-size: 9px;
@@ -68,13 +60,9 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 .ch-btn[data-ch="2"].active { border-color: var(--ch3); color: var(--ch3); background: rgba(255,68,51,.08); box-shadow: 0 0 10px rgba(255,68,51,.2); }
 .ch-btn[data-ch="g"].active { border-color: var(--accent); color: var(--accent); background: rgba(119,153,255,.08); box-shadow: 0 0 10px rgba(119,153,255,.2); }
 
-/* Group select row */
-.grp-select {
-  display: flex; flex-direction: column; gap: 6px; flex: 1;
-}
-.grp-row {
-  display: flex; gap: 6px;
-}
+/* Group select */
+.grp-select { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.grp-row { display: flex; gap: 6px; }
 .grp-btn {
   flex: 1; height: 30px; border-radius: 4px; border: 1px solid #2a2a3a;
   background: #1c1c28; color: var(--dim); font-family: inherit; font-size: 8px;
@@ -83,37 +71,53 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 .grp-btn:hover { border-color: #444; color: #888; }
 .grp-btn.active { border-color: #6677aa; color: #99aacc; background: #1a1a28; }
 
-/* OLED display */
-.oled {
-  background: #020208; border: 2px solid #222; border-radius: 6px;
-  padding: 10px 14px; font-family: inherit;
-  box-shadow: inset 0 0 20px rgba(0,0,0,.8);
-  min-height: 60px;
+/* Encoder strip: 4x [mini-oled + encoder] */
+.encoder-strip {
+  display: flex; justify-content: space-between; gap: 8px;
 }
-.oled-title {
-  font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-  margin-bottom: 6px; opacity: .6;
-}
-.oled-params {
-  display: flex; gap: 0; justify-content: space-between;
-}
-.oled-param {
-  display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1;
-}
-.oled-param-name {
-  font-size: 7px; letter-spacing: 1px; text-transform: uppercase; opacity: .5;
-}
-.oled-param-val {
-  font-size: 11px; font-weight: 700;
+.enc-unit {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  flex: 1;
 }
 
-/* Encoder row */
-.encoder-row {
-  display: flex; justify-content: space-between; gap: 12px; padding: 0 10px;
+/* Mini OLED — simulates 0.91" 128x32 */
+.mini-oled {
+  width: 96px; height: 30px;
+  background: #010104;
+  border: 1.5px solid #1a1a22;
+  border-radius: 3px;
+  box-shadow: inset 0 0 8px rgba(0,0,0,.9), 0 1px 3px rgba(0,0,0,.4);
+  padding: 3px 6px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  overflow: hidden;
+  position: relative;
 }
-.encoder-wrap {
-  display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1;
+.mini-oled-name {
+  font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1;
 }
+.mini-oled-val {
+  font-size: 8px; font-weight: 700; white-space: nowrap;
+  line-height: 1;
+}
+.mini-oled-bar-track {
+  width: 100%; height: 2px; background: #0a0a14; border-radius: 1px;
+  overflow: hidden;
+}
+.mini-oled-bar-fill {
+  height: 100%; border-radius: 1px;
+  transition: width .08s;
+}
+/* Blank state */
+.mini-oled.blank {
+  opacity: .3;
+}
+.mini-oled.blank .mini-oled-name,
+.mini-oled.blank .mini-oled-val,
+.mini-oled.blank .mini-oled-bar-fill { visibility: hidden; }
+
+/* Encoder knob */
 .encoder {
   width: 52px; height: 52px; border-radius: 50%; border: 2px solid #3a3a4a;
   background: radial-gradient(circle at 40% 35%, #3a3a4a, #222230);
@@ -122,19 +126,18 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
   transition: border-color .12s;
 }
 .encoder:hover { border-color: #555; }
+.encoder.inactive { opacity: .3; cursor: default; }
 .encoder-dot {
   width: 4px; height: 4px; border-radius: 50%; background: #ddd;
-  position: absolute; left: 50%; transform-origin: center 22px;
-}
-.encoder-label {
-  font-size: 7px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim);
+  position: absolute; left: 50%; top: 4px;
+  transform-origin: center 22px;
 }
 
-/* Page map (bottom) */
+/* Page map */
 .page-map {
   display: flex; flex-direction: column; gap: 8px; margin-top: 8px;
   padding: 16px; background: #111118; border-radius: 8px; border: 1px solid #222;
-  width: 520px;
+  width: 540px;
 }
 .page-map-title {
   font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
@@ -151,17 +154,14 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
   padding: 4px 6px; background: #141419; color: #666; text-align: center;
   border-radius: 2px; transition: all .15s;
 }
-.map-cell.highlight {
-  background: #1a1e2a; color: var(--accent);
-}
+.map-cell.highlight { background: #1a1e2a; color: var(--accent); }
 .map-row-label {
   padding: 4px 6px; text-align: right; color: var(--dim);
   font-weight: 700; letter-spacing: 1px;
 }
 
-/* Info panel */
 .info {
-  width: 520px; padding: 16px; background: #111118; border-radius: 8px;
+  width: 540px; padding: 16px; background: #111118; border-radius: 8px;
   border: 1px solid #222; font-size: 10px; color: #666; line-height: 1.7;
 }
 .info strong { color: #999; }
@@ -171,20 +171,18 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 
 <h1>Layout A: Grid Select</h1>
 <div class="subtitle">
-  4 channel buttons (Ch1/Ch2/Ch3/Global) x 3 group buttons = instant access to any parameter page.
-  4 encoders edit the current page. Max 2 button presses to reach any parameter.
+  4 channel buttons x 3 group buttons = instant access to any parameter page.
+  Each encoder has its own 0.91" 128x32 OLED showing parameter name, value, and bar graph.
 </div>
 
 <div class="hw-panel">
   <div class="hw-label">Triptech</div>
 
-  <!-- Transport -->
   <div class="transport-row">
     <button class="hw-btn" id="run-btn" onclick="toggleRun()"><span class="led"></span>RUN</button>
     <button class="hw-btn" id="byp-btn" onclick="toggleBypass()"><span class="led"></span>BYP</button>
   </div>
 
-  <!-- Channel + Group select -->
   <div class="select-grid">
     <div class="ch-select">
       <div class="hw-label">Channel</div>
@@ -195,92 +193,169 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
     </div>
     <div class="grp-select">
       <div class="hw-label">Group</div>
-      <div class="grp-row" id="grp-row">
-        <button class="grp-btn active" data-grp="0" onclick="selectGrp(0)">FILTER</button>
-        <button class="grp-btn" data-grp="1" onclick="selectGrp(1)">AMP</button>
-        <button class="grp-btn" data-grp="2" onclick="selectGrp(2)">MIXER</button>
-      </div>
+      <div class="grp-row" id="grp-row"></div>
 
-      <!-- OLED -->
-      <div class="oled" id="oled">
-        <div class="oled-title" id="oled-title">CH 1 &mdash; FILTER</div>
-        <div class="oled-params" id="oled-params"></div>
-      </div>
-
-      <!-- Encoders -->
-      <div class="encoder-row" id="encoder-row"></div>
+      <!-- 4x encoder units: mini-oled + encoder -->
+      <div class="encoder-strip" id="encoder-strip"></div>
     </div>
   </div>
 </div>
 
-<!-- Page map -->
 <div class="page-map">
   <div class="page-map-title">Parameter Map</div>
   <div class="map-grid" id="map-grid"></div>
 </div>
 
 <div class="info">
-  <strong>Concept:</strong> Inspired by Elektron workflow. Channel buttons along the left select which
-  channel you're editing (or Global for delay/LFO). Group buttons across the top select the parameter
-  group. The 4 encoders always map to 3-4 parameters from that intersection. A small OLED shows
-  current assignments and values.<br><br>
-  <strong>Hardware:</strong> 4 channel buttons + 3 group buttons + 2 transport buttons + 4 rotary encoders + 128x32 OLED<br>
-  <strong>Pros:</strong> Systematic, predictable, max 2 presses to any param, easy to learn<br>
-  <strong>Cons:</strong> 9 buttons total (more hardware), can't tweak two channels simultaneously
+  <strong>Concept:</strong> Inspired by Elektron workflow. Channel buttons select which channel you're
+  editing (or Global for delay/LFO). Group buttons select the parameter group. Each of the 4 encoders
+  has a dedicated 0.91" OLED above it showing parameter name, value, and a bar graph. Unused encoders
+  show a blank display.<br><br>
+  <strong>Hardware:</strong> 4 channel buttons + 3 group buttons + 2 transport buttons + 4 rotary encoders + 4x 128x32 OLED<br>
+  <strong>Pros:</strong> Systematic, predictable, max 2 presses to any param, per-encoder display gives clear feedback<br>
+  <strong>Cons:</strong> 9 buttons + 4 OLEDs (more hardware), can't tweak two channels simultaneously
 </div>
 
 <script>
 'use strict';
 
-// Parameter definitions per [channel_mode][group]
-// Each page: { title, params: [{ name, value, fmt }] } (max 4 params)
 const CH_NAMES = ['CH 1','CH 2','CH 3'];
 const CH_COLORS = ['#22dd66','#ffcc00','#ff4433','#7799ff'];
 
+// ── Value mapping helpers (match controller.html / Triptech.cpp) ──
+const logMap = (cc, lo, hi) => lo * Math.pow(hi / lo, cc / 127);
+const linMap = (cc, lo, hi) => lo + (cc / 127) * (hi - lo);
+
+const SYNC_DIVS = ['1/2','1/2T','1/4','1/4T','1/8','1/8T','1/16','1/16T'];
+
+const FMT = {
+  cutoff:   cc => { const v = logMap(cc,100,20000); return v>=1000 ? (v/1000).toFixed(1)+' kHz' : v.toFixed(0)+' Hz'; },
+  res:      cc => linMap(cc, 0, 0.95).toFixed(2),
+  drive:    cc => '\u00d7' + linMap(cc, 1, 4).toFixed(2),
+  level:    cc => (cc / 127).toFixed(2),
+  attack:   cc => { const v = logMap(cc,.001,2);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
+  decay:    cc => { const v = logMap(cc,.01, 4);  return v<1 ? (v*1000).toFixed(0)+' ms' : v.toFixed(2)+' s'; },
+  pan:      cc => { const d = cc - 63.5; if (Math.abs(d)<4) return 'CTR'; const p=Math.round(Math.abs(d)/63.5*100); return d<0?'L'+p:'R'+p; },
+  bipct:    cc => { const p = Math.max(-100, Math.min(100, Math.round((cc - 64) / 63 * 100))); return (p > 0 ? '+' : '') + p + '%'; },
+  lfoRate:  cc => logMap(cc, .1, 20).toFixed(1)+' Hz',
+  lfoSync:  cc => SYNC_DIVS[Math.min(7, cc >> 4)],
+  delayFre: cc => { const v = logMap(cc, 10, 2000); return v >= 1000 ? (v/1000).toFixed(2)+'s' : Math.round(v)+'ms'; },
+  delayDiv: cc => SYNC_DIVS[Math.min(7, cc >> 4)],
+  bpm:      cc => Math.round(20 + (cc / 127) * 280) + ' bpm',
+  pattern:  cc => 'P' + (Math.min(15, cc >> 3) + 1),
+  ftype:    cc => ['LP','BP','HP','Notch'][cc < 32 ? 0 : cc < 64 ? 1 : cc < 96 ? 2 : 3],
+  toggle:   cc => cc >= 64 ? 'ON' : 'OFF',
+};
+
+// ── Per-parameter metadata: formatter key + default CC value ──
+// Channel pages
+const chParamMeta = [
+  // FILTER
+  [
+    { name: 'FREQ',    fmt: 'cutoff', dflt: [50,72,60] },
+    { name: 'Q',       fmt: 'res',    dflt: [67,67,67] },
+    { name: 'LFO AMT', fmt: 'bipct',  dflt: [64,64,64] },
+    { name: 'TYPE',    fmt: 'ftype',  dflt: [0,32,64] },
+  ],
+  // AMP
+  [
+    { name: 'DRIVE',  fmt: 'drive',  dflt: [0,0,0] },
+    { name: 'AMOUNT', fmt: 'bipct',  dflt: [127,127,127] },
+    { name: 'ATTACK', fmt: 'attack', dflt: [27,27,27] },
+    { name: 'DECAY',  fmt: 'decay',  dflt: [63,63,63] },
+  ],
+  // MIXER
+  [
+    { name: 'PAN',   fmt: 'pan',   dflt: [63,31,95] },
+    { name: 'LEVEL', fmt: 'level', dflt: [89,89,89] },
+    { name: 'SEND',  fmt: 'level', dflt: [0,0,0] },
+    null,
+  ],
+];
+
+// Global pages
+const globalParamMeta = [
+  // DELAY
+  [
+    { name: 'TIME', fmt: 'delayDiv', fmtSync: 'delayDiv', fmtFree: 'delayFre', dflt: 32 },
+    { name: 'FDBK', fmt: 'level', dflt: 53 },
+    { name: 'WIDTH', fmt: 'level', dflt: 127 },
+    { name: 'SYNC', fmt: 'toggle', dflt: 127, isSync: 'delay' },
+  ],
+  // LFO
+  [
+    { name: 'RATE', fmt: 'lfoRate', fmtSync: 'lfoSync', fmtFree: 'lfoRate', dflt: 55 },
+    { name: 'DRY',  fmt: 'level', dflt: 0 },
+    { name: 'SYNC', fmt: 'toggle', dflt: 0, isSync: 'lfo' },
+    null,
+  ],
+  // PATTERN
+  [
+    { name: 'PAT', fmt: 'pattern', dflt: 0 },
+    { name: 'BPM', fmt: 'bpm',     dflt: 91 },
+    null,
+    null,
+  ],
+];
+
+// ── Page definitions (for titles + group buttons) ──
 const chPages = [
-  // group 0: Filter
-  { title: 'FILTER', params: ['FREQ','Q','LFO AMT','TYPE'] },
-  // group 1: Amp
-  { title: 'AMP', params: ['DRIVE','AMOUNT','ATTACK','DECAY'] },
-  // group 2: Mixer
-  { title: 'MIXER', params: ['PAN','LEVEL','SEND',''] },
+  { title: 'FILTER' },
+  { title: 'AMP' },
+  { title: 'MIXER' },
 ];
 
 const globalPages = [
-  { title: 'DELAY', params: ['TIME','FDBK','WIDTH','SYNC'] },
-  { title: 'LFO', params: ['RATE','DRY','SYNC',''] },
-  { title: 'PATTERN', params: ['PAT','BPM','',''] },
+  { title: 'DELAY' },
+  { title: 'LFO' },
+  { title: 'PATTERN' },
 ];
 
-// Simulated values
-const values = {};
-function key(ch, grp, pi) { return `${ch}-${grp}-${pi}`; }
+// ── Sync state ──
+let delaySynced = true;
+let lfoSynced = false;
 
-// Init values
+// ── Values stored as 0-127 CC values ──
+const values = {};
+function vk(ch, grp, pi) { return `${ch}-${grp}-${pi}`; }
+
+// Initialise with real defaults
 for (let c = 0; c < 3; c++) {
-  chPages.forEach((pg, g) => {
-    pg.params.forEach((p, pi) => {
-      if (p) values[key(c,g,pi)] = Math.round(Math.random()*100);
+  chParamMeta.forEach((grp, g) => {
+    grp.forEach((meta, pi) => {
+      if (meta) values[vk(c, g, pi)] = meta.dflt[c];
     });
   });
 }
-globalPages.forEach((pg, g) => {
-  pg.params.forEach((p, pi) => {
-    if (p) values[key('g',g,pi)] = Math.round(Math.random()*100);
+globalParamMeta.forEach((grp, g) => {
+  grp.forEach((meta, pi) => {
+    if (meta) values[vk('g', g, pi)] = meta.dflt;
   });
 });
 
-let curCh = 0;
-let curGrp = 0;
-let running = false;
-let bypassed = false;
+let curCh = 0, curGrp = 0, running = false, bypassed = false;
 
-function getColor() {
-  return curCh === 'g' ? CH_COLORS[3] : CH_COLORS[curCh];
+function getColor() { return curCh === 'g' ? CH_COLORS[3] : CH_COLORS[curCh]; }
+function getPages() { return curCh === 'g' ? globalPages : chPages; }
+function getMeta()  { return curCh === 'g' ? globalParamMeta : chParamMeta; }
+
+// Resolve the active formatter key for a param (handles sync switching)
+function activeFmt(meta) {
+  if (meta.fmtSync) {
+    if (meta.fmtSync === 'delayDiv') return delaySynced ? 'delayDiv' : 'delayFre';
+    if (meta.fmtSync === 'lfoSync')  return lfoSynced   ? 'lfoSync'  : 'lfoRate';
+  }
+  return meta.fmt;
 }
 
-function getPages() {
-  return curCh === 'g' ? globalPages : chPages;
+// Format a CC value for display
+function fmtVal(meta, cc) {
+  return FMT[activeFmt(meta)](cc);
+}
+
+// Compute bar percentage (0-100) from a 0-127 CC value
+function barPct(cc) {
+  return Math.round(cc / 127 * 100);
 }
 
 function selectCh(ch) {
@@ -312,69 +387,89 @@ function updateGroups() {
 }
 
 function updateDisplay() {
-  const pages = getPages();
-  const pg = pages[curGrp];
+  const meta  = getMeta()[curGrp];
   const color = getColor();
-  const chName = curCh === 'g' ? 'GLOBAL' : CH_NAMES[curCh];
+  const strip = document.getElementById('encoder-strip');
+  strip.innerHTML = '';
 
-  // OLED
-  document.getElementById('oled-title').innerHTML = `${chName} &mdash; ${pg.title}`;
-  document.getElementById('oled-title').style.color = color;
-  const paramsEl = document.getElementById('oled-params');
-  paramsEl.innerHTML = '';
-  pg.params.forEach((p, pi) => {
-    if (!p) return;
-    const div = document.createElement('div');
-    div.className = 'oled-param';
-    div.innerHTML = `<div class="oled-param-name">${p}</div>
-      <div class="oled-param-val" style="color:${color}" id="oval-${pi}">${values[key(curCh,curGrp,pi)] ?? '—'}</div>`;
-    paramsEl.appendChild(div);
-  });
+  for (let pi = 0; pi < 4; pi++) {
+    const pm = meta[pi];
+    const active = pm !== null;
+    const cc = active ? (values[vk(curCh, curGrp, pi)] ?? 64) : 0;
 
-  // Encoders
-  const encRow = document.getElementById('encoder-row');
-  encRow.innerHTML = '';
-  pg.params.forEach((p, pi) => {
-    if (!p) {
-      const spacer = document.createElement('div');
-      spacer.style.flex = '1';
-      encRow.appendChild(spacer);
-      return;
-    }
-    const wrap = document.createElement('div');
-    wrap.className = 'encoder-wrap';
+    const unit = document.createElement('div');
+    unit.className = 'enc-unit';
+
+    // Mini OLED
+    const oled = document.createElement('div');
+    oled.className = 'mini-oled' + (active ? '' : ' blank');
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'mini-oled-name';
+    nameEl.style.color = active ? color : 'transparent';
+    nameEl.textContent = active ? pm.name : '';
+
+    const valEl = document.createElement('div');
+    valEl.className = 'mini-oled-val';
+    valEl.id = `oval-${pi}`;
+    valEl.style.color = active ? color : 'transparent';
+    valEl.textContent = active ? fmtVal(pm, cc) : '';
+
+    const barTrack = document.createElement('div');
+    barTrack.className = 'mini-oled-bar-track';
+
+    const barFill = document.createElement('div');
+    barFill.className = 'mini-oled-bar-fill';
+    barFill.id = `obar-${pi}`;
+    barFill.style.width = active ? barPct(cc) + '%' : '0%';
+    barFill.style.background = active ? color : 'transparent';
+
+    barTrack.appendChild(barFill);
+    oled.append(nameEl, valEl, barTrack);
+
+    // Encoder
     const enc = document.createElement('div');
-    enc.className = 'encoder';
+    enc.className = 'encoder' + (active ? '' : ' inactive');
     const dot = document.createElement('div');
     dot.className = 'encoder-dot';
-    const v = values[key(curCh,curGrp,pi)] ?? 50;
-    const angle = (v / 100) * 270 - 135;
+    const angle = active ? (cc / 127) * 270 - 135 : -135;
     dot.style.transform = `rotate(${angle}deg)`;
-    dot.style.top = '4px';
     enc.appendChild(dot);
 
-    // Interaction
-    let y0, v0;
-    enc.addEventListener('pointerdown', e => {
-      e.preventDefault(); enc.setPointerCapture(e.pointerId);
-      y0 = e.clientY; v0 = values[key(curCh,curGrp,pi)] ?? 50;
-    });
-    enc.addEventListener('pointermove', e => {
-      if (!(e.buttons & 1)) return;
-      const nv = Math.max(0, Math.min(100, v0 + (y0 - e.clientY) * 0.5));
-      values[key(curCh,curGrp,pi)] = Math.round(nv);
-      const a = (nv / 100) * 270 - 135;
-      dot.style.transform = `rotate(${a}deg)`;
-      const valEl = document.getElementById(`oval-${pi}`);
-      if (valEl) valEl.textContent = Math.round(nv);
-    });
+    if (active) {
+      // SYNC params act as a toggle on click
+      if (pm.isSync) {
+        enc.style.cursor = 'pointer';
+        enc.addEventListener('click', ((idx, pmRef) => () => {
+          const key = vk(curCh, curGrp, idx);
+          const on = values[key] >= 64;
+          values[key] = on ? 0 : 127;
+          if (pmRef.isSync === 'delay') delaySynced = !on;
+          if (pmRef.isSync === 'lfo')   lfoSynced   = !on;
+          updateDisplay();
+        })(pi, pm));
+      } else {
+        let y0, v0;
+        enc.addEventListener('pointerdown', ((idx) => (e) => {
+          e.preventDefault(); enc.setPointerCapture(e.pointerId);
+          y0 = e.clientY; v0 = values[vk(curCh, curGrp, idx)] ?? 64;
+        })(pi));
+        enc.addEventListener('pointermove', ((idx, dotEl, pmRef) => (e) => {
+          if (!(e.buttons & 1)) return;
+          const nv = Math.max(0, Math.min(127, v0 + (y0 - e.clientY) * 0.8));
+          values[vk(curCh, curGrp, idx)] = Math.round(nv);
+          dotEl.style.transform = `rotate(${(nv / 127) * 270 - 135}deg)`;
+          const ve = document.getElementById(`oval-${idx}`);
+          if (ve) ve.textContent = fmtVal(pmRef, Math.round(nv));
+          const be = document.getElementById(`obar-${idx}`);
+          if (be) be.style.width = barPct(Math.round(nv)) + '%';
+        })(pi, dot, pm));
+      }
+    }
 
-    const lbl = document.createElement('div');
-    lbl.className = 'encoder-label';
-    lbl.textContent = p;
-    wrap.append(enc, lbl);
-    encRow.appendChild(wrap);
-  });
+    unit.append(oled, enc);
+    strip.appendChild(unit);
+  }
 
   updateMap();
 }
@@ -382,21 +477,17 @@ function updateDisplay() {
 function updateMap() {
   const grid = document.getElementById('map-grid');
   grid.innerHTML = '';
-
-  // Headers
   const pages = curCh === 'g' ? globalPages : chPages;
+  const metaAll = curCh === 'g' ? globalParamMeta : chParamMeta;
   grid.innerHTML += '<div class="map-hdr"></div>';
   pages.forEach(pg => { grid.innerHTML += `<div class="map-hdr">${pg.title}</div>`; });
-
-  // Rows
   const targets = curCh === 'g' ? ['GLOBAL'] : CH_NAMES;
   const allChs = curCh === 'g' ? ['g'] : [0, 1, 2];
-
   allChs.forEach((c, ci) => {
     grid.innerHTML += `<div class="map-row-label">${targets[ci]}</div>`;
-    pages.forEach((pg, gi) => {
+    metaAll.forEach((grp, gi) => {
       const active = c == curCh && gi === curGrp;
-      const names = pg.params.filter(Boolean).join(', ');
+      const names = grp.filter(Boolean).map(m => m.name).join(', ');
       grid.innerHTML += `<div class="map-cell${active ? ' highlight' : ''}">${names}</div>`;
     });
   });
