@@ -23,33 +23,42 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 .hw-panel {
   width: 540px; background: #1a1a22; border: 2px solid #2a2a3a; border-radius: 16px;
   padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.03);
-  display: flex; flex-direction: column; gap: 18px;
+  display: flex; flex-direction: column; gap: 18px; align-items: center;
 }
 .hw-label {
   font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: #33334a;
   text-align: center;
 }
 
-/* Transport buttons */
-.transport-row { display: flex; justify-content: center; gap: 12px; }
-.hw-btn {
-  width: 44px; height: 32px; border-radius: 4px; border: 1px solid #333;
-  background: #222230; color: var(--dim); font-family: inherit; font-size: 8px;
-  font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all .12s;
-  display: flex; align-items: center; justify-content: center; gap: 4px;
+/* Function keys (RUN, BYP, SHIFT) — same keycap style as channel keys */
+.fn-key {
+  width: 44px; height: 44px; border-radius: 6px;
+  border: 1px solid #444; border-bottom: 3px solid #222;
+  background: linear-gradient(180deg, #3a3a44 0%, #2a2a32 40%, #222230 100%);
+  color: #555; font-family: inherit; font-size: 7px;
+  font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  cursor: pointer; transition: all .12s;
+  position: relative; overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
+  display: flex; align-items: flex-end; justify-content: flex-start;
+  padding: 5px 5px;
 }
-.hw-btn:hover { border-color: #555; color: #aaa; }
-.hw-btn.on { background: #1a2a1a; border-color: #33cc33; color: #55ff55; }
-.hw-btn.shift-on { background: #2a1a1a; border-color: #ff8844; color: #ffaa66; }
-.hw-btn.bypass-on { background: #1a1a2a; border-color: #aaaaee; color: #ccccff; }
-.hw-btn .led { width: 5px; height: 5px; border-radius: 50%; background: #2a2a3a; transition: all .12s; }
-.hw-btn.on .led { background: #55ff55; box-shadow: 0 0 6px #55ff55; }
-.hw-btn.shift-on .led { background: #ffaa66; box-shadow: 0 0 6px #ffaa66; }
-.hw-btn.bypass-on .led { background: #ccccff; box-shadow: 0 0 6px #ccccff; }
+.fn-key::after {
+  content: ''; position: absolute; left: 3px; right: 3px; bottom: -3px;
+  height: 6px; border-radius: 0 0 4px 4px;
+  background: transparent; transition: all .15s;
+  filter: blur(4px);
+}
+.fn-key:hover { border-color: #555; color: #888; }
+.fn-key:active { border-bottom-width: 1px; transform: translateY(2px); }
+.fn-key.on { color: #55ff55; }
+.fn-key.on::after { background: #55ff55; box-shadow: 0 0 12px #55ff55; }
+.fn-key.bypass-on { color: #ccccff; }
+.fn-key.bypass-on::after { background: #ccccff; box-shadow: 0 0 12px #ccccff; }
+.fn-key.shift-on { color: #ffaa66; }
+.fn-key.shift-on::after { background: #ff8844; box-shadow: 0 0 12px #ff8844; }
 
-/* Channel + Group select */
-.select-grid { display: flex; gap: 16px; align-items: flex-start; }
-.ch-select { display: flex; flex-direction: column; gap: 6px; }
+/* Channel keys */
 .ch-btn {
   width: 44px; height: 44px; border-radius: 6px;
   border: 1px solid #444; border-bottom: 3px solid #222;
@@ -77,18 +86,22 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 .ch-btn[data-ch="g"].active { color: var(--accent); }
 .ch-btn[data-ch="g"].active::after { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
 
-/* Group select */
-.grp-select { display: flex; flex-direction: column; gap: 12px; flex: 1; }
-.grp-row { display: flex; gap: 6px; }
-.grp-btn {
-  flex: 1; height: 30px; border-radius: 4px; border: 1px solid #2a2a3a;
-  background: #1c1c28; color: var(--dim); font-family: inherit; font-size: 8px;
-  font-weight: 700; letter-spacing: 1.5px; cursor: pointer; transition: all .12s;
-}
-.grp-btn:hover { border-color: #444; color: #888; }
-.grp-btn.active { border-color: #6677aa; color: #99aacc; background: #1a1a28; }
 
-/* Encoder strip: 3x [mini-oled + encoder] */
+
+/* Main body: fn-key column on left, ref-table + encoders on right */
+.hw-body {
+  display: flex; gap: 16px; align-items: stretch; width: 100%;
+}
+.fn-col {
+  display: flex; flex-direction: column; gap: 8px; justify-content: flex-start;
+}
+.hw-right {
+  display: flex; flex-direction: column; gap: 18px; flex: 1; min-width: 0;
+}
+/* Encoder strip row (shift key + 3 encoder units) */
+.encoder-row {
+  display: flex; align-items: center; gap: 10px;
+}
 .encoder-strip {
   display: flex; justify-content: space-between; gap: 8px;
 }
@@ -177,32 +190,28 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
   transform-origin: center 22px;
 }
 
-/* Page map */
-.page-map {
-  display: flex; flex-direction: column; gap: 8px; margin-top: 8px;
-  padding: 16px; background: #111118; border-radius: 8px; border: 1px solid #222;
-  width: 540px;
+/* Reference table (printed label on device, keys in header) */
+.ref-table {
+  border-collapse: collapse;
+  font-size: 7px; letter-spacing: 0.5px; text-transform: uppercase;
+  color: #44445a;
 }
-.page-map-title {
-  font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--dim);
-  text-align: center; margin-bottom: 4px;
+.ref-table th {
+  padding: 0 10px 4px 10px; vertical-align: bottom; background: transparent;
 }
-.map-grid {
-  display: grid; grid-template-columns: 70px repeat(3, 1fr); gap: 2px; font-size: 8px;
+.ref-table th.led-hdr { width: 14px; }
+.ref-table td {
+  padding: 4px 0; text-align: center;
+  border: 1px solid #2a2a3a;
 }
-.map-hdr {
-  padding: 4px 6px; background: #1a1a28; color: var(--dim);
-  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; text-align: center;
+.ref-table td.led-cell {
+  padding: 4px 2px; width: 14px; border: none;
 }
-.map-cell {
-  padding: 4px 6px; background: #141419; color: #666; text-align: center;
-  border-radius: 2px; transition: all .15s;
+.ref-led {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: #2a2a3a; transition: all .15s;
 }
-.map-cell.highlight { background: #1a1e2a; color: var(--accent); }
-.map-row-label {
-  padding: 4px 6px; text-align: right; color: var(--dim);
-  font-weight: 700; letter-spacing: 1px;
-}
+.ref-led.on { background: #e0e0e0; box-shadow: 0 0 6px rgba(224,224,224,.6); }
 
 .info {
   width: 540px; padding: 16px; background: #111118; border-radius: 8px;
@@ -215,51 +224,48 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 
 <h1>Layout A: Grid Select</h1>
 <div class="subtitle">
-  4 channel buttons x 3 group buttons = instant access to any parameter page.
-  Each encoder has its own 0.91" 128x32 OLED showing parameter name, value, and bar graph.
-  Shift button reveals secondary functions (LFO AMT, SLOPE, SYNC).
+  4 channel/global keys cycle through parameter groups. 3 LEDs indicate the active group.
+  Each encoder has its own 0.91" 128x32 OLED. Shift reveals secondary functions (LFO AMT, SLOPE, SYNC).
 </div>
 
 <div class="hw-panel">
   <div class="hw-label">Triptech</div>
 
-  <div class="transport-row">
-    <button class="hw-btn" id="run-btn" onclick="toggleRun()"><span class="led"></span>RUN</button>
-    <button class="hw-btn" id="byp-btn" onclick="toggleBypass()"><span class="led"></span>BYP</button>
-    <button class="hw-btn" id="shift-btn" onmousedown="setShift(true)" onmouseup="setShift(false)" onmouseleave="setShift(false)"><span class="led"></span>SFT</button>
-  </div>
-
-  <div class="select-grid">
-    <div class="ch-select">
-      <div class="hw-label">Channel</div>
-      <button class="ch-btn active" data-ch="0" onclick="selectCh(0)">1</button>
-      <button class="ch-btn" data-ch="1" onclick="selectCh(1)">2</button>
-      <button class="ch-btn" data-ch="2" onclick="selectCh(2)">3</button>
-      <button class="ch-btn" data-ch="g" onclick="selectCh('g')">G</button>
+  <div class="hw-body">
+    <div class="fn-col">
+      <button class="fn-key" id="run-btn" onclick="toggleRun()">run</button>
+      <button class="fn-key" id="byp-btn" onclick="toggleBypass()">byp</button>
     </div>
-    <div class="grp-select">
-      <div class="hw-label">Group</div>
-      <div class="grp-row" id="grp-row"></div>
 
-      <!-- 3x encoder units: mini-oled + encoder -->
-      <div class="encoder-strip" id="encoder-strip"></div>
+    <div class="hw-right">
+      <table class="ref-table" id="ref-table">
+        <thead>
+          <tr>
+            <th class="led-hdr"></th>
+            <th><button class="ch-btn active" data-ch="0" onclick="selectCh(0)">1</button></th>
+            <th><button class="ch-btn" data-ch="1" onclick="selectCh(1)">2</button></th>
+            <th><button class="ch-btn" data-ch="2" onclick="selectCh(2)">3</button></th>
+            <th><button class="ch-btn" data-ch="g" onclick="selectCh('g')">G</button></th>
+          </tr>
+        </thead>
+        <tbody id="ref-tbody"></tbody>
+      </table>
+
+      <div class="encoder-row">
+        <button class="fn-key" id="shift-btn" onmousedown="setShift(true)" onmouseup="setShift(false)" onmouseleave="setShift(false)">shift</button>
+        <div class="encoder-strip" id="encoder-strip"></div>
+      </div>
     </div>
   </div>
-</div>
-
-<div class="page-map">
-  <div class="page-map-title">Parameter Map</div>
-  <div class="map-grid" id="map-grid"></div>
 </div>
 
 <div class="info">
-  <strong>Concept:</strong> Inspired by Elektron workflow. Channel buttons select which channel you're
-  editing (or Global for delay/LFO). Group buttons select the parameter group. Each of the 3 encoders
-  has a dedicated 0.91" OLED above it showing parameter name, value, and a bar graph.
-  Hold Shift to access secondary functions (LFO AMT, SLOPE, SYNC).<br><br>
-  <strong>Hardware:</strong> 4 channel buttons + 3 group buttons + 3 transport buttons (RUN, BYP, SFT) + 3 rotary encoders + 3x 128x32 OLED<br>
-  <strong>Pros:</strong> Systematic, predictable, max 2 presses to any param, per-encoder display gives clear feedback<br>
-  <strong>Cons:</strong> 10 buttons + 3 OLEDs, can't tweak two channels simultaneously
+  <strong>Concept:</strong> Press a channel key (1/2/3/G) to select it; press again to cycle groups.
+  3 LEDs show active group. Reference table maps groups to parameter names per channel.
+  Hold Shift for secondary functions (LFO AMT, SLOPE, SYNC).<br><br>
+  <strong>Hardware:</strong> 4 channel keyswitches + 3 function keys (RUN, BYP, SHIFT) + 3 group LEDs + 3 rotary encoders + 3x 128x32 OLED<br>
+  <strong>Pros:</strong> Minimal buttons, systematic, max 3 presses to any param, per-encoder display<br>
+  <strong>Cons:</strong> Need reference table to know group meanings, can't tweak two channels simultaneously
 </div>
 
 <script>
@@ -425,30 +431,24 @@ function bipolarBar(cc) {
 }
 
 function selectCh(ch) {
-  curCh = ch;
-  curGrp = 0;
-  document.querySelectorAll('.ch-btn').forEach(b => b.classList.toggle('active', b.dataset.ch == ch));
-  updateGroups();
+  if (curCh === ch) {
+    // Same channel: cycle through groups
+    const numGrps = getMeta().length;
+    curGrp = (curGrp + 1) % numGrps;
+  } else {
+    curCh = ch;
+    // Clamp group if new channel has fewer groups
+    const numGrps = (ch === 'g' ? globalParamMeta : chParamMeta).length;
+    if (curGrp >= numGrps) curGrp = numGrps - 1;
+    document.querySelectorAll('.ch-btn').forEach(b => b.classList.toggle('active', b.dataset.ch == ch));
+  }
+  updateLeds();
   updateDisplay();
 }
 
-function selectGrp(g) {
-  curGrp = g;
-  document.querySelectorAll('.grp-btn').forEach(b => b.classList.toggle('active', +b.dataset.grp === g));
-  updateDisplay();
-}
-
-function updateGroups() {
-  const pages = getPages();
-  const row = document.getElementById('grp-row');
-  row.innerHTML = '';
-  pages.forEach((pg, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'grp-btn' + (i === curGrp ? ' active' : '');
-    btn.dataset.grp = i;
-    btn.textContent = pg.title;
-    btn.onclick = () => selectGrp(i);
-    row.appendChild(btn);
+function updateLeds() {
+  document.querySelectorAll('.ref-led').forEach((led, i) => {
+    led.classList.toggle('on', i === curGrp);
   });
 }
 
@@ -614,30 +614,23 @@ function updateDisplay() {
     strip.appendChild(unit);
   }
 
-  updateMap();
+  updateLeds();
 }
 
-function updateMap() {
-  const grid = document.getElementById('map-grid');
-  grid.innerHTML = '';
-  const pages = curCh === 'g' ? globalPages : chPages;
-  const metaAll = curCh === 'g' ? globalParamMeta : chParamMeta;
-  grid.innerHTML += '<div class="map-hdr"></div>';
-  pages.forEach(pg => { grid.innerHTML += `<div class="map-hdr">${pg.title}</div>`; });
-  const targets = curCh === 'g' ? ['GLOBAL'] : CH_NAMES;
-  const allChs = curCh === 'g' ? ['g'] : [0, 1, 2];
-  allChs.forEach((c, ci) => {
-    grid.innerHTML += `<div class="map-row-label">${targets[ci]}</div>`;
-    metaAll.forEach((grp, gi) => {
-      const active = c == curCh && gi === curGrp;
-      const names = grp.filter(Boolean).map(m => {
-        let n = m.name;
-        if (shifted && m.shift) n = m.shift.name;
-        return n;
-      }).join(', ');
-      grid.innerHTML += `<div class="map-cell${active ? ' highlight' : ''}">${names}</div>`;
-    });
-  });
+function buildRefTable() {
+  // Static label — built once, never changes
+  const tbody = document.getElementById('ref-tbody');
+  const chTitles = chPages.map(p => p.title);
+  const glTitles = globalPages.map(p => p.title);
+  let html = '';
+  for (let gi = 0; gi < 3; gi++) {
+    html += '<tr>';
+    html += `<td class="led-cell"><span class="ref-led"></span></td>`;
+    html += `<td class="label-cell" colspan="3">${chTitles[gi] || ''}</td>`;
+    html += `<td class="label-cell">${glTitles[gi] || ''}</td>`;
+    html += '</tr>';
+  }
+  tbody.innerHTML = html;
 }
 
 function toggleRun() {
@@ -659,7 +652,8 @@ function setShift(on) {
 document.addEventListener('keydown', (e) => { if (e.key === 'Shift') setShift(true); });
 document.addEventListener('keyup',   (e) => { if (e.key === 'Shift') setShift(false); });
 
-updateGroups();
+buildRefTable();
+updateLeds();
 updateDisplay();
 </script>
 </body>
