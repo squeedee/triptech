@@ -51,16 +51,31 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 .select-grid { display: flex; gap: 16px; align-items: flex-start; }
 .ch-select { display: flex; flex-direction: column; gap: 6px; }
 .ch-btn {
-  width: 60px; height: 36px; border-radius: 5px; border: 2px solid #333;
-  background: #1c1c28; color: var(--dim); font-family: inherit; font-size: 9px;
-  font-weight: 700; letter-spacing: 2px; cursor: pointer; transition: all .12s;
+  width: 44px; height: 44px; border-radius: 6px;
+  border: 1px solid #444; border-bottom: 3px solid #222;
+  background: linear-gradient(180deg, #3a3a44 0%, #2a2a32 40%, #222230 100%);
+  color: #777; font-family: inherit; font-size: 14px;
+  font-weight: 700; cursor: pointer; transition: all .12s;
+  position: relative; overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08);
 }
-.ch-btn:hover { border-color: #555; }
-.ch-btn.active { color: white; }
-.ch-btn[data-ch="0"].active { border-color: var(--ch1); color: var(--ch1); background: rgba(34,221,102,.08); box-shadow: 0 0 10px rgba(34,221,102,.2); }
-.ch-btn[data-ch="1"].active { border-color: var(--ch2); color: var(--ch2); background: rgba(255,204,0,.08); box-shadow: 0 0 10px rgba(255,204,0,.2); }
-.ch-btn[data-ch="2"].active { border-color: var(--ch3); color: var(--ch3); background: rgba(255,68,51,.08); box-shadow: 0 0 10px rgba(255,68,51,.2); }
-.ch-btn[data-ch="g"].active { border-color: var(--accent); color: var(--accent); background: rgba(119,153,255,.08); box-shadow: 0 0 10px rgba(119,153,255,.2); }
+.ch-btn::after {
+  content: ''; position: absolute; left: 3px; right: 3px; bottom: -3px;
+  height: 6px; border-radius: 0 0 4px 4px;
+  background: transparent; transition: all .15s;
+  filter: blur(4px);
+}
+.ch-btn:hover { border-color: #555; color: #aaa; }
+.ch-btn:active { border-bottom-width: 1px; transform: translateY(2px); }
+.ch-btn.active { color: #ddd; border-color: #555; }
+.ch-btn[data-ch="0"].active { color: var(--ch1); }
+.ch-btn[data-ch="0"].active::after { background: var(--ch1); box-shadow: 0 0 12px var(--ch1); }
+.ch-btn[data-ch="1"].active { color: var(--ch2); }
+.ch-btn[data-ch="1"].active::after { background: var(--ch2); box-shadow: 0 0 12px var(--ch2); }
+.ch-btn[data-ch="2"].active { color: var(--ch3); }
+.ch-btn[data-ch="2"].active::after { background: var(--ch3); box-shadow: 0 0 12px var(--ch3); }
+.ch-btn[data-ch="g"].active { color: var(--accent); }
+.ch-btn[data-ch="g"].active::after { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
 
 /* Group select */
 .grp-select { display: flex; flex-direction: column; gap: 12px; flex: 1; }
@@ -73,7 +88,7 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 .grp-btn:hover { border-color: #444; color: #888; }
 .grp-btn.active { border-color: #6677aa; color: #99aacc; background: #1a1a28; }
 
-/* Encoder strip: 4x [mini-oled + encoder] */
+/* Encoder strip: 3x [mini-oled + encoder] */
 .encoder-strip {
   display: flex; justify-content: space-between; gap: 8px;
 }
@@ -202,6 +217,7 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 <div class="subtitle">
   4 channel buttons x 3 group buttons = instant access to any parameter page.
   Each encoder has its own 0.91" 128x32 OLED showing parameter name, value, and bar graph.
+  Shift button reveals secondary functions (LFO AMT, SLOPE, SYNC).
 </div>
 
 <div class="hw-panel">
@@ -216,16 +232,16 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
   <div class="select-grid">
     <div class="ch-select">
       <div class="hw-label">Channel</div>
-      <button class="ch-btn active" data-ch="0" onclick="selectCh(0)">CH 1</button>
-      <button class="ch-btn" data-ch="1" onclick="selectCh(1)">CH 2</button>
-      <button class="ch-btn" data-ch="2" onclick="selectCh(2)">CH 3</button>
-      <button class="ch-btn" data-ch="g" onclick="selectCh('g')">GLB</button>
+      <button class="ch-btn active" data-ch="0" onclick="selectCh(0)">1</button>
+      <button class="ch-btn" data-ch="1" onclick="selectCh(1)">2</button>
+      <button class="ch-btn" data-ch="2" onclick="selectCh(2)">3</button>
+      <button class="ch-btn" data-ch="g" onclick="selectCh('g')">G</button>
     </div>
     <div class="grp-select">
       <div class="hw-label">Group</div>
       <div class="grp-row" id="grp-row"></div>
 
-      <!-- 4x encoder units: mini-oled + encoder -->
+      <!-- 3x encoder units: mini-oled + encoder -->
       <div class="encoder-strip" id="encoder-strip"></div>
     </div>
   </div>
@@ -238,12 +254,12 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 
 <div class="info">
   <strong>Concept:</strong> Inspired by Elektron workflow. Channel buttons select which channel you're
-  editing (or Global for delay/LFO). Group buttons select the parameter group. Each of the 4 encoders
-  has a dedicated 0.91" OLED above it showing parameter name, value, and a bar graph. Unused encoders
-  show a blank display.<br><br>
-  <strong>Hardware:</strong> 4 channel buttons + 3 group buttons + 2 transport buttons + 4 rotary encoders + 4x 128x32 OLED<br>
+  editing (or Global for delay/LFO). Group buttons select the parameter group. Each of the 3 encoders
+  has a dedicated 0.91" OLED above it showing parameter name, value, and a bar graph.
+  Hold Shift to access secondary functions (LFO AMT, SLOPE, SYNC).<br><br>
+  <strong>Hardware:</strong> 4 channel buttons + 3 group buttons + 3 transport buttons (RUN, BYP, SFT) + 3 rotary encoders + 3x 128x32 OLED<br>
   <strong>Pros:</strong> Systematic, predictable, max 2 presses to any param, per-encoder display gives clear feedback<br>
-  <strong>Cons:</strong> 9 buttons + 4 OLEDs (more hardware), can't tweak two channels simultaneously
+  <strong>Cons:</strong> 10 buttons + 3 OLEDs, can't tweak two channels simultaneously
 </div>
 
 <script>
@@ -289,21 +305,18 @@ const chParamMeta = [
     { name: 'Q',    fmt: 'res',    dflt: [67,67,67] },
     { name: 'TYPE', fmt: 'ftype',  dflt: [0,32,64],
       shift: { name: 'SLOPE', fmt: 'fslope', dflt: [43,43,43] } },
-    null,
   ],
   // AMP
   [
     { name: 'DRIVE',  fmt: 'drive',  dflt: [0,0,0] },
     { name: 'ATTACK', fmt: 'attack', dflt: [27,27,27] },
     { name: 'DECAY',  fmt: 'decay',  dflt: [63,63,63] },
-    null,
   ],
   // MIXER
   [
     { name: 'PAN',   fmt: 'pan',   dflt: [63,31,95] },
     { name: 'LEVEL', fmt: 'level', dflt: [89,89,89] },
     { name: 'DELAY SEND', fmt: 'level', dflt: [0,0,0] },
-    null,
   ],
 ];
 
@@ -315,22 +328,17 @@ const globalParamMeta = [
       shift: { name: 'SYNC', fmt: 'toggle', dflt: 127, isSync: 'delay' } },
     { name: 'FDBK', fmt: 'level', dflt: 53 },
     { name: 'WIDTH', fmt: 'level', dflt: 127 },
-    null,
   ],
   // LFO
   [
     { name: 'RATE', fmt: 'lfoRate', fmtSync: 'lfoSync', fmtFree: 'lfoRate', dflt: 55,
       shift: { name: 'SYNC', fmt: 'toggle', dflt: 0, isSync: 'lfo' } },
     { name: 'DRY',  fmt: 'level', dflt: 0 },
-    null,
-    null,
   ],
   // PATTERN
   [
     { name: 'PAT', fmt: 'pattern', dflt: 0 },
     { name: 'BPM', fmt: 'bpm',     dflt: 91 },
-    null,
-    null,
   ],
 ];
 
@@ -450,7 +458,7 @@ function updateDisplay() {
   const strip = document.getElementById('encoder-strip');
   strip.innerHTML = '';
 
-  for (let pi = 0; pi < 4; pi++) {
+  for (let pi = 0; pi < 3; pi++) {
     const basePm = meta[pi];
     // Resolve shift: if shift is held and this param has a shift alt, use it
     const useShift = shifted && basePm && basePm.shift;
