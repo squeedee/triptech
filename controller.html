@@ -1076,6 +1076,7 @@ const ROWS = [
     ], knobs: [
     { off:0, label:'FREQ',   fmt:'cutoff', size:'lg' },
     { off:1, label:'Q',      fmt:'res',    size:'md' },
+    { off:8, label:'LFO AMT',fmt:'bipct',  size:'sm', lsb:12 },
   ]},
   { sec: 'Amp', knobs: [
     { off:2, label:'DRIVE',  fmt:'drive',  size:'sm' },
@@ -1104,6 +1105,7 @@ const DFLTS = {
   5: [63, 63, 63],   // decay 200ms
   6: [89, 89, 89],   // level 0.7
   7: [63, 31, 95],   // pan: LP center, BP 25%L, HP 25%R
+  8: [64, 64, 64],   // lfo amount 0% (center = no modulation)
   13: [0,  0,  0],   // delay send 0
 };
 
@@ -1242,11 +1244,11 @@ function sendAllLevels() {
       }
       const rowEl = document.createElement('div');
       rowEl.className = 'knob-row';
-      knobs.forEach(({ off, label, fmt, size }) => {
+      knobs.forEach(({ off, label, fmt, size, lsb }) => {
         const knob = new Knob({
           parent: rowEl,
           cc:   CH_BASE[ci] + off,
-          cc2:  null,
+          cc2:  lsb != null ? CH_BASE[ci] + lsb : null,
           dflt: DFLTS[off][ci],
           label,
           fmt,
@@ -1392,6 +1394,12 @@ function handleIncomingCC(cc, val) {
           snapToOptions(sel, val);
           if (off === 9) updateSlopeAvailability(ci);
         }
+      } else if (off === 8) { // lfo amount MSB (14-bit)
+        msbCache[cc] = val;
+        chKnobs[ci][8]?.set(val, false);
+      } else if (off === 12) { // lfo amount LSB (14-bit)
+        const v14 = ((msbCache[CH_BASE[ci] + 8] ?? 64) << 7) | val;
+        chKnobs[ci][8]?.set14(v14, false);
       } else {
         chKnobs[ci][off]?.set(val, false);
       }
