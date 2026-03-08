@@ -4,7 +4,7 @@ TARGET = triptech
 USE_DAISYSP_LGPL = 1
 
 # Sources
-CPP_SOURCES = Triptech.cpp
+CPP_SOURCES = Triptech.cpp SAC2K.cpp
 
 # Library Locations
 LIBDAISY_DIR = ./libDaisy
