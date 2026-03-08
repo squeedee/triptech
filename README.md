@@ -117,9 +117,11 @@ Send CC 119 (any value) to request a full state dump of all parameters.
 
 ## Web Controller
 
-Open `controller.html` in a browser with Web MIDI support (Chrome / Edge). Select the Daisy as
+Open [./desktop-controller.html](./desktop-controller.html) in a browser with Web MIDI support (Chrome / Edge). Select the Daisy as
 both MIDI In and MIDI Out — the page auto-selects it on load. Click **Sync** to pull current
 device state into the UI at any time.
+
+For an emulation of the desktop module, open [expanded-controller.html](./expanded-controller.html)
 
 ### Controller Keyboard Shortcuts
 
