@@ -213,6 +213,62 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 }
 .ref-led.on { background: #e0e0e0; box-shadow: 0 0 6px rgba(224,224,224,.6); }
 
+/* MIDI menu — positioned top-right of page */
+.midi-bar {
+  position: fixed; top: 12px; right: 16px; z-index: 100;
+  display: flex; align-items: center; gap: 8px;
+}
+.midi-menu { position: relative; }
+.midi-menu-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 4px;
+  font-family: inherit; font-size: 10px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+  background: #111118; border: 1px solid #28283a; color: var(--dim);
+  transition: all .15s;
+}
+.midi-menu-btn:hover { border-color: #44445a; color: #8888aa; }
+.midi-menu-btn.open  { border-color: #44445a; color: #c8c8d0; }
+.midi-dropdown {
+  display: none; position: absolute;
+  top: calc(100% + 8px); right: 0;
+  background: #191920; border: 1px solid #28283a; border-radius: 6px;
+  padding: 14px 16px; flex-direction: column; gap: 8px;
+  z-index: 50; box-shadow: 0 12px 40px rgba(0,0,0,.6); min-width: 240px;
+}
+.midi-dropdown.open { display: flex; }
+.midi-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.midi-row .field-lbl {
+  font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--dim); white-space: nowrap;
+  width: 64px; text-align: right; flex-shrink: 0;
+}
+.midi-row select {
+  flex: 1; background: #1c1c28; border: 1px solid #28283a;
+  color: var(--text); padding: 5px 24px 5px 9px; border-radius: 4px;
+  font-family: inherit; font-size: 10px; cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%2344445a'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center;
+}
+.midi-row select:focus { outline: none; border-color: #44445a; }
+.sync-btn {
+  padding: 5px 14px; border-radius: 4px;
+  font-family: inherit; font-size: 9px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+  background: #111118; border: 1px solid #28283a; color: #5a5a7a;
+  transition: all .15s;
+}
+.sync-btn:hover { border-color: #44445a; color: #8888aa; }
+.sync-btn.on { border-color: #bbbbee; color: #ddddff; }
+.no-midi-warn {
+  font-size: 9px; padding: 4px 10px;
+  background: #2a0e0e; border: 1px solid #4a2020; border-radius: 4px;
+  color: #cc5555; display: none;
+}
+
 .info {
   width: 540px; padding: 16px; background: #111118; border-radius: 8px;
   border: 1px solid #222; font-size: 10px; color: #666; line-height: 1.7;
@@ -226,6 +282,30 @@ h1 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase; color: #e0
 <div class="subtitle">
   4 channel/global keys cycle through parameter groups. 3 LEDs indicate the active group.
   Each encoder has its own 0.91" 128x32 OLED. Shift reveals secondary functions (LFO AMT, SLOPE, SYNC).
+</div>
+
+<div class="midi-bar">
+  <div class="midi-menu">
+    <button class="midi-menu-btn" id="midi-menu-btn">MIDI</button>
+    <div class="midi-dropdown" id="midi-dropdown">
+      <div class="midi-row">
+        <span class="field-lbl">MIDI Out</span>
+        <select id="out-sel"></select>
+      </div>
+      <div class="midi-row">
+        <span class="field-lbl">MIDI In</span>
+        <select id="in-sel"></select>
+      </div>
+      <div class="midi-row">
+        <span class="field-lbl">Channel</span>
+        <select id="ch-sel"></select>
+      </div>
+      <div class="midi-row">
+        <button id="sync-btn" class="sync-btn" title="Request all state from device">Sync</button>
+        <span id="no-midi" class="no-midi-warn">No Web MIDI</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="hw-panel">
@@ -301,50 +381,54 @@ const FMT = {
   toggle:   cc => cc >= 64 ? 'ON' : 'OFF',
 };
 
-// ── Per-parameter metadata: formatter key + default CC value ──
-// Channel pages
+// ── MIDI CC mapping ──
+const CH_BASE = [20, 36, 52];
+const TRIG_NOTES = [60, 61, 62];
+
+// ── Per-parameter metadata: formatter key + default CC value + CC offset ──
+// Channel pages — `off` is the CC offset from CH_BASE[ci]
 const chParamMeta = [
   // FILTER
   [
-    { name: 'FREQ', fmt: 'cutoff', dflt: [50,72,60],
-      shift: { name: 'LFO AMT', fmt: 'bipct', dflt: [64,64,64] } },
-    { name: 'Q',    fmt: 'res',    dflt: [67,67,67] },
-    { name: 'TYPE', fmt: 'ftype',  dflt: [0,32,64],
-      shift: { name: 'SLOPE', fmt: 'fslope', dflt: [43,43,43] } },
+    { name: 'FREQ', fmt: 'cutoff', off: 0, dflt: [50,72,60],
+      shift: { name: 'LFO AMT', fmt: 'bipct', off: 8, lsb: 12, dflt: [64,64,64] } },
+    { name: 'Q',    fmt: 'res',    off: 1, dflt: [67,67,67] },
+    { name: 'TYPE', fmt: 'ftype',  off: 9, dflt: [0,32,64],
+      shift: { name: 'SLOPE', fmt: 'fslope', off: 10, dflt: [43,43,43] } },
   ],
   // AMP
   [
-    { name: 'DRIVE',  fmt: 'drive',  dflt: [0,0,0] },
-    { name: 'ATTACK', fmt: 'attack', dflt: [27,27,27] },
-    { name: 'DECAY',  fmt: 'decay',  dflt: [63,63,63] },
+    { name: 'DRIVE',  fmt: 'drive',  off: 2, dflt: [0,0,0] },
+    { name: 'ATTACK', fmt: 'attack', off: 4, dflt: [27,27,27] },
+    { name: 'DECAY',  fmt: 'decay',  off: 5, dflt: [63,63,63] },
   ],
   // MIXER
   [
-    { name: 'PAN',   fmt: 'pan',   dflt: [63,31,95] },
-    { name: 'LEVEL', fmt: 'level', dflt: [89,89,89] },
-    { name: 'DELAY SEND', fmt: 'level', dflt: [0,0,0] },
+    { name: 'PAN',   fmt: 'pan',   off: 7, dflt: [63,31,95] },
+    { name: 'LEVEL', fmt: 'level', off: 6, dflt: [89,89,89] },
+    { name: 'DELAY SEND', fmt: 'level', off: 13, dflt: [0,0,0] },
   ],
 ];
 
-// Global pages
+// Global pages — `cc` is the absolute CC number
 const globalParamMeta = [
   // DELAY
   [
-    { name: 'TIME', fmt: 'delayDiv', fmtSync: 'delayDiv', fmtFree: 'delayFre', dflt: 32,
-      shift: { name: 'SYNC', fmt: 'toggle', dflt: 127, isSync: 'delay' } },
-    { name: 'FDBK', fmt: 'level', dflt: 53 },
-    { name: 'WIDTH', fmt: 'level', dflt: 127 },
+    { name: 'TIME', fmt: 'delayDiv', fmtSync: 'delayDiv', fmtFree: 'delayFre', cc: 1, dflt: 32,
+      shift: { name: 'SYNC', fmt: 'toggle', cc: 6, dflt: 127, isSync: 'delay' } },
+    { name: 'FDBK', fmt: 'level', cc: 2, dflt: 53 },
+    { name: 'WIDTH', fmt: 'level', cc: 3, dflt: 127 },
   ],
   // LFO
   [
-    { name: 'RATE', fmt: 'lfoRate', fmtSync: 'lfoSync', fmtFree: 'lfoRate', dflt: 55,
-      shift: { name: 'SYNC', fmt: 'toggle', dflt: 0, isSync: 'lfo' } },
-    { name: 'DRY',  fmt: 'level', dflt: 0 },
+    { name: 'RATE', fmt: 'lfoRate', fmtSync: 'lfoSync', fmtFree: 'lfoRate', cc: 16, dflt: 55,
+      shift: { name: 'SYNC', fmt: 'toggle', cc: 7, dflt: 0, isSync: 'lfo' } },
+    { name: 'DRY',  fmt: 'level', cc: 4, dflt: 0 },
   ],
   // PATTERN
   [
-    { name: 'PAT', fmt: 'pattern', dflt: 0 },
-    { name: 'BPM', fmt: 'bpm',     dflt: 91 },
+    { name: 'PAT', fmt: 'pattern', cc: 14, dflt: 0 },
+    { name: 'BPM', fmt: 'bpm',     cc: 19, dflt: 91 },
   ],
 ];
 
@@ -546,17 +630,19 @@ function updateDisplay() {
 
     if (active) {
       const valKey = key; // capture for closures
+      const ccNum = resolveCC(basePm, pm, useShift);
 
       // SYNC params act as a toggle on click
       if (pm.isSync) {
         enc.style.cursor = 'pointer';
-        enc.addEventListener('click', ((vk_, pmRef) => () => {
+        enc.addEventListener('click', ((vk_, pmRef, cc_) => () => {
           const on = values[vk_] >= 64;
           values[vk_] = on ? 0 : 127;
           if (pmRef.isSync === 'delay') delaySynced = !on;
           if (pmRef.isSync === 'lfo')   lfoSynced   = !on;
+          if (cc_ != null) sendCC(cc_, on ? 0 : 127);
           updateDisplay();
-        })(valKey, pm));
+        })(valKey, pm, ccNum));
       } else if (pm.fmt === 'ftype' || pm.fmt === 'fslope') {
         // Selector: drag snaps between discrete values
         const isSel  = pm.fmt === 'ftype';
@@ -570,43 +656,56 @@ function updateDisplay() {
           idx0 = SEL_CCS.indexOf(cur);
           if (idx0 < 0) idx0 = 0;
         })(valKey));
-        enc.addEventListener('pointermove', ((vk_, dotEl) => (e) => {
+        enc.addEventListener('pointermove', ((vk_, dotEl, cc_) => (e) => {
           if (!(e.buttons & 1)) return;
           const delta = Math.round((y0 - e.clientY) / 30);
           const ni = Math.max(0, Math.min(SEL_N - 1, idx0 + delta));
           const ncc = SEL_CCS[ni];
+          if (values[vk_] === ncc) return;
           values[vk_] = ncc;
+          if (cc_ != null) sendCC(cc_, ncc);
           dotEl.style.transform = `rotate(${(ncc / 127) * 270 - 135}deg)`;
           const row = document.getElementById(`oval-${pi}`);
           if (row) row.querySelectorAll('.mini-oled-type').forEach((s, ti) => {
             s.classList.toggle('active', ti === ni);
           });
-        })(valKey, dot));
+        })(valKey, dot, ccNum));
       } else {
         const isBipolar = isCenterBar(activeFmt(pm));
+        const lsbCC = resolveLsbCC(basePm, pm, useShift);
         let y0, v0;
         enc.addEventListener('pointerdown', ((vk_) => (e) => {
           e.preventDefault(); enc.setPointerCapture(e.pointerId);
           y0 = e.clientY; v0 = values[vk_] ?? 64;
         })(valKey));
-        enc.addEventListener('pointermove', ((vk_, dotEl, pmRef, bip) => (e) => {
+        enc.addEventListener('pointermove', ((vk_, dotEl, pmRef, bip, cc_, lsb_) => (e) => {
           if (!(e.buttons & 1)) return;
           const nv = Math.max(0, Math.min(127, v0 + (y0 - e.clientY) * 0.8));
-          values[vk_] = Math.round(nv);
+          const rv = Math.round(nv);
+          values[vk_] = rv;
+          if (cc_ != null) {
+            if (lsb_ != null) {
+              const v14 = Math.round(rv / 127 * 16383);
+              sendCC(cc_, v14 >> 7);
+              sendCC(lsb_, v14 & 0x7F);
+            } else {
+              sendCC(cc_, rv);
+            }
+          }
           dotEl.style.transform = `rotate(${(nv / 127) * 270 - 135}deg)`;
           const ve = document.getElementById(`oval-${pi}`);
-          if (ve) ve.textContent = fmtVal(pmRef, Math.round(nv));
+          if (ve) ve.textContent = fmtVal(pmRef, rv);
           const be = document.getElementById(`obar-${pi}`);
           if (be) {
             if (bip) {
-              const bp = bipolarBar(Math.round(nv));
+              const bp = bipolarBar(rv);
               be.style.left = bp.left + '%';
               be.style.width = bp.width + '%';
             } else {
-              be.style.width = barPct(Math.round(nv)) + '%';
+              be.style.width = barPct(rv) + '%';
             }
           }
-        })(valKey, dot, pm, isBipolar));
+        })(valKey, dot, pm, isBipolar, ccNum, lsbCC));
       }
     }
 
@@ -615,6 +714,23 @@ function updateDisplay() {
   }
 
   updateLeds();
+}
+
+// Resolve the absolute CC number for a parameter
+function resolveCC(basePm, pm, useShift) {
+  if (curCh === 'g') {
+    return pm.cc ?? null;
+  }
+  const off = useShift ? pm.off : basePm.off;
+  return off != null ? CH_BASE[curCh] + off : null;
+}
+
+// Resolve the LSB CC number for 14-bit params
+function resolveLsbCC(basePm, pm, useShift) {
+  const lsb = pm.lsb;
+  if (lsb == null) return null;
+  if (curCh === 'g') return null; // no 14-bit globals
+  return CH_BASE[curCh] + lsb;
 }
 
 function buildRefTable() {
@@ -636,10 +752,12 @@ function buildRefTable() {
 function toggleRun() {
   running = !running;
   document.getElementById('run-btn').classList.toggle('on', running);
+  sendCC(15, running ? 127 : 0);
 }
 function toggleBypass() {
   bypassed = !bypassed;
   document.getElementById('byp-btn').classList.toggle('bypass-on', bypassed);
+  sendCC(18, bypassed ? 127 : 0);
 }
 function setShift(on) {
   if (shifted === on) return;
@@ -648,9 +766,249 @@ function setShift(on) {
   updateDisplay();
 }
 
-// Keyboard: hold Shift key for shift layer
-document.addEventListener('keydown', (e) => { if (e.key === 'Shift') setShift(true); });
-document.addEventListener('keyup',   (e) => { if (e.key === 'Shift') setShift(false); });
+// ── MIDI System ───────────────────────────────────────────────────────────────
+let midi = null, midiOut = null, midiIn = null, midiCh = 0;
+const msbCache = {};
+
+function sendCC(cc, val) {
+  if (midiOut) midiOut.send([0xB0 | midiCh, cc & 0x7f, Math.max(0, Math.min(127, Math.round(val)))]);
+}
+
+function sendNote(note, vel) {
+  if (midiOut) midiOut.send([0x90 | midiCh, note, vel]);
+}
+
+function refreshOutputs() {
+  const sel = document.getElementById('out-sel');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = ''; none.textContent = '\u2014 none \u2014'; sel.appendChild(none);
+  let autoId = null;
+  for (const [id, port] of midi.outputs) {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = port.name; sel.appendChild(o);
+    if (!autoId && /daisy|seed/i.test(port.name)) autoId = id;
+  }
+  if (prev && [...midi.outputs.keys()].includes(prev)) sel.value = prev;
+  else if (autoId) sel.value = autoId;
+  midiOut = sel.value ? midi.outputs.get(sel.value) : null;
+}
+
+function refreshInputs() {
+  const sel = document.getElementById('in-sel');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = ''; none.textContent = '\u2014 none \u2014'; sel.appendChild(none);
+  let autoId = null;
+  for (const [id, port] of midi.inputs) {
+    const o = document.createElement('option');
+    o.value = id; o.textContent = port.name; sel.appendChild(o);
+    if (!autoId && /daisy|seed/i.test(port.name)) autoId = id;
+  }
+  if (prev && [...midi.inputs.keys()].includes(prev)) sel.value = prev;
+  else if (autoId) sel.value = autoId;
+  if (midiIn) midiIn.onmidimessage = null;
+  midiIn = sel.value ? midi.inputs.get(sel.value) : null;
+  if (midiIn) {
+    midiIn.onmidimessage = onMidiIn;
+    setTimeout(() => sendCC(119, 0), 500); // request state dump
+  }
+}
+
+function onMidiIn(e) {
+  const [status, data1, data2] = e.data;
+  const type = status & 0xF0;
+  if (type === 0xB0) handleIncomingCC(data1, data2);
+}
+
+// ── Incoming CC handler ───────────────────────────────────────────────────────
+function handleIncomingCC(cc, val) {
+  // Global knobs (delay time, fdbk, width, dry)
+  if (cc >= 1 && cc <= 4) {
+    setGlobalVal(cc, val);
+    return;
+  }
+  // Delay sync
+  if (cc === 6) {
+    delaySynced = val >= 64;
+    setGlobalShiftVal(6, val);
+    updateDisplay();
+    return;
+  }
+  // LFO sync
+  if (cc === 7) {
+    lfoSynced = val >= 64;
+    setGlobalShiftVal(7, val);
+    updateDisplay();
+    return;
+  }
+  // Pattern select
+  if (cc === 14) { setGlobalVal(14, val); return; }
+  // Run/Stop
+  if (cc === 15) {
+    running = val >= 64;
+    document.getElementById('run-btn').classList.toggle('on', running);
+    return;
+  }
+  // LFO rate
+  if (cc === 16) { setGlobalVal(16, val); return; }
+  // Bypass
+  if (cc === 18) {
+    bypassed = val >= 64;
+    document.getElementById('byp-btn').classList.toggle('bypass-on', bypassed);
+    return;
+  }
+  // BPM display
+  if (cc === 19) { setGlobalVal(19, val); return; }
+  // Per-channel params
+  for (let ci = 0; ci < 3; ci++) {
+    const off = cc - CH_BASE[ci];
+    if (off >= 0 && off <= 13) {
+      if (off === 8) { // LFO amt MSB
+        msbCache[cc] = val;
+        setChVal(ci, off, val);
+      } else if (off === 12) { // LFO amt LSB
+        const v14 = ((msbCache[CH_BASE[ci] + 8] ?? 64) << 7) | val;
+        setChVal(ci, 8, Math.round(v14 / 16383 * 127));
+      } else {
+        setChVal(ci, off, val);
+      }
+      return;
+    }
+  }
+}
+
+// Set a per-channel value by CC offset and refresh if visible
+function setChVal(ci, off, val) {
+  // Find which group/param index has this offset
+  for (let g = 0; g < chParamMeta.length; g++) {
+    for (let pi = 0; pi < chParamMeta[g].length; pi++) {
+      const pm = chParamMeta[g][pi];
+      if (!pm) continue;
+      if (pm.off === off) {
+        values[vk(ci, g, pi)] = val;
+        if (curCh === ci && curGrp === g && !shifted) updateDisplay();
+        return;
+      }
+      if (pm.shift && pm.shift.off === off) {
+        values[svk(ci, g, pi)] = val;
+        if (curCh === ci && curGrp === g && shifted) updateDisplay();
+        return;
+      }
+    }
+  }
+}
+
+// Set a global value by absolute CC and refresh if visible
+function setGlobalVal(cc, val) {
+  for (let g = 0; g < globalParamMeta.length; g++) {
+    for (let pi = 0; pi < globalParamMeta[g].length; pi++) {
+      const pm = globalParamMeta[g][pi];
+      if (!pm) continue;
+      if (pm.cc === cc) {
+        values[vk('g', g, pi)] = val;
+        if (curCh === 'g' && curGrp === g && !shifted) updateDisplay();
+        return;
+      }
+    }
+  }
+}
+
+// Set a global shift value by absolute CC
+function setGlobalShiftVal(cc, val) {
+  for (let g = 0; g < globalParamMeta.length; g++) {
+    for (let pi = 0; pi < globalParamMeta[g].length; pi++) {
+      const pm = globalParamMeta[g][pi];
+      if (!pm || !pm.shift) continue;
+      if (pm.shift.cc === cc) {
+        values[svk('g', g, pi)] = val;
+        return;
+      }
+    }
+  }
+}
+
+// ── MIDI menu toggle ──────────────────────────────────────────────────────────
+(function() {
+  const btn      = document.getElementById('midi-menu-btn');
+  const dropdown = document.getElementById('midi-dropdown');
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = dropdown.classList.toggle('open');
+    btn.classList.toggle('open', open);
+  });
+  document.addEventListener('click', e => {
+    if (!dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+      btn.classList.remove('open');
+    }
+  });
+})();
+
+// ── MIDI channel selector ─────────────────────────────────────────────────────
+(function() {
+  const sel = document.getElementById('ch-sel');
+  for (let i = 1; i <= 16; i++) {
+    const o = document.createElement('option');
+    o.value = i - 1; o.textContent = i; sel.appendChild(o);
+  }
+  sel.addEventListener('change', e => { midiCh = +e.target.value; });
+})();
+
+// ── Output/Input device change ────────────────────────────────────────────────
+document.getElementById('out-sel').addEventListener('change', e => {
+  midiOut = midi ? (midi.outputs.get(e.target.value) || null) : null;
+});
+document.getElementById('in-sel').addEventListener('change', e => {
+  if (midiIn) midiIn.onmidimessage = null;
+  midiIn = midi ? (midi.inputs.get(e.target.value) || null) : null;
+  if (midiIn) {
+    midiIn.onmidimessage = onMidiIn;
+    setTimeout(() => sendCC(119, 0), 500);
+  }
+});
+
+// Sync button
+document.getElementById('sync-btn').addEventListener('click', () => {
+  sendCC(119, 0);
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('on');
+  setTimeout(() => btn.classList.remove('on'), 300);
+});
+
+// ── WebMIDI init ──────────────────────────────────────────────────────────────
+(function initMidi() {
+  if (!navigator.requestMIDIAccess) {
+    document.getElementById('no-midi').style.display = '';
+    return;
+  }
+  navigator.requestMIDIAccess().then(m => {
+    midi = m;
+    refreshOutputs();
+    refreshInputs();
+    m.onstatechange = () => { refreshOutputs(); refreshInputs(); };
+  }).catch(() => { document.getElementById('no-midi').style.display = ''; });
+})();
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Shift') { setShift(true); return; }
+  if (e.code === 'Space') { e.preventDefault(); toggleRun(); return; }
+  if (e.code === 'KeyB' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault(); toggleBypass(); return;
+  }
+  // 1/2/3 = trigger notes
+  const ci = ['Digit1','Digit2','Digit3'].indexOf(e.code);
+  if (ci >= 0 && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    sendNote(TRIG_NOTES[ci], 100);
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'Shift') setShift(false);
+});
 
 buildRefTable();
 updateLeds();
