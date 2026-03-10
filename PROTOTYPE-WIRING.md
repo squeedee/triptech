@@ -353,16 +353,16 @@ Only 1 GPIO pin is needed for the entire chain.
   Seed D17 (header 24)
        │
        │  330R              LED 1        LED 2              LED 8
-       ├──/\/\/──┐     ┌──────────┐ ┌──────────┐      ┌──────────┐
-       │         └────►│ DIN  DOUT├─►│ DIN  DOUT├─ ··· ►│ DIN  DOUT├── (NC)
-       │               │          │ │          │      │          │
-  VIN (5V) ──────┬─────┤ VCC      │─┤ VCC      │──────┤ VCC      │
-       │         │     │          │ │          │      │          │
-      ─┴─ 100uF │     │          │ │          │      │          │
-      ─┬─ (bulk)│     │          │ │          │      │          │
-       │         │     │          │ │          │      │          │
-  GND ──────────┴─────┤ GND      │─┤ GND      │──────┤ GND      │
-                       └──────────┘ └──────────┘      └──────────┘
+       ├──/\/\/──┐     ┌──────────┐  ┌──────────┐      ┌──────────┐
+       │         └────►│ DIN  DOUT├─►│ DIN  DOUT├─···─►│ DIN  DOUT├── (NC)
+       │               │          │  │          │      │          │
+  VIN (5V) ──────┬─────┤ VCC      │──┤ VCC      │──────┤ VCC      │
+       │         │     │          │  │          │      │          │
+      ─┴─ 100uF  │     │          │  │          │      │          │
+      ─┬─ (bulk) │     │          │  │          │      │          │
+       │         │     │          │  │          │      │          │
+  GND ───────────┴─────┤ GND      │──┤ GND      │──────┤ GND      │
+                       └──────────┘  └──────────┘      └──────────┘
 ```
 
 ### Chain order (suggested)
@@ -471,6 +471,8 @@ Only 1 GPIO pin is needed for the entire chain.
 
 ## Pin Map Visual (Daisy Seed, component side up, USB at bottom)
 
+**NOTE:** Horribly innacurate, needs redrawing.
+
 ```
           Left Header                              Right Header
      ┌──────────────────┐                    ┌──────────────────┐
@@ -490,26 +492,26 @@ Only 1 GPIO pin is needed for the entire chain.
      │  │  H750      │  │                    │                  │
      │  └────────────┘  │                    │                  │
      ├──────────────────┤                    ├──────────────────┤
- 21  │ +3V3A           │                    │                  │
- 22  │ D15   - SW6(CH3)│                    │                  │
- 23  │ D16   - SW7(GLB)│                    │                  │
- 24  │ D17   - LED DIN │                    │                  │
- 25  │ D18   - (free)  │                    │                  │
- 26  │ D19   - (free)  │                    │                  │
- 27  │ D20   - Enc1 A  │                    │                  │
- 28  │ D21   - Enc1 B  │                    │                  │
- 29  │ D22   - Enc1 SW │                    │                  │
- 30  │ D23   - Enc2 A  │                    │                  │
- 31  │ D24   - Enc2 B  │                    │                  │
- 32  │ D25   - Enc2 SW │                    │                  │
- 33  │ D26   - Enc3 A  │                    │                  │
- 34  │ D27   - Enc3 B  │                    │                  │
- 35  │ D28   - Enc3 SW │       ┌─────┐      │                  │
- 36  │ D29   - USB D-  │       │ USB │      │                  │
- 37  │ D30   - USB D+  │       └─────┘      │                  │
- 38  │ +3V3D - Display │   [RESET] [BOOT]   │                  │
- 39  │ VIN   - MIDI 5V │                    │                  │
- 40  │ DGND  - Gnd bus │                    │                  │
+ 21  │ +3V3A            │                    │                  │
+ 22  │ D15   - SW6(CH3) │                    │                  │
+ 23  │ D16   - SW7(GLB) │                    │                  │
+ 24  │ D17   - LED DIN  │                    │                  │
+ 25  │ D18   - (free)   │                    │                  │
+ 26  │ D19   - (free)   │                    │                  │
+ 27  │ D20   - Enc1 A   │                    │                  │
+ 28  │ D21   - Enc1 B   │                    │                  │
+ 29  │ D22   - Enc1 SW  │                    │                  │
+ 30  │ D23   - Enc2 A   │                    │                  │
+ 31  │ D24   - Enc2 B   │                    │                  │
+ 32  │ D25   - Enc2 SW  │                    │                  │
+ 33  │ D26   - Enc3 A   │                    │                  │
+ 34  │ D27   - Enc3 B   │                    │                  │
+ 35  │ D28   - Enc3 SW  │       ┌─────┐      │                  │
+ 36  │ D29   - USB D-   │       │ USB │      │                  │
+ 37  │ D30   - USB D+   │       └─────┘      │                  │
+ 38  │ +3V3D - Display  │   [RESET] [BOOT]   │                  │
+ 39  │ VIN   - MIDI 5V  │                    │                  │
+ 40  │ DGND  - Gnd bus  │                    │                  │
      └──────────────────┘                    └──────────────────┘
 ```
 
@@ -539,3 +541,143 @@ Only 1 GPIO pin is needed for the entire chain.
 
 7. **5 spare pins** remain (D9, D18, D19, D29, D30) for future additions like
    additional indicators, or USB-C on D29/D30.
+
+---
+
+## Appendix A: Balanced Audio I/O (Carrier Board Design)
+
+The prototype uses unbalanced TS mono jacks wired directly to the Seed's codec pins.
+For the carrier board, balanced TRS I/O can be added with dedicated line receiver and
+driver ICs. This is a purely analog front-end -- no firmware or GPIO changes are needed.
+
+### Why balanced?
+
+Balanced connections reject electromagnetic interference picked up along the cable. This
+matters for longer cable runs, stage/rack environments, and professional interoperability.
+Balanced TRS jacks are also **fully backward-compatible with unbalanced TS cables** --
+no detection or switching circuitry is required.
+
+### Input: THAT1246 (Balanced Line Receiver)
+
+The THAT1246 is a monolithic differential receiver with precision-trimmed internal resistors.
+One IC per channel (2 total for stereo).
+
+```
+                       THAT1246
+                    ┌──────────────┐
+  TRS Jack          │              │
+  ┌───────┐         │   2 (+IN) ───┤─── TRS Tip (hot)
+  │ TIP   ┼────────►│              │
+  │ RING  ┼────────►│   3 (-IN) ───┤─── TRS Ring (cold)
+  │ SLEEVE┼───┐     │              │                         ┌──────────┐
+  └───────┘   │     │   6 (OUT) ───┼────────────────────────►│ Seed     │
+              │     │              │                         │ Audio In │
+              │     │   1 (REF/GND)│                         │ (pin 16  │
+              │     │   4 (V-)     │                         │  or 17)  │
+              │     │   8 (V+)     │                         └──────────┘
+              │     └──────────────┘
+              │          │   │
+              │          │   │
+             GND       -5V  +5V
+```
+
+**When a TS (unbalanced) plug is inserted:** the ring (cold) is shorted to sleeve (ground)
+by the TS plug geometry. The THAT1246 sees signal on +IN, ground on -IN, and operates
+as a unity-gain buffer. Signal passes through cleanly -- no special handling needed.
+
+#### Key specs (THAT1246)
+
+| Parameter       | Value                                        |
+|-----------------|----------------------------------------------|
+| Gain            | 0 dB (unity)                                 |
+| CMRR            | >80 dB typical                               |
+| THD+N           | 0.0006% typical                              |
+| Input impedance | 20k ohm per leg (balanced), 10k (unbalanced) |
+| Supply          | +/-5V to +/-18V                              |
+| Package         | DIP-8 / SOIC-8                               |
+
+#### Input circuit notes
+
+- Place a **10uF + 100nF** bypass cap pair on each supply pin, close to the IC.
+- The output (pin 6) is single-ended, referenced to ground. Wire it directly to
+  the Seed's audio input pin (header 16 or 17). The Seed's inputs are AC-coupled
+  on-module, so no additional coupling cap is needed.
+- For the prototype's unbalanced TS jacks, the THAT1246 is not required -- the
+  Seed's inputs work directly. This stage is only for the carrier board with TRS jacks.
+- Two THAT1246 ICs are needed (one per channel: L in, R in).
+
+### Output: DRV134 (Balanced Line Driver)
+
+The DRV134 (Texas Instruments) converts a single-ended signal to a balanced differential
+output. One IC per channel (2 total for stereo).
+
+```
+                       DRV134
+  ┌──────────┐      ┌──────────────┐
+  │ Seed     │      │              │         TRS Jack
+  │ Audio Out├─────►│   7 (IN)     │         ┌──────┐
+  │ (pin 18  │      │              │    ┌───►│ TIP  │ (hot)
+  │  or 19)  │      │   5 (OUT+) ──┼────┘    │      │
+  └──────────┘      │              │    ┌───►│ RING │ (cold)
+                    │   8 (OUT-) ──┼────┘    │      │
+                    │              │    ┌───►│SLEEVE│
+                    │   3 (GND)    │    │    └──────┘
+                    │   4 (V-)     │    │
+                    │   1 (V+)     │   GND
+                    └──────────────┘
+                         │   │
+                       -12V +12V
+```
+
+**When a TS (unbalanced) plug is inserted:** the cold output (OUT-) is shorted to ground
+through the sleeve. The DRV134 handles this gracefully -- it simply drives the hot signal
+into the tip, and the cold output is loaded to ground. No damage, no oscillation.
+
+#### Key specs (DRV134)
+
+| Parameter    | Value                                 |
+|--------------|---------------------------------------|
+| Gain         | 0 dB (unity, differential)            |
+| THD+N        | 0.006% typical                        |
+| Output drive | 600 ohm balanced load                 |
+| Supply       | +/-12V to +/-18V (or as low as +/-5V) |
+| Package      | DIP-8 / SOIC-8                        |
+
+#### Output circuit notes
+
+- The Seed's audio outputs (pins 18/19) are single-ended, ~1Vrms at 0dBFS,
+  with ~100 ohm output impedance. Wire directly to DRV134 input (pin 7).
+  A series coupling cap (10uF electrolytic or film) is recommended between
+  the Seed output and DRV134 input to block any DC offset.
+- Place **10uF + 100nF** bypass caps on each supply pin.
+- Two DRV134 ICs are needed (one per channel: L out, R out).
+
+### Alternative: THAT1646 (output driver)
+
+The THAT1646 is a drop-in alternative to the DRV134 with better specs (lower noise,
+lower distortion). Pin-compatible with the same circuit topology. Worth considering
+for the carrier board BOM.
+
+### Power supply for balanced I/O stage
+
+The THAT1246 needs at minimum +/-5V. The DRV134 performs best at +/-12V or higher.
+For a carrier board powered from a 9-12V DC barrel jack:
+
+| Supply option          | Method                                                                      |
+|------------------------|-----------------------------------------------------------------------------|
+| **+/-12V from 12V DC** | DC-DC isolated converter module (e.g. Traco TMA 1212D) or charge pump       |
+| **+/-5V from 5V DC**   | DC-DC inverting converter (e.g. LM2776 or ICL7660) for -5V rail             |
+| **Single +5V supply**  | Use THAT1200/1646 which support single-supply operation at reduced headroom |
+
+For the prototype (unbalanced), none of this is needed. This is a carrier board design note
+for future reference.
+
+### Summary
+
+| Stage  | IC                 | Jacks            | TS Compatible?                                        | Seed Pins                      | Qty |
+|--------|--------------------|------------------|-------------------------------------------------------|--------------------------------|-----|
+| Input  | THAT1246           | TRS balanced in  | Yes -- ring shorts to GND, works as unity-gain buffer | Audio In 1/2 (headers 16, 17)  | 2   |
+| Output | DRV134 or THAT1646 | TRS balanced out | Yes -- cold shorted to GND by TS plug, no harm        | Audio Out 1/2 (headers 18, 19) | 2   |
+
+No GPIO changes. No firmware changes. The balanced stage sits between the jacks and the
+Seed's existing audio pins as a transparent analog front-end.
