@@ -1,0 +1,1432 @@
+(kicad_sch
+  (version 20231120)
+  (generator "eeschema")
+  (generator_version "8.0")
+  (uuid "a1b2c3d4-1111-4000-8000-000000000001")
+  (paper "A4")
+  (title_block
+    (title "Triptech - Power Supply")
+    (date "2026-03-10")
+    (rev "1.0")
+    (company "Rasheed Abdul-Aziz")
+  )
+
+  (lib_symbols
+    (symbol "Connector:Barrel_Jack_MountingPin"
+      (pin_names (offset 1.016))
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "J"
+        (at 0 6.35 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "Barrel_Jack_MountingPin"
+        (at 0 -6.35 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" ""
+        (at 1.27 0.635 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 1.27 0.635 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "DC Barrel Jack with a mounting pin"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "Barrel_Jack_MountingPin_0_1"
+        (rectangle (start -5.08 3.81) (end 5.08 -3.81)
+          (stroke (width 0.254) (type default))
+          (fill (type background))
+        )
+      )
+      (symbol "Barrel_Jack_MountingPin_1_1"
+        (pin passive line (at 7.62 2.54 180) (length 2.54)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 7.62 -2.54 180) (length 2.54)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 7.62 0 180) (length 2.54)
+          (name "MountPin" (effects (font (size 1.27 1.27))))
+          (number "3" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "Transistor_FET:SI2301CDS"
+      (pin_names (offset 0.254) hide)
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "Q"
+        (at 5.08 1.905 0)
+        (effects (font (size 1.27 1.27)) (justify left))
+      )
+      (property "Value" "SI2301CDS"
+        (at 5.08 0 0)
+        (effects (font (size 1.27 1.27)) (justify left))
+      )
+      (property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+        (at 5.08 -1.905 0)
+        (effects (font (size 1.27 1.27)) (justify left) hide)
+      )
+      (property "Datasheet" "https://www.vishay.com/docs/70472/si2301cds.pdf"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "P-Channel MOSFET, -3.1A, -20V, SOT-23"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "SI2301CDS_0_1"
+        (polyline
+          (pts (xy 0.254 0) (xy -2.54 0))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0.254 1.905) (xy 0.254 -1.905))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0.762 -1.27) (xy 0.762 -2.286))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0.762 0.508) (xy 0.762 -0.508))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 0.762 2.286) (xy 0.762 1.27))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 2.54 2.54) (xy 2.54 1.778))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 2.54 -2.54) (xy 2.54 -1.778) (xy 0.762 -1.778))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 2.54 1.778) (xy 0.762 1.778))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 1.016 0) (xy 2.54 0) (xy 2.54 -2.54))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "SI2301CDS_1_1"
+        (pin input line (at -5.08 0 0) (length 2.54)
+          (name "G" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 2.54 2.54 270) (length 0)
+          (name "S" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 2.54 -2.54 90) (length 0)
+          (name "D" (effects (font (size 1.27 1.27))))
+          (number "3" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "Device:R"
+      (pin_names (offset 0) hide)
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "R"
+        (at 2.032 0 90)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "R"
+        (at 0 0 90)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" ""
+        (at -1.778 0 90)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Resistor"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "R_0_1"
+        (rectangle (start -1.016 -2.54) (end 1.016 2.54)
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "R_1_1"
+        (pin passive line (at 0 3.81 270) (length 1.27)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 0 -3.81 90) (length 1.27)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "Device:C"
+      (pin_names (offset 0.254) hide)
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "C"
+        (at 0.635 2.54 0)
+        (effects (font (size 1.27 1.27)) (justify left))
+      )
+      (property "Value" "C"
+        (at 0.635 -2.54 0)
+        (effects (font (size 1.27 1.27)) (justify left))
+      )
+      (property "Footprint" ""
+        (at 0.9652 -3.81 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Unpolarized capacitor"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "C_0_1"
+        (polyline
+          (pts (xy -2.032 -0.762) (xy 2.032 -0.762))
+          (stroke (width 0.508) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -2.032 0.762) (xy 2.032 0.762))
+          (stroke (width 0.508) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "C_1_1"
+        (pin passive line (at 0 3.81 270) (length 2.794)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 0 -3.81 90) (length 2.794)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "Device:CP"
+      (pin_names (offset 0.254) hide)
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "C"
+        (at 0.635 2.54 0)
+        (effects (font (size 1.27 1.27)) (justify left))
+      )
+      (property "Value" "CP"
+        (at 0.635 -2.54 0)
+        (effects (font (size 1.27 1.27)) (justify left))
+      )
+      (property "Footprint" ""
+        (at 0.9652 -3.81 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Polarized capacitor"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "CP_0_1"
+        (polyline
+          (pts (xy -2.032 -0.762) (xy 2.032 -0.762))
+          (stroke (width 0.508) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -2.032 0.762) (xy 2.032 0.762))
+          (stroke (width 0.508) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "CP_1_1"
+        (pin passive line (at 0 3.81 270) (length 2.794)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 0 -3.81 90) (length 2.794)
+          (name "~" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "Device:L"
+      (pin_names (offset 1.016) hide)
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "L"
+        (at -1.016 0 90)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "L"
+        (at 1.016 0 90)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Inductor"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "L_0_1"
+        (arc (start 0 -2.54) (mid 0.6323 -1.905) (end 0 -1.27)
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (arc (start 0 -1.27) (mid 0.6323 -0.635) (end 0 0)
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (arc (start 0 0) (mid 0.6323 0.635) (end 0 1.27)
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (arc (start 0 1.27) (mid 0.6323 1.905) (end 0 2.54)
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "L_1_1"
+        (pin passive line (at 0 3.81 270) (length 1.27)
+          (name "1" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 0 -3.81 90) (length 1.27)
+          (name "2" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "Device:D_TVS"
+      (pin_names (offset 1.016) hide)
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "D"
+        (at 0 2.54 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "D_TVS"
+        (at 0 -2.54 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Bidirectional TVS diode"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "D_TVS_0_1"
+        (polyline
+          (pts (xy 1.27 0) (xy -1.27 0))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy -2.54 1.27) (xy -1.27 1.27) (xy -1.27 -1.27) (xy 0 -1.27))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+        (polyline
+          (pts (xy 1.27 1.27) (xy 1.27 -1.27) (xy -1.27 0) (xy 1.27 1.27))
+          (stroke (width 0.254) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "D_TVS_1_1"
+        (pin passive line (at -3.81 0 0) (length 2.54)
+          (name "A1" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 3.81 0 180) (length 2.54)
+          (name "A2" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "triptech:TPS54302"
+      (pin_names (offset 1.016))
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "U"
+        (at 0 10.16 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "TPS54302"
+        (at 0 -10.16 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+        (at 0 -12.7 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps54302.pdf"
+        (at 0 -15.24 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "TPS54302 3A step-down converter, 4.5-28V input, SOT-23-6"
+        (at 0 -17.78 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "TPS54302_0_1"
+        (rectangle (start -7.62 8.89) (end 7.62 -8.89)
+          (stroke (width 0.254) (type default))
+          (fill (type background))
+        )
+      )
+      (symbol "TPS54302_1_1"
+        (pin output line (at 10.16 5.08 180) (length 2.54)
+          (name "SW" (effects (font (size 1.016 1.016))))
+          (number "1" (effects (font (size 1.016 1.016))))
+        )
+        (pin power_in line (at -10.16 -5.08 0) (length 2.54)
+          (name "GND" (effects (font (size 1.016 1.016))))
+          (number "2" (effects (font (size 1.016 1.016))))
+        )
+        (pin input line (at -10.16 2.54 0) (length 2.54)
+          (name "FB" (effects (font (size 1.016 1.016))))
+          (number "3" (effects (font (size 1.016 1.016))))
+        )
+        (pin input line (at -10.16 0 0) (length 2.54)
+          (name "EN" (effects (font (size 1.016 1.016))))
+          (number "4" (effects (font (size 1.016 1.016))))
+        )
+        (pin power_in line (at -10.16 5.08 0) (length 2.54)
+          (name "VIN" (effects (font (size 1.016 1.016))))
+          (number "5" (effects (font (size 1.016 1.016))))
+        )
+        (pin output line (at 10.16 2.54 180) (length 2.54)
+          (name "BST" (effects (font (size 1.016 1.016))))
+          (number "6" (effects (font (size 1.016 1.016))))
+        )
+      )
+    )
+    (symbol "Connector_Generic:Conn_01x03"
+      (pin_names (offset 1.016))
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "J"
+        (at 0 5.08 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "Conn_01x03"
+        (at 0 -5.08 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Generic connector, single row, 01x03"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "Conn_01x03_1_1"
+        (rectangle (start -1.27 3.81) (end 1.27 -3.81)
+          (stroke (width 0.254) (type default))
+          (fill (type background))
+        )
+        (pin passive line (at 3.81 2.54 180) (length 2.54)
+          (name "Pin_1" (effects (font (size 1.016 1.016))))
+          (number "1" (effects (font (size 1.016 1.016))))
+        )
+        (pin passive line (at 3.81 0 180) (length 2.54)
+          (name "Pin_2" (effects (font (size 1.016 1.016))))
+          (number "2" (effects (font (size 1.016 1.016))))
+        )
+        (pin passive line (at 3.81 -2.54 180) (length 2.54)
+          (name "Pin_3" (effects (font (size 1.016 1.016))))
+          (number "3" (effects (font (size 1.016 1.016))))
+        )
+      )
+    )
+    (symbol "Connector_Generic:Conn_01x06"
+      (pin_names (offset 1.016))
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "J"
+        (at 0 8.89 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "Conn_01x06"
+        (at 0 -8.89 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Generic connector, single row, 01x06"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "Conn_01x06_1_1"
+        (rectangle (start -1.27 6.35) (end 1.27 -6.35)
+          (stroke (width 0.254) (type default))
+          (fill (type background))
+        )
+        (pin passive line (at 3.81 5.08 180) (length 2.54)
+          (name "Pin_1" (effects (font (size 1.016 1.016))))
+          (number "1" (effects (font (size 1.016 1.016))))
+        )
+        (pin passive line (at 3.81 2.54 180) (length 2.54)
+          (name "Pin_2" (effects (font (size 1.016 1.016))))
+          (number "2" (effects (font (size 1.016 1.016))))
+        )
+        (pin passive line (at 3.81 0 180) (length 2.54)
+          (name "Pin_3" (effects (font (size 1.016 1.016))))
+          (number "3" (effects (font (size 1.016 1.016))))
+        )
+        (pin passive line (at 3.81 -2.54 180) (length 2.54)
+          (name "Pin_4" (effects (font (size 1.016 1.016))))
+          (number "4" (effects (font (size 1.016 1.016))))
+        )
+        (pin passive line (at 3.81 -5.08 180) (length 2.54)
+          (name "Pin_5" (effects (font (size 1.016 1.016))))
+          (number "5" (effects (font (size 1.016 1.016))))
+        )
+        (pin passive line (at 3.81 -7.62 180) (length 2.54)
+          (name "Pin_6" (effects (font (size 1.016 1.016))))
+          (number "6" (effects (font (size 1.016 1.016))))
+        )
+      )
+    )
+    (symbol "power:GND"
+      (power)
+      (pin_names (offset 0))
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "#PWR"
+        (at 0 -6.35 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Value" "GND"
+        (at 0 -3.81 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" ""
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Power symbol creates a global label with name \"GND\""
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "GND_0_1"
+        (polyline
+          (pts (xy 0 0) (xy 0 -1.27) (xy 1.27 -1.27) (xy 0 -2.54) (xy -1.27 -1.27) (xy 0 -1.27))
+          (stroke (width 0) (type default))
+          (fill (type none))
+        )
+      )
+      (symbol "GND_1_1"
+        (pin power_in line (at 0 0 270) (length 0)
+          (name "GND" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "power:PWR_FLAG"
+      (power)
+      (pin_names (offset 0))
+      (exclude_from_sim no)
+      (in_bom yes)
+      (on_board yes)
+      (property "Reference" "#FLG"
+        (at 0 1.905 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Value" "PWR_FLAG"
+        (at 0 3.81 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" ""
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Description" "Special symbol for telling ERC where power comes from"
+        (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "PWR_FLAG_0_0"
+        (pin power_out line (at 0 0 90) (length 0)
+          (name "pwr" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Connector:Barrel_Jack_MountingPin")
+    (at 30.48 50.8 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0001-4000-8000-000000000001")
+    (property "Reference" "J_DC"
+      (at 30.48 40.64 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "Barrel_Jack_2.1mm"
+      (at 30.48 43.18 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Connector_BarrelJack:BarrelJack_Horizontal"
+      (at 31.75 51.435 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100001-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100001-0001-4002-8000-000000000001"))
+    (pin "3" (uuid "ba100001-0001-4003-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "J_DC") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Transistor_FET:SI2301CDS")
+    (at 55.88 50.8 0)
+    (mirror y)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0002-4000-8000-000000000001")
+    (property "Reference" "Q1"
+      (at 60.96 48.26 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "SI2301CDS"
+      (at 60.96 50.8 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+      (at 60.96 52.705 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100002-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100002-0001-4002-8000-000000000001"))
+    (pin "3" (uuid "ba100002-0001-4003-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "Q1") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:R")
+    (at 55.88 60.96 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0003-4000-8000-000000000001")
+    (property "Reference" "R_GATE"
+      (at 58.42 60.96 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "10k"
+      (at 58.42 63.5 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 54.102 60.96 90)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100003-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100003-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "R_GATE") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:D_TVS")
+    (at 73.66 58.42 270)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0004-4000-8000-000000000001")
+    (property "Reference" "D1"
+      (at 76.2 55.88 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "SMBJ15A"
+      (at 76.2 58.42 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Diode_SMD:D_SMB"
+      (at 73.66 58.42 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100004-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100004-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "D1") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:CP")
+    (at 83.82 58.42 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0005-4000-8000-000000000001")
+    (property "Reference" "C1"
+      (at 86.36 55.88 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "100u/25V"
+      (at 86.36 58.42 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Capacitor_SMD:CP_Elec_6.3x7.7"
+      (at 84.7852 62.23 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100005-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100005-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "C1") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:C")
+    (at 93.98 58.42 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0006-4000-8000-000000000001")
+    (property "Reference" "C2"
+      (at 96.52 55.88 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "100n"
+      (at 96.52 58.42 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+      (at 94.9452 62.23 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100006-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100006-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "C2") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "triptech:TPS54302")
+    (at 134.62 50.8 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0010-4000-8000-000000000001")
+    (property "Reference" "U_REG"
+      (at 134.62 38.1 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "TPS54302"
+      (at 134.62 40.64 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
+      (at 134.62 63.5 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100010-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100010-0001-4002-8000-000000000001"))
+    (pin "3" (uuid "ba100010-0001-4003-8000-000000000001"))
+    (pin "4" (uuid "ba100010-0001-4004-8000-000000000001"))
+    (pin "5" (uuid "ba100010-0001-4005-8000-000000000001"))
+    (pin "6" (uuid "ba100010-0001-4006-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "U_REG") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:C")
+    (at 152.4 43.18 90)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0011-4000-8000-000000000001")
+    (property "Reference" "C_BST"
+      (at 152.4 38.1 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "100n"
+      (at 152.4 40.64 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+      (at 156.21 44.1452 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100011-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100011-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "C_BST") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:L")
+    (at 165.1 45.72 90)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0012-4000-8000-000000000001")
+    (property "Reference" "L1"
+      (at 165.1 40.64 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "10uH"
+      (at 165.1 43.18 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Inductor_SMD:L_Bourns_SRN6045TA"
+      (at 165.1 45.72 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100012-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100012-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "L1") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:R")
+    (at 119.38 43.18 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0013-4000-8000-000000000001")
+    (property "Reference" "R_EN1"
+      (at 116.84 40.64 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "100k"
+      (at 116.84 43.18 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 117.602 43.18 90)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100013-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100013-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "R_EN1") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:R")
+    (at 119.38 55.88 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0014-4000-8000-000000000001")
+    (property "Reference" "R_EN2"
+      (at 116.84 53.34 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "47k"
+      (at 116.84 55.88 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 117.602 55.88 90)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100014-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100014-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "R_EN2") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:R")
+    (at 180.34 50.8 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0015-4000-8000-000000000001")
+    (property "Reference" "R_FB1"
+      (at 182.88 48.26 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "100k"
+      (at 182.88 50.8 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 178.562 50.8 90)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100015-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100015-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "R_FB1") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:R")
+    (at 180.34 63.5 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0016-4000-8000-000000000001")
+    (property "Reference" "R_FB2"
+      (at 182.88 60.96 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "24.9k"
+      (at 182.88 63.5 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+      (at 178.562 63.5 90)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100016-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100016-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "R_FB2") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:C")
+    (at 193.04 55.88 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0017-4000-8000-000000000001")
+    (property "Reference" "C_OUT1"
+      (at 195.58 53.34 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "22u"
+      (at 195.58 55.88 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+      (at 194.0052 59.69 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100017-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100017-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "C_OUT1") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:C")
+    (at 203.2 55.88 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0018-4000-8000-000000000001")
+    (property "Reference" "C_OUT2"
+      (at 205.74 53.34 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "22u"
+      (at 205.74 55.88 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+      (at 204.1652 59.69 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100018-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100018-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "C_OUT2") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Connector_Generic:Conn_01x06")
+    (at 134.62 101.6 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp yes)
+    (uuid "a100a001-0020-4000-8000-000000000001")
+    (property "Reference" "J_DCDC"
+      (at 134.62 88.9 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "TMA_1212D (DNP)"
+      (at 134.62 91.44 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical"
+      (at 134.62 101.6 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100020-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100020-0001-4002-8000-000000000001"))
+    (pin "3" (uuid "ba100020-0001-4003-8000-000000000001"))
+    (pin "4" (uuid "ba100020-0001-4004-8000-000000000001"))
+    (pin "5" (uuid "ba100020-0001-4005-8000-000000000001"))
+    (pin "6" (uuid "ba100020-0001-4006-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "J_DCDC") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:C")
+    (at 160.02 96.52 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp yes)
+    (uuid "a100a001-0021-4000-8000-000000000001")
+    (property "Reference" "C_12P"
+      (at 162.56 93.98 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "10u (DNP)"
+      (at 162.56 96.52 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+      (at 160.9852 100.33 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100021-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100021-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "C_12P") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Device:C")
+    (at 170.18 96.52 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp yes)
+    (uuid "a100a001-0022-4000-8000-000000000001")
+    (property "Reference" "C_12N"
+      (at 172.72 93.98 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "10u (DNP)"
+      (at 172.72 96.52 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+      (at 171.1452 100.33 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100022-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100022-0001-4002-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "C_12N") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "Connector_Generic:Conn_01x03")
+    (at 149.86 106.68 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0023-4000-8000-000000000001")
+    (property "Reference" "JP1"
+      (at 149.86 99.06 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "+12V Bypass"
+      (at 149.86 101.6 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"
+      (at 149.86 106.68 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid "ba100023-0001-4001-8000-000000000001"))
+    (pin "2" (uuid "ba100023-0001-4002-8000-000000000001"))
+    (pin "3" (uuid "ba100023-0001-4003-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "JP1") (unit 1)
+        )
+      )
+    )
+  )
+
+  (label "+12V_RAW" (at 73.66 45.72 0)
+    (effects (font (size 1.27 1.27)))
+    (uuid "nl100001-0001-4000-8000-000000000001")
+  )
+  (label "+12V_RAW" (at 104.14 45.72 0)
+    (effects (font (size 1.27 1.27)))
+    (uuid "nl100001-0002-4000-8000-000000000001")
+  )
+  (label "FB_NODE" (at 180.34 55.88 0)
+    (effects (font (size 1.27 1.27)))
+    (uuid "nl100001-0003-4000-8000-000000000001")
+  )
+
+  (global_label "+5V"
+    (shape output)
+    (at 213.36 45.72 0)
+    (effects (font (size 1.27 1.27)))
+    (uuid "gl100001-0001-4000-8000-000000000001")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 213.36 45.72 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+  )
+  (global_label "+12VA"
+    (shape output)
+    (at 175.26 93.98 0)
+    (effects (font (size 1.27 1.27)))
+    (uuid "gl100001-0002-4000-8000-000000000001")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 175.26 93.98 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+  )
+  (global_label "-12VA"
+    (shape output)
+    (at 175.26 111.76 0)
+    (effects (font (size 1.27 1.27)))
+    (uuid "gl100001-0003-4000-8000-000000000001")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 175.26 111.76 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+  )
+  (global_label "GND"
+    (shape input)
+    (at 55.88 71.12 270)
+    (effects (font (size 1.27 1.27)))
+    (uuid "gl100001-0004-4000-8000-000000000001")
+    (property "Intersheetrefs" "${INTERSHEET_REFS}"
+      (at 55.88 71.12 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+  )
+
+  (symbol
+    (lib_id "power:GND")
+    (at 55.88 71.12 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0030-4000-8000-000000000001")
+    (property "Reference" "#PWR01"
+      (at 55.88 77.47 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "GND"
+      (at 55.88 74.93 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (pin "1" (uuid "ba100030-0001-4001-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "#PWR01") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "power:GND")
+    (at 134.62 60.96 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0031-4000-8000-000000000001")
+    (property "Reference" "#PWR02"
+      (at 134.62 67.31 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "GND"
+      (at 134.62 64.77 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (pin "1" (uuid "ba100031-0001-4001-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "#PWR02") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "power:GND")
+    (at 180.34 71.12 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0032-4000-8000-000000000001")
+    (property "Reference" "#PWR03"
+      (at 180.34 77.47 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "GND"
+      (at 180.34 74.93 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (pin "1" (uuid "ba100032-0001-4001-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "#PWR03") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol
+    (lib_id "power:PWR_FLAG")
+    (at 213.36 48.26 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom no)
+    (on_board yes)
+    (dnp no)
+    (uuid "a100a001-0033-4000-8000-000000000001")
+    (property "Reference" "#FLG01"
+      (at 213.36 46.355 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "PWR_FLAG"
+      (at 213.36 52.07 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (pin "1" (uuid "ba100033-0001-4001-8000-000000000001"))
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
+          (reference "#FLG01") (unit 1)
+        )
+      )
+    )
+  )
+
+  (text "12V DC Input - Reverse Polarity Protection - +12V_RAW"
+    (exclude_from_sim no)
+    (at 50.8 30.48 0)
+    (effects (font (size 2.54 2.54)))
+    (uuid "tx100001-0001-4000-8000-000000000001")
+  )
+  (text "TPS54302 Buck: 12V to 5V, 3A max"
+    (exclude_from_sim no)
+    (at 121.92 30.48 0)
+    (effects (font (size 2.54 2.54)))
+    (uuid "tx100001-0002-4000-8000-000000000001")
+  )
+  (text "DC-DC Module (DNP) for future balanced audio I/O"
+    (exclude_from_sim no)
+    (at 104.14 83.82 0)
+    (effects (font (size 1.524 1.524)))
+    (uuid "tx100001-0003-4000-8000-000000000001")
+  )
+  (text "FB divider: VOUT = 0.8V x (1 + R_FB1/R_FB2)"
+    (exclude_from_sim no)
+    (at 180.34 76.2 0)
+    (effects (font (size 1.27 1.27)))
+    (uuid "tx100001-0004-4000-8000-000000000001")
+  )
+)

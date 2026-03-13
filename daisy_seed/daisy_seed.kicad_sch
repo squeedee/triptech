@@ -1,0 +1,293 @@
+(kicad_sch
+  (version 20231120)
+  (generator "eeschema")
+  (generator_version "8.0")
+  (uuid "55cca6a8-30da-4c13-b2f2-a01401e2b54c")
+  (paper "A3")
+  (title_block
+    (title "Triptech Carrier Board")
+    (date "2026-03-10")
+    (rev "1.0")
+    (company "Rasheed Abdul-Aziz")
+  )
+  (lib_symbols)
+  (sheet
+    (at 30.48 30.48)
+    (size 40.64 20.32)
+    (stroke
+      (width 0.1524)
+      (type solid)
+    )
+    (fill
+      (color 255 255 194 1.0)
+    )
+    (uuid "a1b2c3d4-1111-4000-8000-000000000001")
+    (property "Sheetname" "Power"
+      (at 30.48 29.7694 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left bottom)
+      )
+    )
+    (property "Sheetfile" "power.kicad_sch"
+      (at 30.48 51.3946 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left top)
+      )
+    )
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c"
+          (page "2")
+        )
+      )
+    )
+  )
+  (sheet
+    (at 91.44 30.48)
+    (size 40.64 20.32)
+    (stroke
+      (width 0.1524)
+      (type solid)
+    )
+    (fill
+      (color 194 255 194 1.0)
+    )
+    (uuid "a1b2c3d4-2222-4000-8000-000000000002")
+    (property "Sheetname" "DaisySeed"
+      (at 91.44 29.7694 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left bottom)
+      )
+    )
+    (property "Sheetfile" "daisy_seed.kicad_sch"
+      (at 91.44 51.3946 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left top)
+      )
+    )
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c"
+          (page "3")
+        )
+      )
+    )
+  )
+  (sheet
+    (at 152.4 30.48)
+    (size 40.64 20.32)
+    (stroke
+      (width 0.1524)
+      (type solid)
+    )
+    (fill
+      (color 194 224 255 1.0)
+    )
+    (uuid "a1b2c3d4-3333-4000-8000-000000000003")
+    (property "Sheetname" "Displays"
+      (at 152.4 29.7694 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left bottom)
+      )
+    )
+    (property "Sheetfile" "displays.kicad_sch"
+      (at 152.4 51.3946 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left top)
+      )
+    )
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c"
+          (page "4")
+        )
+      )
+    )
+  )
+  (sheet
+    (at 30.48 68.58)
+    (size 40.64 20.32)
+    (stroke
+      (width 0.1524)
+      (type solid)
+    )
+    (fill
+      (color 255 224 194 1.0)
+    )
+    (uuid "a1b2c3d4-4444-4000-8000-000000000004")
+    (property "Sheetname" "UI"
+      (at 30.48 67.8694 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left bottom)
+      )
+    )
+    (property "Sheetfile" "ui.kicad_sch"
+      (at 30.48 89.4946 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left top)
+      )
+    )
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c"
+          (page "5")
+        )
+      )
+    )
+  )
+  (sheet
+    (at 91.44 68.58)
+    (size 40.64 20.32)
+    (stroke
+      (width 0.1524)
+      (type solid)
+    )
+    (fill
+      (color 255 194 194 1.0)
+    )
+    (uuid "a1b2c3d4-5555-4000-8000-000000000005")
+    (property "Sheetname" "MIDI"
+      (at 91.44 67.8694 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left bottom)
+      )
+    )
+    (property "Sheetfile" "midi.kicad_sch"
+      (at 91.44 89.4946 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left top)
+      )
+    )
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c"
+          (page "6")
+        )
+      )
+    )
+  )
+  (sheet
+    (at 152.4 68.58)
+    (size 40.64 20.32)
+    (stroke
+      (width 0.1524)
+      (type solid)
+    )
+    (fill
+      (color 224 194 255 1.0)
+    )
+    (uuid "a1b2c3d4-6666-4000-8000-000000000006")
+    (property "Sheetname" "USB"
+      (at 152.4 67.8694 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left bottom)
+      )
+    )
+    (property "Sheetfile" "usb.kicad_sch"
+      (at 152.4 89.4946 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left top)
+      )
+    )
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c"
+          (page "7")
+        )
+      )
+    )
+  )
+  (sheet
+    (at 213.36 68.58)
+    (size 40.64 20.32)
+    (stroke
+      (width 0.1524)
+      (type solid)
+    )
+    (fill
+      (color 194 255 255 1.0)
+    )
+    (uuid "a1b2c3d4-7777-4000-8000-000000000007")
+    (property "Sheetname" "Audio"
+      (at 213.36 67.8694 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left bottom)
+      )
+    )
+    (property "Sheetfile" "audio.kicad_sch"
+      (at 213.36 89.4946 0)
+      (effects
+        (font
+          (size 1.27 1.27)
+        )
+        (justify left top)
+      )
+    )
+    (instances
+      (project "triptech"
+        (path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c"
+          (page "8")
+        )
+      )
+    )
+  )
+  (text "TRIPTECH CARRIER BOARD - Root Sheet. All sub-sheets interconnected via global labels."
+    (exclude_from_sim no)
+    (at 30.48 106.68 0)
+    (effects
+      (font
+        (size 2.0 2.0)
+      )
+    )
+    (uuid "tx000001-0001-4000-8000-000000000001")
+  )
+  (text "Power rails: +12V_RAW, +5V, +3V3D, +12VA, -12VA. Ground nets: GND (digital), AGND (analog, star-connected)"
+    (exclude_from_sim no)
+    (at 30.48 114.3 0)
+    (effects
+      (font
+        (size 1.524 1.524)
+      )
+    )
+    (uuid "tx000001-0002-4000-8000-000000000001")
+  )
+)
