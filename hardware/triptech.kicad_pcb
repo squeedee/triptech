@@ -1,202 +1,393 @@
 (kicad_pcb
-  (version 20240108)
-  (generator "pcbnew")
-  (generator_version "8.0")
-  (general
-    (thickness 1.6)
-    (legacy_teardrops no)
-  )
-  (paper "A4")
-  (title_block
-    (title "Triptech Carrier Board")
-    (date "2026-03-10")
-    (rev "1.0")
-    (company "Rasheed Abdul-Aziz")
-  )
-  (layers
-    (0 "F.Cu" signal)
-    (31 "B.Cu" signal)
-    (32 "B.Adhes" user "B.Adhesive")
-    (33 "F.Adhes" user "F.Adhesive")
-    (34 "B.Paste" user)
-    (35 "F.Paste" user)
-    (36 "B.SilkS" user "B.Silkscreen")
-    (37 "F.SilkS" user "F.Silkscreen")
-    (38 "B.Mask" user "B.Mask")
-    (39 "F.Mask" user "F.Mask")
-    (40 "Dwgs.User" user "User.Drawings")
-    (41 "Cmts.User" user "User.Comments")
-    (42 "B.CrtYd" user "B.Courtyard")
-    (43 "F.CrtYd" user "F.Courtyard")
-    (44 "B.Fab" user "B.Fabrication")
-    (45 "F.Fab" user "F.Fabrication")
-    (46 "User.1" user)
-    (47 "User.2" user)
-  )
-  (setup
-    (pad_to_mask_clearance 0)
-    (allow_soldermask_bridges_in_footprints no)
-    (pcbplotparams
-      (layerselection 0x00010fc_ffffffff)
-      (plot_on_all_layers_selection 0x0000000_00000000)
-      (disableapertmacros no)
-      (usegerberextensions no)
-      (usegerberattributes yes)
-      (usegerberadvancedattributes yes)
-      (creategerberjobfile yes)
-      (dashed_line_dash_ratio 12.000000)
-      (dashed_line_gap_ratio 3.000000)
-      (svgprecision 4)
-      (plotframeref no)
-      (viasonmask no)
-      (mode 1)
-      (useauxorigin no)
-      (hpglpennumber 1)
-      (hpglpenspeed 20)
-      (hpglpendiameter 15.000000)
-      (pdf_front_fp_property_popups yes)
-      (pdf_back_fp_property_popups yes)
-      (dxf_units_as_mm yes)
-      (excludeedgelayer yes)
-      (linewidth 0.100000)
-      (plotpadnumbers no)
-      (subtractmaskfromsilk no)
-      (outputformat 1)
-      (mirror no)
-      (drillshape 1)
-      (scaleselection 1)
-      (outputdirectory "gerbers/")
-    )
-  )
-
-  (gr_rect
-    (start 0 0)
-    (end 144.78 95.25)
-    (stroke (width 0.15) (type solid))
-    (fill none)
-    (layer "Edge.Cuts")
-    (uuid "pcb00001-0001-4000-8000-000000000001")
-  )
-
-  (footprint "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
-    (layer "F.Cu")
-    (uuid "pcb00002-0001-4000-8000-000000000001")
-    (at 4 4)
-    (property "Reference" "H1"
-      (at 0 -3 0)
-      (layer "F.SilkS")
-      (effects (font (size 1 1) (thickness 0.15)))
-    )
-    (property "Value" "MountingHole_M3"
-      (at 0 3 0)
-      (layer "F.Fab")
-      (effects (font (size 1 1) (thickness 0.15)))
-    )
-  )
-  (footprint "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
-    (layer "F.Cu")
-    (uuid "pcb00002-0002-4000-8000-000000000001")
-    (at 140.78 4)
-    (property "Reference" "H2"
-      (at 0 -3 0)
-      (layer "F.SilkS")
-      (effects (font (size 1 1) (thickness 0.15)))
-    )
-    (property "Value" "MountingHole_M3"
-      (at 0 3 0)
-      (layer "F.Fab")
-      (effects (font (size 1 1) (thickness 0.15)))
-    )
-  )
-  (footprint "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
-    (layer "F.Cu")
-    (uuid "pcb00002-0003-4000-8000-000000000001")
-    (at 4 91.25)
-    (property "Reference" "H3"
-      (at 0 -3 0)
-      (layer "F.SilkS")
-      (effects (font (size 1 1) (thickness 0.15)))
-    )
-    (property "Value" "MountingHole_M3"
-      (at 0 3 0)
-      (layer "F.Fab")
-      (effects (font (size 1 1) (thickness 0.15)))
-    )
-  )
-  (footprint "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
-    (layer "F.Cu")
-    (uuid "pcb00002-0004-4000-8000-000000000001")
-    (at 140.78 91.25)
-    (property "Reference" "H4"
-      (at 0 -3 0)
-      (layer "F.SilkS")
-      (effects (font (size 1 1) (thickness 0.15)))
-    )
-    (property "Value" "MountingHole_M3"
-      (at 0 3 0)
-      (layer "F.Fab")
-      (effects (font (size 1 1) (thickness 0.15)))
-    )
-  )
-
-
-
-  (gr_text "REAR PANEL: DC / MIDI IN / MIDI OUT / MIDI THRU / USB-C / Audio I/O"
-    (at 72.39 2)
-    (layer "Cmts.User")
-    (effects (font (size 1.5 1.5) (thickness 0.15)))
-    (uuid "pcb00010-0001-4000-8000-000000000001")
-  )
-  (gr_text "DAISY SEED MODULE (centered)"
-    (at 72.39 35)
-    (layer "Cmts.User")
-    (effects (font (size 1.5 1.5) (thickness 0.15)))
-    (uuid "pcb00010-0002-4000-8000-000000000001")
-  )
-  (gr_text "KEY SWITCHES (L-column + top row) + PAGE INDICATOR LEDs"
-    (at 72.39 60)
-    (layer "Cmts.User")
-    (effects (font (size 1.5 1.5) (thickness 0.15)))
-    (uuid "pcb00010-0003-4000-8000-000000000001")
-  )
-  (gr_text "3x OLED + 3x ENCODER (front-facing, bottom of board)"
-    (at 72.39 82)
-    (layer "Cmts.User")
-    (effects (font (size 1.5 1.5) (thickness 0.15)))
-    (uuid "pcb00010-0004-4000-8000-000000000001")
-  )
-
-  (zone
-    (net 0)
-    (net_name "GND")
-    (layer "F.Cu")
-    (uuid "pcb00020-0001-4000-8000-000000000001")
-    (hatch edge 0.5)
-    (connect_pads (clearance 0.3))
-    (min_thickness 0.2)
-    (filled_areas_thickness no)
-    (fill yes (thermal_gap 0.5) (thermal_bridge_width 0.5))
-    (polygon
-      (pts
-        (xy 0 0) (xy 144.78 0) (xy 144.78 95.25) (xy 0 95.25)
-      )
-    )
-  )
-
-  (zone
-    (net 0)
-    (net_name "GND")
-    (layer "B.Cu")
-    (uuid "pcb00020-0002-4000-8000-000000000001")
-    (hatch edge 0.5)
-    (connect_pads (clearance 0.3))
-    (min_thickness 0.2)
-    (filled_areas_thickness no)
-    (fill yes (thermal_gap 0.5) (thermal_bridge_width 0.5))
-    (polygon
-      (pts
-        (xy 0 0) (xy 144.78 0) (xy 144.78 95.25) (xy 0 95.25)
-      )
-    )
-  )
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(general
+		(thickness 1.6)
+		(legacy_teardrops no)
+	)
+	(paper "A4")
+	(title_block
+		(title "Triptech Carrier Board")
+		(date "2026-03-10")
+		(rev "1.0")
+		(company "Rasheed Abdul-Aziz")
+	)
+	(layers
+		(0 "F.Cu" signal)
+		(2 "B.Cu" signal)
+		(9 "F.Adhes" user "F.Adhesive")
+		(11 "B.Adhes" user "B.Adhesive")
+		(13 "F.Paste" user)
+		(15 "B.Paste" user)
+		(5 "F.SilkS" user "F.Silkscreen")
+		(7 "B.SilkS" user "B.Silkscreen")
+		(1 "F.Mask" user)
+		(3 "B.Mask" user)
+		(17 "Dwgs.User" user "User.Drawings")
+		(19 "Cmts.User" user "User.Comments")
+		(25 "Edge.Cuts" user)
+		(27 "Margin" user)
+		(31 "F.CrtYd" user "F.Courtyard")
+		(29 "B.CrtYd" user "B.Courtyard")
+		(35 "F.Fab" user "F.Fabrication")
+		(33 "B.Fab" user "B.Fabrication")
+		(39 "User.1" user)
+		(41 "User.2" user)
+	)
+	(setup
+		(pad_to_mask_clearance 0)
+		(allow_soldermask_bridges_in_footprints no)
+		(tenting front back)
+		(pcbplotparams
+			(layerselection 0x00000000_00000000_55555555_5755f5ff)
+			(plot_on_all_layers_selection 0x00000000_00000000_00000000_00000000)
+			(disableapertmacros no)
+			(usegerberextensions no)
+			(usegerberattributes yes)
+			(usegerberadvancedattributes yes)
+			(creategerberjobfile yes)
+			(dashed_line_dash_ratio 12.000000)
+			(dashed_line_gap_ratio 3.000000)
+			(svgprecision 4)
+			(plotframeref no)
+			(mode 1)
+			(useauxorigin no)
+			(hpglpennumber 1)
+			(hpglpenspeed 20)
+			(hpglpendiameter 15.000000)
+			(pdf_front_fp_property_popups yes)
+			(pdf_back_fp_property_popups yes)
+			(pdf_metadata yes)
+			(pdf_single_document no)
+			(dxfpolygonmode yes)
+			(dxfimperialunits yes)
+			(dxfusepcbnewfont yes)
+			(psnegative no)
+			(psa4output no)
+			(plot_black_and_white yes)
+			(sketchpadsonfab no)
+			(plotpadnumbers no)
+			(hidednponfab no)
+			(sketchdnponfab yes)
+			(crossoutdnponfab yes)
+			(subtractmaskfromsilk no)
+			(outputformat 1)
+			(mirror no)
+			(drillshape 1)
+			(scaleselection 1)
+			(outputdirectory "gerbers/")
+		)
+	)
+	(property "COMPANY" "Rasheed Abdul-Aziz")
+	(property "REVISION" "1.0")
+	(property "TITLE" "Triptech Carrier Board")
+	(net 0 "")
+	(net 1 "GND")
+	(footprint "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
+		(layer "F.Cu")
+		(uuid "0bca41b7-0734-46de-bcf1-8b22be76c766")
+		(at 157.5 19.25)
+		(property "Reference" "H2"
+			(at 0 -3 0)
+			(layer "F.SilkS")
+			(uuid "0c1a74b0-3d63-4594-8692-b41e6d2ee76c")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Value" "MountingHole_M3"
+			(at 0 3 0)
+			(layer "F.Fab")
+			(uuid "52e6212c-95c4-47a7-8c15-7520fbd16cb4")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "bddb76e5-a293-4c58-8fbc-323cdbf028e0")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "9805630a-85cc-4f51-852a-34d42043201b")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+	(footprint "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
+		(layer "F.Cu")
+		(uuid "59f1404e-a350-436b-aa83-fd5fb5660fda")
+		(at 157.5 106.5)
+		(property "Reference" "H4"
+			(at 0 -3 0)
+			(layer "F.SilkS")
+			(uuid "5663d00c-8440-488b-8405-35c59c507fef")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Value" "MountingHole_M3"
+			(at 0 3 0)
+			(layer "F.Fab")
+			(uuid "9ee379d6-312d-464f-8bb9-ba2b9384fa1d")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "9f9d9c4b-dea6-4707-b614-2bf91ca6ff21")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "4d17d366-ec00-4167-9fa0-c2edc7df87ed")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+	(footprint "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
+		(layer "F.Cu")
+		(uuid "737ec2b4-5a0a-46d2-ad40-d65514590a8e")
+		(at 20.72 19.25)
+		(property "Reference" "H1"
+			(at 0 -3 0)
+			(layer "F.SilkS")
+			(uuid "17c7532c-9a1e-4db3-89c6-72cf8a4381fb")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Value" "MountingHole_M3"
+			(at 0 3 0)
+			(layer "F.Fab")
+			(uuid "3c1effc5-6703-45fb-8938-3c58039fc1cd")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "7e6ec1ef-1a83-4ab6-aed3-3dd45a938f11")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "0aaef2c3-7b38-44bf-ab58-4a09507becec")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+	(footprint "MountingHole:MountingHole_3.2mm_M3_Pad_Via"
+		(layer "F.Cu")
+		(uuid "767f2062-dd2b-4ab3-8be5-00ef4cfbfe8e")
+		(at 20.72 106.5)
+		(property "Reference" "H3"
+			(at 0 -3 0)
+			(layer "F.SilkS")
+			(uuid "fdafe5fd-19fb-4743-8581-294640ce3f7c")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Value" "MountingHole_M3"
+			(at 0 3 0)
+			(layer "F.Fab")
+			(uuid "71210a17-4448-4e73-828f-743a5eb85d76")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "b6fd1ecf-1bbf-4c37-954f-d2575edb1d23")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 0 0 0)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "d08c239d-9fd2-4b50-9d92-34f3d60d92d3")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+	(gr_rect
+		(start 16.72 15.25)
+		(end 161.5 110.5)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(fill no)
+		(layer "Edge.Cuts")
+		(uuid "c5cff617-4b9e-4ffb-b2b4-9915b4711cd4")
+	)
+	(gr_text "3x OLED + 3x ENCODER (front-facing, bottom of board)"
+		(at 89.11 97.25 0)
+		(layer "Cmts.User")
+		(uuid "5b3ce2ab-9e69-427a-a790-5e28a14f4a5d")
+		(effects
+			(font
+				(size 1.5 1.5)
+				(thickness 0.15)
+			)
+		)
+	)
+	(gr_text "DAISY SEED MODULE (centered)"
+		(at 89.11 50.25 0)
+		(layer "Cmts.User")
+		(uuid "8a052814-d369-4352-85d0-6f4360b9e588")
+		(effects
+			(font
+				(size 1.5 1.5)
+				(thickness 0.15)
+			)
+		)
+	)
+	(gr_text "KEY SWITCHES (L-column + top row) + PAGE INDICATOR LEDs"
+		(at 89.11 75.25 0)
+		(layer "Cmts.User")
+		(uuid "a12e0568-42b0-458a-bb98-939086fae46f")
+		(effects
+			(font
+				(size 1.5 1.5)
+				(thickness 0.15)
+			)
+		)
+	)
+	(gr_text "REAR PANEL: DC / MIDI IN / MIDI OUT / MIDI THRU / USB-C / Audio I/O"
+		(at 89.11 17.25 0)
+		(layer "Cmts.User")
+		(uuid "eb942f51-a04a-49fa-a30a-f1272863e5e4")
+		(effects
+			(font
+				(size 1.5 1.5)
+				(thickness 0.15)
+			)
+		)
+	)
+	(zone
+		(net 1)
+		(net_name "GND")
+		(layer "F.Cu")
+		(uuid "a662e660-b42f-40f1-93f4-1cad1d0bf86d")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0.3)
+		)
+		(min_thickness 0.2)
+		(filled_areas_thickness no)
+		(fill yes
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy 16.72 15.25) (xy 161.5 15.25) (xy 161.5 110.5) (xy 16.72 110.5)
+			)
+		)
+	)
+	(zone
+		(net 1)
+		(net_name "GND")
+		(layer "B.Cu")
+		(uuid "da80424c-2dc8-4899-8dd2-dc633524c6c4")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0.3)
+		)
+		(min_thickness 0.2)
+		(filled_areas_thickness no)
+		(fill yes
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy 16.72 15.25) (xy 161.5 15.25) (xy 161.5 110.5) (xy 16.72 110.5)
+			)
+		)
+	)
+	(embedded_fonts no)
 )
