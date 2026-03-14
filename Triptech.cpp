@@ -1,6 +1,7 @@
 #include "daisysp.h"
 #include "daisy_pod.h"
 #include <cmath>
+#include <cstring>
 #include <cstdlib>
 
 using namespace daisysp;
@@ -14,6 +15,7 @@ static constexpr int NUM_CH = 3; // Ch1=0, Ch2=1, Ch3=2
 static constexpr int NUM_STEPS = 16;
 static constexpr int NUM_PATTERNS = 16;
 static constexpr int TICKS_PER_STEP = 6; // 24 PPQN → 6 ticks per 16th note
+static constexpr int NUM_PATCHES = 64;
 static constexpr uint32_t TRS_TIMEOUT_MS = 500;
 static constexpr float HALF_PI = 1.5707963268f;
 
@@ -120,6 +122,13 @@ struct Preset {
     bool lfoSynced;      // true = clock-synced, false = free Hz
 };
 
+struct PatchStorage {
+    Preset patches[NUM_PATCHES];
+    bool operator!=(const PatchStorage &o) const {
+        return memcmp(this, &o, sizeof(*this)) != 0;
+    }
+};
+
 struct Channel {
     Svf fltL, fltR;          // SVF: LP/HP/BP/Notch at 12 dB
     LadderFilter ladL, ladR; // Ladder: LP/HP/BP at 12 or 24 dB
@@ -156,10 +165,12 @@ static DelayLine<float, 192001> DSY_SDRAM_BSS delayR;
 
 static DaisyPod pod;
 static MidiUsbHandler usb_midi;
+static PersistentStorage<PatchStorage> patchStorage(pod.seed.qspi);
 static Preset preset;
 static Channel ch[NUM_CH];
 static Oscillator lfo;
 static float sample_rate;
+static uint8_t cur_patch = 0;
 
 static CpuLoadMeter dspLoad;
 static float loopLoadAvg = 0.f; // smoothed main-loop µs per iteration
@@ -187,6 +198,64 @@ static bool bypass = false;
 static constexpr int kCcBase[NUM_CH] = {20, 36, 52};
 // Note triggers: all on MIDI channel 1 — C4, C#4, D4
 static constexpr uint8_t kTrigNote[NUM_CH] = {60, 61, 62};
+
+// ============================================================
+// Default preset factory
+// ============================================================
+
+static Preset DefaultPreset() {
+    Preset p = {};
+    p.bpm = 120.f;
+    p.delayParam = 32;
+    p.delaySynced = true;
+    p.delayFeedback = 0.4f;
+    p.delayWidth = 1.f;
+    p.lfoParam = 55;
+    p.lfoSynced = false;
+    p.dryLevel = 0.f;
+    p.pattern = 0;
+
+    // Ch1 — LP, center
+    p.ch[0].cutoff = 800.f;
+    p.ch[0].resonance = 0.5f;
+    p.ch[0].drive = 1.f;
+    p.ch[0].attack = 0.005f;
+    p.ch[0].decay = 0.2f;
+    p.ch[0].level = 0.7f;
+    p.ch[0].pan = 0.5f;
+    p.ch[0].lfoAmount = 0.f;
+    p.ch[0].delayAmount = 0.f;
+    p.ch[0].filterType = 0;
+    p.ch[0].filterSlope = 1;
+
+    // Ch2 — BP, left
+    p.ch[1].cutoff = 2000.f;
+    p.ch[1].resonance = 0.5f;
+    p.ch[1].drive = 1.f;
+    p.ch[1].attack = 0.005f;
+    p.ch[1].decay = 0.2f;
+    p.ch[1].level = 0.7f;
+    p.ch[1].pan = 0.25f;
+    p.ch[1].lfoAmount = 0.f;
+    p.ch[1].delayAmount = 0.f;
+    p.ch[1].filterType = 1;
+    p.ch[1].filterSlope = 1;
+
+    // Ch3 — HP, right
+    p.ch[2].cutoff = 1200.f;
+    p.ch[2].resonance = 0.5f;
+    p.ch[2].drive = 1.f;
+    p.ch[2].attack = 0.005f;
+    p.ch[2].decay = 0.2f;
+    p.ch[2].level = 0.7f;
+    p.ch[2].pan = 0.75f;
+    p.ch[2].lfoAmount = 0.f;
+    p.ch[2].delayAmount = 0.f;
+    p.ch[2].filterType = 2;
+    p.ch[2].filterSlope = 1;
+
+    return p;
+}
 
 // ============================================================
 // Helpers
@@ -219,6 +288,12 @@ static void SendCC(uint8_t cc, uint8_t val) {
     usb_midi.SendMessage(msg, 3);
 }
 
+static void SendProgramChange(uint8_t prog) {
+    uint8_t msg[2] = {0xC0, prog};
+    pod.midi.SendMessage(msg, 2);
+    usb_midi.SendMessage(msg, 2);
+}
+
 static void SendNoteOn(uint8_t note, uint8_t vel) {
     uint8_t msg[3] = {0x90, note, vel};
     pod.midi.SendMessage(msg, 3);
@@ -243,6 +318,7 @@ static void SendAllState() {
     SendCC(15, seq_running ? 127 : 0);
     SendCC(18, bypass ? 127 : 0);
     SendCC(19, (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f));
+    SendProgramChange(cur_patch);
     for (int c = 0; c < NUM_CH; c++) {
         int base = kCcBase[c];
         SendCC(base + 0, CcLogInv(preset.ch[c].cutoff, 100.f, 20000.f));
@@ -262,6 +338,31 @@ static void SendAllState() {
         SendCC(base + 10, preset.ch[c].filterSlope * 63);
         SendCC(base + 13, CcLinInv(preset.ch[c].delayAmount, 0.f, 1.f));
     }
+}
+
+// ============================================================
+// Patch management
+// ============================================================
+
+static void LoadPatch(uint8_t idx) {
+    if (idx >= NUM_PATCHES) return;
+    cur_patch = idx;
+    preset = patchStorage.GetSettings().patches[idx];
+    if (!preset.lfoSynced) {
+        lfo_rate = CcLog(preset.lfoParam, 0.1f, 20.f);
+        lfo.SetFreq(lfo_rate);
+    }
+    SendAllState();
+}
+
+static void SavePatch(uint8_t idx) {
+    if (idx >= NUM_PATCHES) return;
+    cur_patch = idx;
+    PatchStorage &store = patchStorage.GetSettings();
+    store.patches[idx] = preset;
+    patchStorage.Save(); // brief audio glitch possible during flash write
+    SendProgramChange(cur_patch); // echo back saved location
+    SendCC(87, idx);              // confirm save to controller
 }
 
 // ============================================================
@@ -339,6 +440,9 @@ static void HandleCC(uint8_t ctrl, uint8_t val) {
         return;
     case 19:
         preset.bpm = 20.f + (val / 127.f) * 280.f;
+        return;
+    case 87: // save current preset to patch index
+        SavePatch(val);
         return;
     case 119:
         SendAllState();
@@ -443,6 +547,10 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
         } else if (msg.type == ControlChange) {
             auto cc = msg.AsControlChange();
             HandleCC(cc.control_number, cc.value);
+        } else if (msg.type == ProgramChange) {
+            auto pc = msg.AsProgramChange();
+            if (pc.program < NUM_PATCHES)
+                LoadPatch(pc.program);
         } else if (msg.type == NoteOn) {
             auto note = msg.AsNoteOn();
             if (note.velocity > 0 && msg.channel == 0) {
@@ -649,60 +757,26 @@ int main(void) {
         ch[c].env_started = false;
     }
 
-    // --- Default preset ---
-    preset.bpm = 120.f;
-    preset.delayParam = 32;
-    preset.delaySynced = true;
-    preset.delayFeedback = 0.4f;
-    preset.delayWidth = 1.f;
-    preset.lfoParam = 55;
-    preset.lfoSynced = false;
-    preset.dryLevel = 0.f;
-    preset.pattern = 0;
-
-    // Ch1 defaults — panned center
-    preset.ch[0].cutoff = 800.f;
-    preset.ch[0].resonance = 0.5f;
-    preset.ch[0].drive = 1.f;
-    preset.ch[0].attack = 0.005f;
-    preset.ch[0].decay = 0.2f;
-    preset.ch[0].level = 0.7f;
-    preset.ch[0].pan = 0.5f;
-    preset.ch[0].lfoAmount = 0.f;
-    preset.ch[0].delayAmount = 0.f;
-    preset.ch[0].filterType = 0;
-    preset.ch[0].filterSlope = 1; // LP, 12 dB
-
-    // Ch2 defaults — panned left
-    preset.ch[1].cutoff = 2000.f;
-    preset.ch[1].resonance = 0.5f;
-    preset.ch[1].drive = 1.f;
-    preset.ch[1].attack = 0.005f;
-    preset.ch[1].decay = 0.2f;
-    preset.ch[1].level = 0.7f;
-    preset.ch[1].pan = 0.25f;
-    preset.ch[1].lfoAmount = 0.f;
-    preset.ch[1].delayAmount = 0.f;
-    preset.ch[1].filterType = 1;
-    preset.ch[1].filterSlope = 1; // BP, 12 dB
-
-    // Ch3 defaults — panned right
-    preset.ch[2].cutoff = 1200.f;
-    preset.ch[2].resonance = 0.5f;
-    preset.ch[2].drive = 1.f;
-    preset.ch[2].attack = 0.005f;
-    preset.ch[2].decay = 0.2f;
-    preset.ch[2].level = 0.7f;
-    preset.ch[2].pan = 0.75f;
-    preset.ch[2].lfoAmount = 0.f;
-    preset.ch[2].delayAmount = 0.f;
-    preset.ch[2].filterType = 2;
-    preset.ch[2].filterSlope = 1; // HP, 12 dB
+    // --- Init patch storage (QSPI flash) ---
+    {
+        PatchStorage defaults;
+        Preset dp = DefaultPreset();
+        for (int i = 0; i < NUM_PATCHES; i++)
+            defaults.patches[i] = dp;
+        patchStorage.Init(defaults);
+    }
+    // Load patch 0
+    preset = patchStorage.GetSettings().patches[0];
 
     // --- Init LFO ---
     lfo.Init(sample_rate);
     lfo.SetWaveform(Oscillator::WAVE_SIN);
-    lfo.SetFreq(1.f);
+    if (!preset.lfoSynced) {
+        lfo_rate = CcLog(preset.lfoParam, 0.1f, 20.f);
+        lfo.SetFreq(lfo_rate);
+    } else {
+        lfo.SetFreq(1.f);
+    }
     lfo.SetAmp(1.f);
 
     // --- Init MIDI ---

@@ -560,6 +560,114 @@ select:focus { outline: none; border-color: #44445a; }
   color: var(--dim);
 }
 
+/* ──────────────────────────────────────────
+   Patch management strip
+────────────────────────────────────────── */
+.patch-strip {
+  display: flex;
+  align-items: center;
+  padding: 12px 22px;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.patch-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.patch-btn {
+  width: 36px; height: 30px;
+  background: #1c1c28;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: #44445a;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .12s;
+}
+.patch-btn:hover { border-color: #44445a; color: #8888aa; }
+.patch-btn.active {
+  background: #151e2e;
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 7px rgba(119,153,255,.25);
+}
+.patch-btn.bank-mode {
+  border-color: #aa6622;
+  color: #aa6622;
+}
+.patch-btn.save-target {
+  border-color: #aa7733;
+  color: #aa7733;
+}
+.patch-btn.save-target:hover {
+  border-color: #ffaa44;
+  color: #ffaa44;
+  box-shadow: 0 0 7px rgba(255,170,68,.25);
+}
+
+.patch-bank-btn {
+  padding: 6px 14px;
+  background: #111118;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--dim);
+  font-size: 9px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.patch-bank-btn:hover { border-color: #44445a; color: #8888aa; }
+.patch-bank-btn.on {
+  background: #1a1410;
+  border-color: #cc7722;
+  color: #cc7722;
+}
+
+.patch-bank-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  min-width: 56px;
+}
+
+.patch-save-btn {
+  padding: 6px 16px;
+  margin-left: auto;
+  background: #1a1410;
+  border: 1px solid #3a2a1a;
+  border-radius: 4px;
+  color: #aa7733;
+  font-size: 9px;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+.patch-save-btn:hover { border-color: #cc8844; color: #cc8844; }
+.patch-save-btn.on {
+  background: #2a1a08;
+  border-color: #cc8844;
+  color: #cc8844;
+}
+.patch-save-btn.flash {
+  background: #2a2010;
+  border-color: #ffaa44;
+  color: #ffaa44;
+  box-shadow: 0 0 10px rgba(255,170,68,.2);
+}
+
 </style>
 </head>
 <body>
@@ -643,6 +751,15 @@ select:focus { outline: none; border-color: #44445a; }
     </div>
   </div>
 
+  <!-- Patch management -->
+  <div class="patch-strip">
+    <div class="strip-lbl">Patches</div>
+    <button class="patch-bank-btn" id="patch-bank-btn">Bank</button>
+    <div class="patch-bank-lbl" id="patch-bank-lbl">Bank 1</div>
+    <div class="patch-btns" id="patch-btns"></div>
+    <button class="patch-save-btn" id="patch-save-btn">Save</button>
+  </div>
+
   <!-- Channels -->
   <div class="channels">
     <div class="channel ch1" id="ch1">
@@ -677,6 +794,9 @@ select:focus { outline: none; border-color: #44445a; }
       <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">1 / 2 / 3</td><td style="color:#c8c8d0;">Trigger Ch 1 / 2 / 3</td></tr>
       <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Shift 1/2/3</td><td style="color:#c8c8d0;">Mute Ch 1 / 2 / 3</td></tr>
       <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Ctrl 1/2/3</td><td style="color:#c8c8d0;">Solo Ch 1 / 2 / 3</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">F1–F8</td><td style="color:#c8c8d0;">Load patch 1–8</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Shift F1–F8</td><td style="color:#c8c8d0;">Select bank 1–8</td></tr>
+      <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">Ctrl/Cmd S</td><td style="color:#c8c8d0;">Toggle save mode</td></tr>
       <tr><td style="padding:4px 16px 4px 0;color:#7799ff;font-weight:700;">?</td><td style="color:#c8c8d0;">This help</td></tr>
     </table>
     <div style="margin-top:18px;font-size:9px;color:#44445a;text-align:center;">Press Escape or click outside to close</div>
@@ -791,6 +911,13 @@ function onMidiIn(e) {
   const [status, data1, data2] = e.data;
   const type = status & 0xF0;
   if (type === 0xB0) { handleIncomingCC(data1, data2); return; }
+  if (type === 0xC0) { // Program Change
+    activePatch = data1;
+    patchBank = Math.floor(data1 / 8);
+    document.getElementById('patch-bank-lbl').textContent = 'Bank ' + (patchBank + 1);
+    updatePatchBtnHighlight();
+    return;
+  }
   if (type === 0x90 || type === 0x80) {
     const on = type === 0x90 && data2 > 0;
     const ci = TRIG_NOTES.indexOf(data1);
@@ -1002,6 +1129,82 @@ let patBtns = [];
     patBtns.push(b);
   }
 })();
+
+// ── Patch management ─────────────────────────────────────────────────────────
+let patchBank = 0;       // visual bank (0–7), UI-only
+let activePatch = 0;     // absolute patch index (0–63)
+let saveMode = false;
+const patchBtns = [];
+
+function sendProgramChange(prog) {
+  if (midiOut) midiOut.send([0xC0 | midiCh, prog & 0x7f]);
+}
+
+function updatePatchBtnHighlight() {
+  const bankStart = patchBank * 8;
+  patchBtns.forEach((b, i) => {
+    b.classList.toggle('active', !saveMode && (bankStart + i) === activePatch);
+  });
+}
+
+function exitSaveMode() {
+  saveMode = false;
+  document.getElementById('patch-save-btn').classList.remove('on');
+  patchBtns.forEach(b => b.classList.remove('save-target'));
+  updatePatchBtnHighlight();
+}
+
+function enterSaveMode() {
+  saveMode = true;
+  document.getElementById('patch-save-btn').classList.add('on');
+  patchBtns.forEach(b => { b.classList.remove('active'); b.classList.add('save-target'); });
+}
+
+(function buildPatchBtns() {
+  const container = document.getElementById('patch-btns');
+  for (let i = 0; i < 8; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'patch-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = i + 1;
+    btn.addEventListener('click', () => {
+      if (bankShift) {
+        // Select bank
+        patchBank = i;
+        document.getElementById('patch-bank-lbl').textContent = 'Bank ' + (i + 1);
+        bankShift = false;
+        document.getElementById('patch-bank-btn').classList.remove('on');
+        patchBtns.forEach(b => b.classList.remove('bank-mode'));
+        updatePatchBtnHighlight();
+      } else if (saveMode) {
+        // Save to this slot
+        sendCC(87, patchBank * 8 + i);
+        exitSaveMode();
+      } else {
+        // Load patch
+        const absIdx = patchBank * 8 + i;
+        activePatch = absIdx;
+        sendProgramChange(absIdx);
+        updatePatchBtnHighlight();
+      }
+    });
+    container.appendChild(btn);
+    patchBtns.push(btn);
+  }
+})();
+
+let bankShift = false;
+document.getElementById('patch-bank-btn').addEventListener('click', function() {
+  if (saveMode) { exitSaveMode(); return; }
+  bankShift = !bankShift;
+  this.classList.toggle('on', bankShift);
+  patchBtns.forEach(b => b.classList.toggle('bank-mode', bankShift));
+});
+
+// Save button: enter save mode
+document.getElementById('patch-save-btn').addEventListener('click', function() {
+  if (saveMode) { exitSaveMode(); return; }
+  enterSaveMode();
+});
 
 // ── Global knobs ──────────────────────────────────────────────────────────────
 const globalKnobMap = {};
@@ -1292,6 +1495,28 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); document.getElementById('bypass-btn').click(); return;
   }
 
+  // Ctrl/Cmd+S = toggle save mode
+  if (e.code === 'KeyS' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+    e.preventDefault(); document.getElementById('patch-save-btn').click(); return;
+  }
+
+  // F1–F8: load patch (normal), select bank (shift), save to slot (save mode)
+  const fi = e.code.match(/^F(\d)$/);
+  if (fi) {
+    const idx = parseInt(fi[1]) - 1;
+    if (idx >= 0 && idx < 8) {
+      e.preventDefault();
+      if (e.shiftKey && !saveMode) {
+        patchBank = idx;
+        document.getElementById('patch-bank-lbl').textContent = 'Bank ' + (idx + 1);
+        updatePatchBtnHighlight();
+      } else {
+        patchBtns[idx].click(); // delegates to load or save depending on mode
+      }
+      return;
+    }
+  }
+
   // 1/2/3 = trigger, Shift = mute, Ctrl/Cmd = solo
   const ci = ['Digit1','Digit2','Digit3'].indexOf(e.code);
   if (ci < 0) return;
@@ -1345,6 +1570,17 @@ function handleIncomingCC(cc, val) {
   if (cc === 18) {
     bypassed = val >= 64;
     document.getElementById('bypass-btn').classList.toggle('on', bypassed);
+    return;
+  }
+  // Patch save confirmation
+  if (cc === 87) {
+    activePatch = val;
+    patchBank = Math.floor(val / 8);
+    document.getElementById('patch-bank-lbl').textContent = 'Bank ' + (patchBank + 1);
+    updatePatchBtnHighlight();
+    const btn = document.getElementById('patch-save-btn');
+    btn.classList.add('flash');
+    setTimeout(() => btn.classList.remove('flash'), 400);
     return;
   }
   // VU meters
