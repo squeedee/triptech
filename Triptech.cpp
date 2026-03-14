@@ -103,10 +103,15 @@ struct ChannelPreset {
     float decay;         // seconds
     float level;         // 0–1
     float pan;           // 0=left, 0.5=center, 1=right
-    float lfoAmount;     // -1 to +1 (14-bit bipolar)
+    float lfoAmount;     // -1 to +1 (14-bit bipolar, filter mod)
     float delayAmount;   // 0–1 (post-amp send to delay)
+    float ampLfoAmount;  // -1 to +1 (amp mod depth)
+    float lfoDuty;       // 0–1 (waveform duty cycle)
     uint8_t filterType;  // 0=LP, 1=BP, 2=HP, 3=Notch
     uint8_t filterSlope; // 0=6dB, 1=12dB, 2=24dB
+    uint8_t lfoShape;    // 0=Saw, 1=RevSaw, 2=Tri, 3=Sin, 4=Sq
+    uint8_t lfoParam;    // CC raw value for rate
+    bool lfoSynced;      // true = clock-synced, false = free Hz
 };
 
 struct Preset {
@@ -117,24 +122,27 @@ struct Preset {
     float dryLevel;      // 0–1
     uint8_t pattern;     // 0–15
     uint8_t delayParam;  // CC 1 raw value
-    uint8_t lfoParam;    // CC 16 raw value
     bool delaySynced;    // true = clock-synced divisions, false = free ms
-    bool lfoSynced;      // true = clock-synced, false = free Hz
 };
 
 struct PatchStorage {
+    uint32_t version;
     Preset patches[NUM_PATCHES];
     bool operator!=(const PatchStorage &o) const {
         return memcmp(this, &o, sizeof(*this)) != 0;
     }
 };
 
+static constexpr uint32_t PATCH_VERSION = 2;
+
 struct Channel {
     Svf fltL, fltR;          // SVF: LP/HP/BP/Notch at 12 dB
     LadderFilter ladL, ladR; // Ladder: LP/HP/BP at 12 or 24 dB
     OnePole poleL, poleR;    // OnePole: LP/HP at 6 dB
     AdEnv env;
-    uint8_t lfoAmtMsb; // 14-bit MSB cache for lfoAmount
+    float lfoPhase;      // 0–1 phase accumulator
+    float lfoVal;        // last computed LFO sample
+    uint8_t lfoAmtMsb;  // 14-bit MSB cache for filter lfoAmount
     bool note_active;
     bool env_started;
 };
@@ -168,7 +176,6 @@ static MidiUsbHandler usb_midi;
 static PersistentStorage<PatchStorage> patchStorage(pod.seed.qspi);
 static Preset preset;
 static Channel ch[NUM_CH];
-static Oscillator lfo;
 static float sample_rate;
 static uint8_t cur_patch = 0;
 
@@ -188,20 +195,51 @@ static bool usb_clock_active = false;
 static uint32_t usb_last_ms = 0;
 
 // Internal clock
-static float lfo_rate = 1.f;
 static uint32_t int_tick_ms = 0;   // timestamp of last internal tick
 static uint32_t led2_flash_ms = 0; // timestamp of last beat flash
 static uint32_t tap_last_ms = 0;   // timestamp of last tap-tempo tap
 static bool bypass = false;
+static bool ch_muted[NUM_CH] = {false, false, false};
 
-// MIDI CC base per channel — 16 CC slots each (offsets 0-12 used)
+// MIDI CC base per channel — 16 CC slots each (offsets 0-15 used)
 static constexpr int kCcBase[NUM_CH] = {20, 36, 52};
 // Note triggers: all on MIDI channel 1 — C4, C#4, D4
 static constexpr uint8_t kTrigNote[NUM_CH] = {60, 61, 62};
 
 // ============================================================
+// Per-channel LFO — phase-accumulator with duty cycle
+// ============================================================
+
+static float LfoSample(float phase, uint8_t shape, float duty) {
+    if (duty < 0.01f) duty = 0.01f;
+    if (duty > 0.99f) duty = 0.99f;
+    switch (shape) {
+    case 0: // Triangle — peak position at duty
+        return (phase < duty) ? -1.f + 2.f * phase / duty
+                              : 1.f - 2.f * (phase - duty) / (1.f - duty);
+    case 1: { // Sine — skewed via phase warp, peak at duty
+        float w = (phase < duty) ? 0.5f * phase / duty
+                                 : 0.5f + 0.5f * (phase - duty) / (1.f - duty);
+        return -cosf(w * 6.283185307f);
+    }
+    case 2: // Square — PWM
+        return (phase < duty) ? 1.f : -1.f;
+    default:
+        return 0.f;
+    }
+}
+
+// ============================================================
 // Default preset factory
 // ============================================================
+
+static void InitChannelLfo(ChannelPreset &cp) {
+    cp.lfoParam = 55;
+    cp.lfoSynced = true;
+    cp.lfoShape = 1; // Sine
+    cp.lfoDuty = 0.5f;
+    cp.ampLfoAmount = 0.f;
+}
 
 static Preset DefaultPreset() {
     Preset p = {};
@@ -210,8 +248,6 @@ static Preset DefaultPreset() {
     p.delaySynced = true;
     p.delayFeedback = 0.4f;
     p.delayWidth = 1.f;
-    p.lfoParam = 55;
-    p.lfoSynced = false;
     p.dryLevel = 0.f;
     p.pattern = 0;
 
@@ -227,6 +263,7 @@ static Preset DefaultPreset() {
     p.ch[0].delayAmount = 0.f;
     p.ch[0].filterType = 0;
     p.ch[0].filterSlope = 1;
+    InitChannelLfo(p.ch[0]);
 
     // Ch2 — BP, left
     p.ch[1].cutoff = 2000.f;
@@ -240,6 +277,7 @@ static Preset DefaultPreset() {
     p.ch[1].delayAmount = 0.f;
     p.ch[1].filterType = 1;
     p.ch[1].filterSlope = 1;
+    InitChannelLfo(p.ch[1]);
 
     // Ch3 — HP, right
     p.ch[2].cutoff = 1200.f;
@@ -253,6 +291,7 @@ static Preset DefaultPreset() {
     p.ch[2].delayAmount = 0.f;
     p.ch[2].filterType = 2;
     p.ch[2].filterSlope = 1;
+    InitChannelLfo(p.ch[2]);
 
     return p;
 }
@@ -266,11 +305,11 @@ static float CcLin(uint8_t v, float lo, float hi) { return lo + (v / 127.f) * (h
 static float CcLog(uint8_t v, float lo, float hi) { return lo * powf(hi / lo, v / 127.f); }
 
 static uint8_t CcLinInv(float val, float lo, float hi) {
-    return (uint8_t)fclamp((val - lo) / (hi - lo) * 127.f, 0.f, 127.f);
+    return (uint8_t)(fclamp((val - lo) / (hi - lo) * 127.f, 0.f, 127.f) + 0.5f);
 }
 
 static uint8_t CcLogInv(float val, float lo, float hi) {
-    return (uint8_t)fclamp(logf(val / lo) / logf(hi / lo) * 127.f, 0.f, 127.f);
+    return (uint8_t)(fclamp(logf(val / lo) / logf(hi / lo) * 127.f, 0.f, 127.f) + 0.5f);
 }
 
 static inline float fasttanh(float x) {
@@ -312,12 +351,11 @@ static void SendAllState() {
     SendCC(3, CcLinInv(preset.delayWidth, 0.f, 1.f));
     SendCC(4, CcLinInv(preset.dryLevel, 0.f, 1.f));
     SendCC(6, preset.delaySynced ? 127 : 0);
-    SendCC(7, preset.lfoSynced ? 127 : 0);
-    SendCC(16, preset.lfoParam);
     SendCC(14, preset.pattern * 8);
     SendCC(15, seq_running ? 127 : 0);
     SendCC(18, bypass ? 127 : 0);
     SendCC(19, (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f));
+    SendCC(68, (ch_muted[0] ? 1 : 0) | (ch_muted[1] ? 2 : 0) | (ch_muted[2] ? 4 : 0));
     SendProgramChange(cur_patch);
     for (int c = 0; c < NUM_CH; c++) {
         int base = kCcBase[c];
@@ -330,13 +368,17 @@ static void SendAllState() {
         SendCC(base + 7, CcLinInv(preset.ch[c].pan, 0.f, 1.f));
         {
             uint16_t v14 =
-                (uint16_t)fclamp((preset.ch[c].lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f);
+                (uint16_t)(fclamp((preset.ch[c].lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f) + 0.5f);
             SendCC(base + 8, v14 >> 7);
             SendCC(base + 12, v14 & 0x7F);
         }
         SendCC(base + 9, preset.ch[c].filterType * 32);
         SendCC(base + 10, preset.ch[c].filterSlope * 63);
         SendCC(base + 13, CcLinInv(preset.ch[c].delayAmount, 0.f, 1.f));
+        SendCC(base + 3, preset.ch[c].lfoParam);
+        SendCC(base + 11, preset.ch[c].lfoShape * 21 + (preset.ch[c].lfoSynced ? 64 : 0));
+        SendCC(base + 14, CcLinInv(preset.ch[c].lfoDuty, 0.f, 1.f));
+        SendCC(base + 15, CcLinInv(preset.ch[c].ampLfoAmount, -1.f, 1.f));
     }
 }
 
@@ -348,10 +390,6 @@ static void LoadPatch(uint8_t idx) {
     if (idx >= NUM_PATCHES) return;
     cur_patch = idx;
     preset = patchStorage.GetSettings().patches[idx];
-    if (!preset.lfoSynced) {
-        lfo_rate = CcLog(preset.lfoParam, 0.1f, 20.f);
-        lfo.SetFreq(lfo_rate);
-    }
     SendAllState();
 }
 
@@ -419,27 +457,21 @@ static void HandleCC(uint8_t ctrl, uint8_t val) {
     case 6:
         preset.delaySynced = (val >= 64);
         return;
-    case 7:
-        preset.lfoSynced = (val >= 64);
-        return;
     case 14:
         preset.pattern = (val * NUM_PATTERNS) / 128;
         return;
     case 15:
         seq_running = (val >= 64);
         return;
-    case 16:
-        preset.lfoParam = val;
-        if (!preset.lfoSynced) {
-            lfo_rate = CcLog(val, 0.1f, 20.f);
-            lfo.SetFreq(lfo_rate);
-        }
-        return;
     case 18:
         bypass = (val >= 64);
         return;
     case 19:
         preset.bpm = 20.f + (val / 127.f) * 280.f;
+        return;
+    case 68: // per-channel mute bitmask
+        for (int c = 0; c < NUM_CH; c++)
+            ch_muted[c] = (val >> c) & 1;
         return;
     case 87: // save current preset to patch index
         SavePatch(val);
@@ -453,7 +485,7 @@ static void HandleCC(uint8_t ctrl, uint8_t val) {
 
     for (int c = 0; c < NUM_CH; c++) {
         int offset = (int)ctrl - kCcBase[c];
-        if (offset < 0 || offset > 13)
+        if (offset < 0 || offset > 15)
             continue;
         switch (offset) {
         case 0:
@@ -464,6 +496,9 @@ static void HandleCC(uint8_t ctrl, uint8_t val) {
             break;
         case 2:
             preset.ch[c].drive = CcLin(val, 1.f, 4.f);
+            break;
+        case 3:
+            preset.ch[c].lfoParam = val;
             break;
         case 4:
             preset.ch[c].attack = CcLog(val, 0.001f, 2.f);
@@ -492,8 +527,20 @@ static void HandleCC(uint8_t ctrl, uint8_t val) {
             preset.ch[c].lfoAmount = v14 / 16383.5f * 2.f - 1.f;
             break;
         }
+        case 11: {
+            preset.ch[c].lfoSynced = (val >= 64);
+            uint8_t raw = val & 0x3F;
+            preset.ch[c].lfoShape = raw / 21 > 2 ? 2 : raw / 21;
+            break;
+        }
         case 13:
             preset.ch[c].delayAmount = CcLin(val, 0.f, 1.f);
+            break;
+        case 14:
+            preset.ch[c].lfoDuty = CcLin(val, 0.f, 1.f);
+            break;
+        case 15:
+            preset.ch[c].ampLfoAmount = CcLin(val, -1.f, 1.f);
             break;
         }
     }
@@ -582,7 +629,6 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
     }
 
     // Per-block: update filter + delay coefficients once, cache pan/mode flags.
-    static float last_lfo_val = 0.f;
     float panL[NUM_CH], panR[NUM_CH];
     bool use6[NUM_CH], use24[NUM_CH];
 
@@ -596,10 +642,16 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         delayR.SetDelay(delaySmps);
     }
 
-    // LFO freq: synced to clock divisions or free Hz
-    if (preset.lfoSynced) {
-        float lfoFreq = preset.bpm / (60.f * kDivBeats[preset.lfoParam / 16]);
-        lfo.SetFreq(lfoFreq);
+    // Per-channel LFO phase increment
+    float lfoInc[NUM_CH];
+    for (int c = 0; c < NUM_CH; c++) {
+        float lfoFreq;
+        if (preset.ch[c].lfoSynced) {
+            lfoFreq = preset.bpm / (60.f * kDivBeats[preset.ch[c].lfoParam / 16]);
+        } else {
+            lfoFreq = CcLog(preset.ch[c].lfoParam, 0.1f, 20.f);
+        }
+        lfoInc[c] = lfoFreq / sample_rate;
     }
 
     for (int c = 0; c < NUM_CH; c++) {
@@ -609,7 +661,7 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         // 24 dB: Ladder — LP, HP, BP (Notch not available, falls back to SVF 12 dB)
         use24[c] = preset.ch[c].filterSlope == 2 && preset.ch[c].filterType != 3;
 
-        float freq = preset.ch[c].cutoff * (1.f + preset.ch[c].lfoAmount * last_lfo_val * 0.5f);
+        float freq = preset.ch[c].cutoff * (1.f + preset.ch[c].lfoAmount * ch[c].lfoVal * 0.5f);
         freq = fclamp(freq, 100.f, sample_rate / 3.f - 1.f);
 
         if (use6[c]) {
@@ -654,7 +706,13 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
     }
 
     for (size_t i = 0; i < size; i++) {
-        last_lfo_val = lfo.Process(); // advance LFO every sample; value used next block
+        // Advance per-channel LFOs
+        for (int c = 0; c < NUM_CH; c++) {
+            ch[c].lfoPhase += lfoInc[c];
+            if (ch[c].lfoPhase >= 1.f) ch[c].lfoPhase -= 1.f;
+            ch[c].lfoVal = LfoSample(ch[c].lfoPhase, preset.ch[c].lfoShape, preset.ch[c].lfoDuty);
+        }
+
         float inL = in[0][i];
         float inR = in[1][i];
 
@@ -695,8 +753,10 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
             }
 
             float env = ch[c].env.Process();
-            float chL = filtL * env * preset.ch[c].level;
-            float chR = filtR * env * preset.ch[c].level;
+            float lvl = fclamp(preset.ch[c].level + preset.ch[c].ampLfoAmount * ch[c].lfoVal, 0.f, 1.f);
+            if (ch_muted[c]) lvl = 0.f;
+            float chL = filtL * env * lvl;
+            float chR = filtR * env * lvl;
             chanL += chL * panL[c];
             chanR += chR * panR[c];
             delaySend += (chL + chR) * 0.5f * preset.ch[c].delayAmount;
@@ -753,6 +813,8 @@ int main(void) {
         ch[c].env.Init(sample_rate);
         ch[c].env.SetMin(0.f);
         ch[c].env.SetMax(1.f);
+        ch[c].lfoPhase = 0.f;
+        ch[c].lfoVal = 0.f;
         ch[c].note_active = false;
         ch[c].env_started = false;
     }
@@ -760,24 +822,16 @@ int main(void) {
     // --- Init patch storage (QSPI flash) ---
     {
         PatchStorage defaults;
+        defaults.version = PATCH_VERSION;
         Preset dp = DefaultPreset();
         for (int i = 0; i < NUM_PATCHES; i++)
             defaults.patches[i] = dp;
         patchStorage.Init(defaults);
     }
+    if (patchStorage.GetSettings().version != PATCH_VERSION)
+        patchStorage.RestoreDefaults();
     // Load patch 0
     preset = patchStorage.GetSettings().patches[0];
-
-    // --- Init LFO ---
-    lfo.Init(sample_rate);
-    lfo.SetWaveform(Oscillator::WAVE_SIN);
-    if (!preset.lfoSynced) {
-        lfo_rate = CcLog(preset.lfoParam, 0.1f, 20.f);
-        lfo.SetFreq(lfo_rate);
-    } else {
-        lfo.SetFreq(1.f);
-    }
-    lfo.SetAmp(1.f);
 
     // --- Init MIDI ---
     pod.midi.StartReceive();

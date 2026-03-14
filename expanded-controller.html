@@ -1211,24 +1211,15 @@ const globalKnobMap = {};
 
 // Sync mode state
 let delaySynced = true;
-let lfoSynced   = false;
 
 // Buttons that need updating when sync state arrives from device
 let delaySyncBtn = null;
-let lfoSyncBtn   = null;
 
 function applyDelaySyncMode(synced) {
   delaySynced = synced;
   if (delaySyncBtn) delaySyncBtn.classList.toggle('on', synced);
   const k = globalKnobMap[1];
   if (k) { k.fmt = synced ? 'delayDiv' : 'delayFre'; k._draw(); }
-}
-
-function applyLfoSyncMode(synced) {
-  lfoSynced = synced;
-  if (lfoSyncBtn) lfoSyncBtn.classList.toggle('on', synced);
-  const k = globalKnobMap[16];
-  if (k) { k.fmt = synced ? 'lfoSync' : 'lfoRate'; k._draw(); }
 }
 
 function makeSyncGroup(row, knobOpts, cc, getSynced, onToggle) {
@@ -1250,10 +1241,6 @@ function makeSyncGroup(row, knobOpts, cc, getSynced, onToggle) {
 
 (function buildGlobals() {
   const row = document.getElementById('global-knobs');
-  lfoSyncBtn = makeSyncGroup(row,
-    { cc: 16, dflt: 55, label: 'LFO RATE', fmt: 'lfoRate', color: '#7799ff', size: 'md', globalVal: true },
-    7, () => lfoSynced, applyLfoSyncMode
-  );
   globalKnobMap[4] = new Knob({ parent: row, cc: 4, dflt: 0, label: 'DRY', fmt: 'level', color: '#7799ff', size: 'md', globalVal: true });
 })();
 
@@ -1286,6 +1273,13 @@ const ROWS = [
     { off:4, label:'ATTACK', fmt:'attack', size:'sm' },
     { off:5, label:'DECAY',  fmt:'decay',  size:'sm' },
   ]},
+  { sec: 'LFO', selectors: [
+      { off:11, label:'Shape', options:[['Tri',0],['Sin',21],['Sq',42]], dflts:[21,21,21], lfoSync:true },
+    ], knobs: [
+    { off:3,  label:'RATE',    fmt:'lfoSync', size:'md' },
+    { off:14, label:'DUTY',    fmt:'pct',     size:'sm' },
+    { off:15, label:'AMP MOD', fmt:'bipct',   size:'sm' },
+  ]},
   { sec: 'Mixer', knobs: [
     { off:7,  label:'PAN',   fmt:'pan',   size:'sm' },
     { off:6,  label:'LEVEL', fmt:'level', size:'sm' },
@@ -1308,8 +1302,11 @@ const DFLTS = {
   5: [63, 63, 63],   // decay 200ms
   6: [89, 89, 89],   // level 0.7
   7: [63, 31, 95],   // pan: LP center, BP 25%L, HP 25%R
+  3: [55, 55, 55],   // LFO rate
   8: [64, 64, 64],   // lfo amount 0% (center = no modulation)
   13: [0,  0,  0],   // delay send 0
+  14: [64, 64, 64],  // LFO duty 50%
+  15: [64, 64, 64],  // amp LFO amount 0%
 };
 
 // ── Mute / Solo ───────────────────────────────────────────────────────────────
@@ -1320,6 +1317,8 @@ const levelKnobs = [null, null, null];
 const chKnobs    = [[], [], []];
 // chSelectors[ci][offset] → <select> element for offsets 9 (type) and 10 (slope)
 const chSelectors = [[], [], []];
+const chLfoSynced = [true, true, true];
+const lfoSyncBtns = [null, null, null];
 const muteBtns   = [];
 const soloBtns   = [];
 const trigBtns   = [];
@@ -1349,14 +1348,13 @@ function updateSlopeAvailability(ci) {
 
 function anySolo() { return soloed.some(Boolean); }
 
-function effectiveLevelCC(ci) {
-  if (muted[ci]) return 0;
-  if (anySolo() && !soloed[ci]) return 0;
-  return levelKnobs[ci] ? levelKnobs[ci].val : 0;
-}
-
-function sendAllLevels() {
-  for (let i = 0; i < 3; i++) sendCC(CH_BASE[i] + 6, effectiveLevelCC(i));
+function sendMuteMask() {
+  let mask = 0;
+  for (let i = 0; i < 3; i++) {
+    const eff = muted[i] || (anySolo() && !soloed[i]);
+    if (eff) mask |= (1 << i);
+  }
+  sendCC(68, mask);
 }
 
 (function buildChannels() {
@@ -1375,7 +1373,7 @@ function sendAllLevels() {
     muteBtn.addEventListener('click', () => {
       muted[ci] = !muted[ci];
       muteBtn.classList.toggle('on', muted[ci]);
-      sendAllLevels();
+      sendMuteMask();
     });
 
     const soloBtn = document.createElement('button');
@@ -1384,7 +1382,7 @@ function sendAllLevels() {
     soloBtn.addEventListener('click', () => {
       soloed[ci] = !soloed[ci];
       soloBtn.classList.toggle('on', soloed[ci]);
-      sendAllLevels();
+      sendMuteMask();
     });
 
     const trigBtn = document.createElement('button');
@@ -1419,7 +1417,7 @@ function sendAllLevels() {
       if (selectors) {
         const selRow = document.createElement('div');
         selRow.className = 'ch-sel-row';
-        selectors.forEach(({ off, label, options, dflts }) => {
+        selectors.forEach(({ off, label, options, dflts, lfoSync: hasLfoSync }) => {
           const wrap = document.createElement('div');
           wrap.className = 'ch-sel-wrap';
           const lbl = document.createElement('span');
@@ -1434,12 +1432,29 @@ function sendAllLevels() {
           });
           sel.value = dflts[ci];
           const ccNum = CH_BASE[ci] + off;
-          sel.addEventListener('change', () => {
-            sendCC(ccNum, +sel.value);
-            if (off === 9) updateSlopeAvailability(ci);
-          });
+          if (hasLfoSync) {
+            const sendShapeSync = () => sendCC(ccNum, (+sel.value) + (chLfoSynced[ci] ? 64 : 0));
+            sel.addEventListener('change', sendShapeSync);
+            const syncBtn = document.createElement('button');
+            syncBtn.className = 'sync-btn' + (chLfoSynced[ci] ? ' on' : '');
+            syncBtn.textContent = 'sync';
+            syncBtn.addEventListener('click', () => {
+              chLfoSynced[ci] = !chLfoSynced[ci];
+              syncBtn.classList.toggle('on', chLfoSynced[ci]);
+              sendShapeSync();
+              const rateKnob = chKnobs[ci][3];
+              if (rateKnob) { rateKnob.fmt = chLfoSynced[ci] ? 'lfoSync' : 'lfoRate'; rateKnob._draw(); }
+            });
+            lfoSyncBtns[ci] = syncBtn;
+            wrap.append(lbl, sel, syncBtn);
+          } else {
+            sel.addEventListener('change', () => {
+              sendCC(ccNum, +sel.value);
+              if (off === 9) updateSlopeAvailability(ci);
+            });
+            wrap.append(lbl, sel);
+          }
           chSelectors[ci][off] = sel;
-          wrap.append(lbl, sel);
           selRow.appendChild(wrap);
         });
         el.appendChild(selRow);
@@ -1459,15 +1474,7 @@ function sendAllLevels() {
           size,
         });
         chKnobs[ci][off] = knob;
-        // Level knob (offset 6): intercept sends to respect mute/solo
-        if (off === 6) {
-          levelKnobs[ci] = knob;
-          knob.set = function(v, send = true) {
-            this.val = Math.max(0, Math.min(127, Math.round(v)));
-            this._draw();
-            if (send) sendCC(this.cc, effectiveLevelCC(ci));
-          };
-        }
+        if (off === 6) levelKnobs[ci] = knob;
       });
       el.appendChild(rowEl);
     });
@@ -1550,7 +1557,6 @@ function handleIncomingCC(cc, val) {
   // Global knobs (delay + dry)
   if (cc >= 1 && cc <= 4) { globalKnobMap[cc]?.set(val, false); return; }
   if (cc === 6) { applyDelaySyncMode(val >= 64); return; }
-  if (cc === 7) { applyLfoSyncMode(val >= 64);   return; }
   // Pattern select
   if (cc === 14) {
     const pat = Math.floor(val / 8);
@@ -1570,6 +1576,14 @@ function handleIncomingCC(cc, val) {
   if (cc === 18) {
     bypassed = val >= 64;
     document.getElementById('bypass-btn').classList.toggle('on', bypassed);
+    return;
+  }
+  // Channel mute bitmask
+  if (cc === 68) {
+    for (let i = 0; i < 3; i++) {
+      muted[i] = !!(val & (1 << i));
+      muteBtns[i]?.classList.toggle('on', muted[i]);
+    }
     return;
   }
   // Patch save confirmation
@@ -1623,13 +1637,20 @@ function handleIncomingCC(cc, val) {
   // Per-channel knobs and selectors
   for (let ci = 0; ci < 3; ci++) {
     const off = cc - CH_BASE[ci];
-    if (off >= 0 && off <= 13) {
-      if (off === 9 || off === 10) { // selectors
+    if (off >= 0 && off <= 15) {
+      if (off === 9 || off === 10) { // filter selectors
         const sel = chSelectors[ci][off];
         if (sel) {
           snapToOptions(sel, val);
           if (off === 9) updateSlopeAvailability(ci);
         }
+      } else if (off === 11) { // shape+sync packed
+        chLfoSynced[ci] = val >= 64;
+        if (lfoSyncBtns[ci]) lfoSyncBtns[ci].classList.toggle('on', chLfoSynced[ci]);
+        const sel = chSelectors[ci][11];
+        if (sel) snapToOptions(sel, val & 0x3F);
+        const rateKnob = chKnobs[ci][3];
+        if (rateKnob) { rateKnob.fmt = chLfoSynced[ci] ? 'lfoSync' : 'lfoRate'; rateKnob._draw(); }
       } else if (off === 8) { // lfo amount MSB (14-bit)
         msbCache[cc] = val;
         chKnobs[ci][8]?.set(val, false);
