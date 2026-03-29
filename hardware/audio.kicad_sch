@@ -2983,12 +2983,6 @@
 		(uuid "696124db-6501-42d2-9217-7a3afdd69584")
 	)
 	(junction
-		(at 68.58 43.18)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "6c49d671-5829-430d-b323-acc02c21e415")
-	)
-	(junction
 		(at 31.75 110.49)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -5012,16 +5006,6 @@
 	)
 	(wire
 		(pts
-			(xy 53.34 43.18) (xy 68.58 43.18)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d34760b2-576a-4d28-b514-345a9bccbff4")
-	)
-	(wire
-		(pts
 			(xy 262.89 93.98) (xy 262.89 104.14)
 		)
 		(stroke
@@ -6321,15 +6305,16 @@
 	)
 	(symbol
 		(lib_id "Connector_Audio:NCJ6FA-H-0")
-		(at 22.86 92.71 0)
-		(unit 1)
+		(at 24.13 113.03 0)
+		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
+		(fields_autoplaced yes)
 		(uuid "15af63aa-8228-4bf2-afac-fb3fcc3ab42b")
 		(property "Reference" "J5"
-			(at 22.86 84.074 0)
+			(at 22.225 104.14 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6337,7 +6322,7 @@
 			)
 		)
 		(property "Value" "NCJ6FA-H-0"
-			(at 22.86 86.106 0)
+			(at 22.225 106.68 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6345,7 +6330,7 @@
 			)
 		)
 		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
-			(at 22.86 92.71 0)
+			(at 24.13 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6354,7 +6339,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
-			(at 22.86 92.71 0)
+			(at 24.13 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6363,7 +6348,7 @@
 			)
 		)
 		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
-			(at 22.86 92.71 0)
+			(at 24.13 113.03 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -6396,12 +6381,102 @@
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
 					(reference "J5")
-					(unit 1)
+					(unit 2)
 				)
 			)
 			(project "audio"
 				(path "/a1b2c3d4-7777-4000-8000-000000000007"
 					(reference "J2")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector_Audio:NCJ6FA-H-0")
+		(at 255.27 93.98 0)
+		(mirror y)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "17210063-2175-4112-9a6a-a8aab8628d1b")
+		(property "Reference" "J8"
+			(at 255.27 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "NCJ6FA-H-0"
+			(at 255.27 86.36 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
+			(at 255.27 93.98 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
+			(at 255.27 93.98 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
+			(at 255.27 93.98 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "7d6b2526-93ef-4204-85a2-4ab5e71beb1f")
+		)
+		(pin "G"
+			(uuid "046ba496-615e-4a0e-88bb-5e8e732336e3")
+		)
+		(pin "3"
+			(uuid "d02c9e23-52d5-4e17-b8e4-33b8b1023e44")
+		)
+		(pin "R"
+			(uuid "65f87305-fe29-4bb1-816e-39fcf81d925c")
+		)
+		(pin "T"
+			(uuid "3cc548de-9806-44a1-81b7-0d8af44e5756")
+		)
+		(pin "S"
+			(uuid "a5f7c7fb-6a2e-4f3b-91f3-e60587f2c9ad")
+		)
+		(pin "2"
+			(uuid "3e9a77be-0390-4e1f-aa45-3c84bc06810b")
+		)
+		(instances
+			(project "triptech"
+				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
+					(reference "J8")
+					(unit 1)
+				)
+			)
+			(project "audio"
+				(path "/a1b2c3d4-7777-4000-8000-000000000007"
+					(reference "J5")
 					(unit 1)
 				)
 			)
@@ -6691,6 +6766,95 @@
 			(project "audio"
 				(path "/a1b2c3d4-7777-4000-8000-000000000007"
 					(reference "#PWR018")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector_Audio:NCJ6FA-H-0")
+		(at 22.86 30.48 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "3aad1e5a-f761-4a5a-8876-10f15e9ee0de")
+		(property "Reference" "J4"
+			(at 22.86 20.32 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "NCJ6FA-H-0"
+			(at 22.86 22.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
+			(at 22.86 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
+			(at 22.86 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
+			(at 22.86 30.48 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "5929c7ef-66f3-484e-b387-fbcb1c260f7f")
+		)
+		(pin "G"
+			(uuid "c49c2568-ad49-403e-8066-8ddf07a6bfa9")
+		)
+		(pin "3"
+			(uuid "1b606bdb-586e-4f48-954a-dc93019b9e8a")
+		)
+		(pin "R"
+			(uuid "65f87305-fe29-4bb1-816e-39fcf81d9259")
+		)
+		(pin "T"
+			(uuid "3cc548de-9806-44a1-81b7-0d8af44e5753")
+		)
+		(pin "S"
+			(uuid "a5f7c7fb-6a2e-4f3b-91f3-e60587f2c9aa")
+		)
+		(pin "2"
+			(uuid "1aafe936-86af-43aa-baac-3aa08030650c")
+		)
+		(instances
+			(project ""
+				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
+					(reference "J4")
+					(unit 1)
+				)
+			)
+			(project "audio"
+				(path "/a1b2c3d4-7777-4000-8000-000000000007"
+					(reference "J1")
 					(unit 1)
 				)
 			)
@@ -7761,99 +7925,8 @@
 	)
 	(symbol
 		(lib_id "Connector_Audio:NCJ6FA-H-0")
-		(at 254 114.3 0)
-		(mirror y)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "85533a6f-234d-4e4b-b01e-77466dfc7c9c")
-		(property "Reference" "J8"
-			(at 247.65 119.126 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Value" "NCJ6FA-H-0"
-			(at 247.65 121.666 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
-			(at 254 114.3 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
-			(at 254 114.3 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
-			(at 254 114.3 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "7d6b2526-93ef-4204-85a2-4ab5e71beb1e")
-		)
-		(pin "G"
-			(uuid "046ba496-615e-4a0e-88bb-5e8e732336e2")
-		)
-		(pin "3"
-			(uuid "d02c9e23-52d5-4e17-b8e4-33b8b1023e43")
-		)
-		(pin "R"
-			(uuid "65f87305-fe29-4bb1-816e-39fcf81d925b")
-		)
-		(pin "T"
-			(uuid "3cc548de-9806-44a1-81b7-0d8af44e5755")
-		)
-		(pin "S"
-			(uuid "a5f7c7fb-6a2e-4f3b-91f3-e60587f2c9ac")
-		)
-		(pin "2"
-			(uuid "3e9a77be-0390-4e1f-aa45-3c84bc06810a")
-		)
-		(instances
-			(project "triptech"
-				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J8")
-					(unit 1)
-				)
-			)
-			(project "audio"
-				(path "/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J5")
-					(unit 2)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Connector_Audio:NCJ6FA-H-0")
-		(at 22.86 30.48 0)
-		(unit 1)
+		(at 24.13 50.8 0)
+		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
@@ -7861,7 +7934,7 @@
 		(fields_autoplaced yes)
 		(uuid "88735e9d-5af8-4159-b397-4f43db292db8")
 		(property "Reference" "J4"
-			(at 22.86 20.32 0)
+			(at 22.225 41.91 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7869,7 +7942,7 @@
 			)
 		)
 		(property "Value" "NCJ6FA-H-0"
-			(at 22.86 22.86 0)
+			(at 22.225 44.45 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7877,7 +7950,7 @@
 			)
 		)
 		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
-			(at 22.86 30.48 0)
+			(at 24.13 50.8 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7886,7 +7959,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
-			(at 22.86 30.48 0)
+			(at 24.13 50.8 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7895,7 +7968,7 @@
 			)
 		)
 		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
-			(at 22.86 30.48 0)
+			(at 24.13 50.8 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -7928,7 +8001,7 @@
 			(project ""
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
 					(reference "J4")
-					(unit 1)
+					(unit 2)
 				)
 			)
 			(project "audio"
@@ -8303,32 +8376,35 @@
 	)
 	(symbol
 		(lib_id "Connector_Audio:NCJ6FA-H-0")
-		(at 24.13 113.03 0)
-		(unit 1)
+		(at 254 52.07 0)
+		(mirror y)
+		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
-		(uuid "9739783c-c320-4646-8189-a64939e2bcd2")
-		(property "Reference" "J5"
-			(at 22.225 104.14 0)
+		(uuid "93d3c3c0-a5a2-41fa-85a4-77625eb44539")
+		(property "Reference" "J7"
+			(at 261.62 51.4349 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify right)
 			)
 		)
 		(property "Value" "NCJ6FA-H-0"
-			(at 22.225 106.68 0)
+			(at 261.62 53.9749 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify right)
 			)
 		)
 		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
-			(at 24.13 113.03 0)
+			(at 254 52.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8337,7 +8413,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
-			(at 24.13 113.03 0)
+			(at 254 52.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8346,7 +8422,7 @@
 			)
 		)
 		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
-			(at 24.13 113.03 0)
+			(at 254 52.07 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8355,37 +8431,37 @@
 			)
 		)
 		(pin "1"
-			(uuid "699682a9-a030-4e9f-ac20-dde5a7906dcc")
+			(uuid "1206cb77-0d22-474e-8291-87486bf51b54")
 		)
 		(pin "G"
-			(uuid "070dec33-dff9-4478-b26d-840458e7d78f")
+			(uuid "771832dc-7eac-4572-b9b7-0192f3a4cc99")
 		)
 		(pin "3"
-			(uuid "4ca7b113-85f9-4b71-bfda-899341a58f32")
+			(uuid "59774ed3-9799-42b8-84c5-577c26533ff7")
 		)
 		(pin "R"
-			(uuid "65f87305-fe29-4bb1-816e-39fcf81d9257")
+			(uuid "65f87305-fe29-4bb1-816e-39fcf81d925d")
 		)
 		(pin "T"
-			(uuid "3cc548de-9806-44a1-81b7-0d8af44e5751")
+			(uuid "3cc548de-9806-44a1-81b7-0d8af44e5757")
 		)
 		(pin "S"
-			(uuid "a5f7c7fb-6a2e-4f3b-91f3-e60587f2c9a8")
+			(uuid "a5f7c7fb-6a2e-4f3b-91f3-e60587f2c9ae")
 		)
 		(pin "2"
-			(uuid "7091a8eb-ff0c-434b-bc34-004a8c024560")
+			(uuid "8a18ca8a-8d50-43d3-bd9e-8eb7aeebb6bb")
 		)
 		(instances
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J5")
-					(unit 1)
+					(reference "J7")
+					(unit 2)
 				)
 			)
 			(project "audio"
 				(path "/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J2")
-					(unit 2)
+					(reference "J4")
+					(unit 1)
 				)
 			)
 		)
@@ -9548,95 +9624,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Connector_Audio:NCJ6FA-H-0")
-		(at 24.13 50.8 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "a7a6a488-738a-4a18-9d52-4aa36807464e")
-		(property "Reference" "J4"
-			(at 22.225 41.91 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "NCJ6FA-H-0"
-			(at 22.225 44.45 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
-			(at 24.13 50.8 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
-			(at 24.13 50.8 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
-			(at 24.13 50.8 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "5929c7ef-66f3-484e-b387-fbcb1c260f80")
-		)
-		(pin "G"
-			(uuid "c49c2568-ad49-403e-8066-8ddf07a6bfaa")
-		)
-		(pin "3"
-			(uuid "1b606bdb-586e-4f48-954a-dc93019b9e8b")
-		)
-		(pin "R"
-			(uuid "65f87305-fe29-4bb1-816e-39fcf81d925a")
-		)
-		(pin "T"
-			(uuid "3cc548de-9806-44a1-81b7-0d8af44e5754")
-		)
-		(pin "S"
-			(uuid "a5f7c7fb-6a2e-4f3b-91f3-e60587f2c9ab")
-		)
-		(pin "2"
-			(uuid "1aafe936-86af-43aa-baac-3aa08030650d")
-		)
-		(instances
-			(project ""
-				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J4")
-					(unit 1)
-				)
-			)
-			(project "audio"
-				(path "/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J1")
-					(unit 2)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:+12VA")
 		(at 67.31 142.24 0)
 		(unit 1)
@@ -9709,33 +9696,35 @@
 	)
 	(symbol
 		(lib_id "Connector_Audio:NCJ6FA-H-0")
-		(at 255.27 93.98 0)
+		(at 254 114.3 0)
 		(mirror y)
-		(unit 1)
+		(unit 2)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b3bd174e-507d-4096-a84e-6995092804c5")
-		(property "Reference" "J9"
-			(at 255.27 83.82 0)
+		(property "Reference" "J8"
+			(at 261.62 113.6649 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify right)
 			)
 		)
 		(property "Value" "NCJ6FA-H-0"
-			(at 255.27 86.36 0)
+			(at 261.62 116.2049 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify right)
 			)
 		)
 		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
-			(at 255.27 93.98 0)
+			(at 254 114.3 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9744,7 +9733,7 @@
 			)
 		)
 		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
-			(at 255.27 93.98 0)
+			(at 254 114.3 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9753,7 +9742,7 @@
 			)
 		)
 		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
-			(at 255.27 93.98 0)
+			(at 254 114.3 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9785,8 +9774,8 @@
 		(instances
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J9")
-					(unit 1)
+					(reference "J8")
+					(unit 2)
 				)
 			)
 			(project "audio"
@@ -9955,6 +9944,94 @@
 			(project "audio"
 				(path "/a1b2c3d4-7777-4000-8000-000000000007"
 					(reference "D8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector_Audio:NCJ6FA-H-0")
+		(at 22.86 92.71 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "b96e41c8-5ced-4881-92dd-8adbca6100f8")
+		(property "Reference" "J5"
+			(at 22.86 84.074 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "NCJ6FA-H-0"
+			(at 22.86 86.106 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
+			(at 22.86 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
+			(at 22.86 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
+			(at 22.86 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "699682a9-a030-4e9f-ac20-dde5a7906dcb")
+		)
+		(pin "G"
+			(uuid "070dec33-dff9-4478-b26d-840458e7d78e")
+		)
+		(pin "3"
+			(uuid "4ca7b113-85f9-4b71-bfda-899341a58f31")
+		)
+		(pin "R"
+			(uuid "65f87305-fe29-4bb1-816e-39fcf81d9256")
+		)
+		(pin "T"
+			(uuid "3cc548de-9806-44a1-81b7-0d8af44e5750")
+		)
+		(pin "S"
+			(uuid "a5f7c7fb-6a2e-4f3b-91f3-e60587f2c9a7")
+		)
+		(pin "2"
+			(uuid "7091a8eb-ff0c-434b-bc34-004a8c02455f")
+		)
+		(instances
+			(project "triptech"
+				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
+					(reference "J5")
+					(unit 1)
+				)
+			)
+			(project "audio"
+				(path "/a1b2c3d4-7777-4000-8000-000000000007"
+					(reference "J2")
 					(unit 1)
 				)
 			)
@@ -11122,97 +11199,6 @@
 				(path "/a1b2c3d4-7777-4000-8000-000000000007"
 					(reference "J4")
 					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Connector_Audio:NCJ6FA-H-0")
-		(at 254 52.07 0)
-		(mirror y)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "e8a42ffc-afee-4318-afe1-3f620c982f55")
-		(property "Reference" "J7"
-			(at 247.396 57.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Value" "NCJ6FA-H-0"
-			(at 247.396 59.69 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Footprint" "Connector_Audio:Jack_XLR-6.35mm_Neutrik_NCJ6FA-H-0_Horizontal"
-			(at 254 52.07 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.neutrik.com/en/product/ncj6fa-h-0"
-			(at 254 52.07 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Combo A series, 3 pole XLR female receptacle with 6.35mm (1/4in) stereo jack, horizontal PCB mount, retention spring"
-			(at 254 52.07 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "1206cb77-0d22-474e-8291-87486bf51b55")
-		)
-		(pin "G"
-			(uuid "771832dc-7eac-4572-b9b7-0192f3a4cc9a")
-		)
-		(pin "3"
-			(uuid "59774ed3-9799-42b8-84c5-577c26533ff8")
-		)
-		(pin "R"
-			(uuid "65f87305-fe29-4bb1-816e-39fcf81d925e")
-		)
-		(pin "T"
-			(uuid "3cc548de-9806-44a1-81b7-0d8af44e5758")
-		)
-		(pin "S"
-			(uuid "a5f7c7fb-6a2e-4f3b-91f3-e60587f2c9af")
-		)
-		(pin "2"
-			(uuid "8a18ca8a-8d50-43d3-bd9e-8eb7aeebb6bc")
-		)
-		(instances
-			(project "triptech"
-				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J7")
-					(unit 1)
-				)
-			)
-			(project "audio"
-				(path "/a1b2c3d4-7777-4000-8000-000000000007"
-					(reference "J4")
-					(unit 2)
 				)
 			)
 		)
