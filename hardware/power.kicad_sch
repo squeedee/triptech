@@ -2947,16 +2947,6 @@
 	)
 	(wire
 		(pts
-			(xy 102.87 152.4) (xy 100.33 152.4)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "002b0a67-f6ce-4b96-9717-833a088ee72b")
-	)
-	(wire
-		(pts
 			(xy 46.99 62.23) (xy 46.99 60.96)
 		)
 		(stroke
@@ -3257,7 +3247,7 @@
 	)
 	(wire
 		(pts
-			(xy 102.87 149.86) (xy 102.87 152.4)
+			(xy 102.87 149.86) (xy 102.87 151.13)
 		)
 		(stroke
 			(width 0)
@@ -4250,7 +4240,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "512cffd6-133f-4daa-a3f2-658c953cf3b9")
-		(property "Reference" "#PWR04"
+		(property "Reference" "#PWR03"
 			(at 102.87 130.81 0)
 			(effects
 				(font
@@ -4301,7 +4291,7 @@
 		(instances
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
-					(reference "#PWR04")
+					(reference "#PWR03")
 					(unit 1)
 				)
 			)
@@ -5663,7 +5653,7 @@
 	)
 	(symbol
 		(lib_id "power:-12VA")
-		(at 100.33 152.4 180)
+		(at 102.87 151.13 180)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -5671,8 +5661,8 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "a50d87ac-f706-4b40-8e9c-e161dad4c89e")
-		(property "Reference" "#PWR03"
-			(at 100.33 148.59 0)
+		(property "Reference" "#PWR04"
+			(at 102.87 147.32 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5681,7 +5671,7 @@
 			)
 		)
 		(property "Value" "-12VA"
-			(at 102.87 153.6699 0)
+			(at 105.41 152.3999 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5690,7 +5680,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 100.33 152.4 0)
+			(at 102.87 151.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5699,7 +5689,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 100.33 152.4 0)
+			(at 102.87 151.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5708,7 +5698,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"-12VA\""
-			(at 100.33 152.4 0)
+			(at 102.87 151.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -5722,7 +5712,7 @@
 		(instances
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-1111-4000-8000-000000000001"
-					(reference "#PWR03")
+					(reference "#PWR04")
 					(unit 1)
 				)
 			)

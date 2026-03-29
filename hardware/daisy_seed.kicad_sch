@@ -3767,131 +3767,6 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "power:+5V"
-			(power)
-			(pin_numbers
-				(hide yes)
-			)
-			(pin_names
-				(offset 0)
-				(hide yes)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(property "Reference" "#PWR"
-				(at 0 -3.81 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Value" "+5V"
-				(at 0 3.556 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "Power symbol creates a global label with name \"+5V\""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_keywords" "global power"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(symbol "+5V_0_1"
-				(polyline
-					(pts
-						(xy -0.762 1.27) (xy 0 2.54)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 2.54) (xy 0.762 1.27)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 0) (xy 0 2.54)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "+5V_1_1"
-				(pin power_in line
-					(at 0 0 90)
-					(length 0)
-					(name "~"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
 		(symbol "power:GND"
 			(power)
 			(pin_numbers
@@ -4432,6 +4307,16 @@
 			(type default)
 		)
 		(uuid "09db46ba-e507-403e-b377-a519e1b6d5fc")
+	)
+	(wire
+		(pts
+			(xy 50.8 60.96) (xy 76.2 60.96)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0a350924-bdfd-4aca-a400-22cfd50fe4ed")
 	)
 	(wire
 		(pts
@@ -5475,16 +5360,6 @@
 	)
 	(wire
 		(pts
-			(xy 76.2 62.23) (xy 76.2 67.31)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "beec61d2-c756-43b7-a639-6f4dc07e0df6")
-	)
-	(wire
-		(pts
 			(xy 200.66 251.46) (xy 245.11 251.46)
 		)
 		(stroke
@@ -5682,6 +5557,16 @@
 			(type default)
 		)
 		(uuid "dc95e9f2-6a33-4729-a44a-fc44aff9defb")
+	)
+	(wire
+		(pts
+			(xy 76.2 60.96) (xy 76.2 67.31)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ddd90b1c-b551-4231-8079-322ba830724e")
 	)
 	(wire
 		(pts
@@ -6111,6 +5996,28 @@
 					(size 1.27 1.27)
 				)
 				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "+5V"
+		(shape input)
+		(at 50.8 60.96 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "38e91c60-2e1b-4233-825c-77375408581f")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 43.9443 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
 				(hide yes)
 			)
 		)
@@ -7499,6 +7406,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "#PWR?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -7511,7 +7424,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "038056c9-3073-4bcf-9a04-202c07d8fbb2")
-		(property "Reference" "#PWR014"
+		(property "Reference" "#PWR013"
 			(at 260.35 120.65 0)
 			(effects
 				(font
@@ -7561,7 +7474,13 @@
 		(instances
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "#PWR014")
+					(reference "#PWR013")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "#PWR?")
 					(unit 1)
 				)
 			)
@@ -7752,6 +7671,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "U?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -7815,6 +7740,12 @@
 			(project ""
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
 					(reference "#PWR07")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "#PWR?")
 					(unit 1)
 				)
 			)
@@ -7888,6 +7819,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "C?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -7953,6 +7890,12 @@
 			(project ""
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
 					(reference "R14")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
 					(unit 1)
 				)
 			)
@@ -8026,6 +7969,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -8095,6 +8044,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R_STAR?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -8107,7 +8062,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "4971388b-fd03-40a1-8f79-df7fd3c19f83")
-		(property "Reference" "#PWR010"
+		(property "Reference" "#PWR09"
 			(at 82.55 152.4 0)
 			(effects
 				(font
@@ -8157,7 +8112,13 @@
 		(instances
 			(project ""
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "#PWR010")
+					(reference "#PWR09")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "#PWR?")
 					(unit 1)
 				)
 			)
@@ -8231,6 +8192,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -8243,7 +8210,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "64975261-170d-4703-93d8-28eace9e79cc")
-		(property "Reference" "#PWR015"
+		(property "Reference" "#PWR014"
 			(at 260.35 147.32 0)
 			(effects
 				(font
@@ -8293,73 +8260,13 @@
 		(instances
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "#PWR015")
+					(reference "#PWR014")
 					(unit 1)
 				)
 			)
-		)
-	)
-	(symbol
-		(lib_id "power:+5V")
-		(at 76.2 62.23 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "6d51d54c-0da4-4d77-af2c-f8a9cd5d1e9d")
-		(property "Reference" "#PWR09"
-			(at 76.2 66.04 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "+5V"
-			(at 76.2 57.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 76.2 62.23 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 76.2 62.23 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"+5V\""
-			(at 76.2 62.23 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "b4fa5445-2615-422d-9eb4-6073a041af47")
-		)
-		(instances
-			(project ""
-				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "#PWR09")
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "#PWR?")
 					(unit 1)
 				)
 			)
@@ -8430,6 +8337,12 @@
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
 					(reference "R8")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
 					(unit 1)
 				)
 			)
@@ -8566,6 +8479,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "J?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -8655,6 +8574,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "J?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -8723,6 +8648,12 @@
 			(project ""
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
 					(reference "R17")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
 					(unit 1)
 				)
 			)
@@ -8797,6 +8728,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -8867,6 +8804,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -8879,7 +8822,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "a5d2b861-8244-4e8f-bf16-637a8d82a1fa")
-		(property "Reference" "#PWR012"
+		(property "Reference" "#PWR011"
 			(at 172.72 91.44 0)
 			(effects
 				(font
@@ -8929,7 +8872,13 @@
 		(instances
 			(project ""
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "#PWR012")
+					(reference "#PWR011")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "#PWR?")
 					(unit 1)
 				)
 			)
@@ -9012,6 +8961,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "U?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -9090,6 +9045,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "J_MIDI_THRU?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -9102,7 +9063,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "ac7f1274-a725-44c4-8f51-d2d224d6a5fe")
-		(property "Reference" "#PWR011"
+		(property "Reference" "#PWR010"
 			(at 162.56 91.44 0)
 			(effects
 				(font
@@ -9152,7 +9113,13 @@
 		(instances
 			(project ""
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "#PWR011")
+					(reference "#PWR010")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "#PWR?")
 					(unit 1)
 				)
 			)
@@ -9223,6 +9190,12 @@
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
 					(reference "R10")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
 					(unit 1)
 				)
 			)
@@ -9301,6 +9274,12 @@
 			(project ""
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
 					(reference "J_MIDI_IN1")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "J_MIDI_IN?")
 					(unit 1)
 				)
 			)
@@ -9392,6 +9371,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "D?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -9457,6 +9442,12 @@
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
 					(reference "R15")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
 					(unit 1)
 				)
 			)
@@ -9538,6 +9529,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "J_MIDI_OUT?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -9609,6 +9606,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -9621,7 +9624,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "f0cd5c8e-58c3-4aba-bb2e-8ca78fd04c92")
-		(property "Reference" "#PWR013"
+		(property "Reference" "#PWR012"
 			(at 245.11 259.08 0)
 			(effects
 				(font
@@ -9671,7 +9674,13 @@
 		(instances
 			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "#PWR013")
+					(reference "#PWR012")
+					(unit 1)
+				)
+			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "#PWR?")
 					(unit 1)
 				)
 			)
@@ -9745,6 +9754,12 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
+					(unit 1)
+				)
+			)
 		)
 	)
 	(symbol
@@ -9814,6 +9829,18 @@
 					(unit 1)
 				)
 			)
+			(project "daisy_seed"
+				(path "/a1b2c3d4-2222-4000-8000-000000000002"
+					(reference "R?")
+					(unit 1)
+				)
+			)
 		)
 	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
 )
