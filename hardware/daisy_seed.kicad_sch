@@ -9,333 +9,6 @@
 		(rev "1.0")
 	)
 	(lib_symbols
-		(symbol "Connector:DIN-5_180degree"
-			(pin_names
-				(offset 1.016)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(property "Reference" "J"
-				(at 3.175 5.715 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "DIN-5_180degree"
-				(at 0 -6.35 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" "http://www.mouser.com/ds/2/18/40_c091_abd_e-75918.pdf"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "5-pin DIN connector (5-pin DIN-5 stereo)"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_keywords" "circular DIN connector stereo audio"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "ki_fp_filters" "DIN*"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(symbol "DIN-5_180degree_0_1"
-				(polyline
-					(pts
-						(xy -5.08 2.54) (xy -4.318 2.54) (xy -2.794 2.286)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -5.08 0) (xy -3.556 0)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(circle
-					(center -3.048 0)
-					(radius 0.508)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(circle
-					(center -2.286 2.286)
-					(radius 0.508)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -0.762 -4.953) (xy -0.762 -4.191) (xy 0.762 -4.191) (xy 0.762 -4.953)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(arc
-					(start 5.08 0)
-					(mid 3.8673 -3.3444)
-					(end 0.762 -5.08)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 0 5.08) (xy 0 3.81)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(circle
-					(center 0 3.302)
-					(radius 0.508)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(arc
-					(start -5.08 0)
-					(mid 0 5.0579)
-					(end 5.08 0)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(arc
-					(start -0.762 -5.08)
-					(mid -3.8597 -3.3379)
-					(end -5.08 0)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(circle
-					(center 2.286 2.286)
-					(radius 0.508)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(circle
-					(center 3.048 0)
-					(radius 0.508)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 5.08 2.54) (xy 4.318 2.54) (xy 2.794 2.286)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 5.08 0) (xy 3.556 0)
-					)
-					(stroke
-						(width 0)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-			)
-			(symbol "DIN-5_180degree_1_1"
-				(pin passive line
-					(at -7.62 2.54 0)
-					(length 2.54)
-					(name "~"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -7.62 0 0)
-					(length 2.54)
-					(name "~"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 7.62 270)
-					(length 2.54)
-					(name "~"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 7.62 2.54 180)
-					(length 2.54)
-					(name "~"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "5"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 7.62 0 180)
-					(length 2.54)
-					(name "~"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
 		(symbol "Connector:Micro_SD_Card"
 			(pin_names
 				(offset 1.016)
@@ -3767,6 +3440,308 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "SDS-50J:SDS-50J"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "J9"
+				(at 11.43 -8.89 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "SDS-50J"
+				(at 11.176 -10.922 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "SDS50J"
+				(at 19.05 -94.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "https://www.sameskydevices.com/product/resource/supplyframepdf/sds-j.pdf"
+				(at 19.05 -194.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(property "Description" "5 Pin, Right-Angle Receptacle, 180"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Height" ""
+				(at 19.05 -394.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(property "Manufacturer_Name" "Same Sky"
+				(at 19.05 -494.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(property "Manufacturer_Part_Number" "SDS-50J"
+				(at 19.05 -594.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(property "Mouser Part Number" "490-SDS-50J"
+				(at 19.05 -694.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(property "Mouser Price/Stock" "https://www.mouser.co.uk/ProductDetail/Same-Sky/SDS-50J?qs=WyjlAZoYn50GAH9uA%252BxiOw%3D%3D"
+				(at 19.05 -794.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(property "Arrow Part Number" "SDS-50J"
+				(at 19.05 -894.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(property "Arrow Price/Stock" "https://www.arrow.com/en/products/sds-50j/cui-devices?utm_currency=USD&region=nac"
+				(at 19.05 -994.92 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left top)
+					(hide yes)
+				)
+			)
+			(symbol "SDS-50J_0_1"
+				(circle
+					(center 11.43 -2.54)
+					(radius 4.9595)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "SDS-50J_1_1"
+				(pin passive line
+					(at 2.54 -2.54 0)
+					(length 5.08)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 3.81 0 0)
+					(length 5.08)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 11.43 6.35 270)
+					(length 5.08)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 19.05 0 180)
+					(length 5.08)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 20.32 -2.54 180)
+					(length 5.08)
+					(name ""
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 35.56 -5.08 180)
+					(length 5.08)
+					(hide yes)
+					(name "MH1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "MH1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 35.56 -7.62 180)
+					(length 5.08)
+					(hide yes)
+					(name "MH2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "MH2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 35.56 -10.16 180)
+					(length 5.08)
+					(hide yes)
+					(name "MH3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "MH3"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 35.56 -12.7 180)
+					(length 5.08)
+					(hide yes)
+					(name "MH4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "MH4"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "power:GND"
 			(power)
 			(pin_numbers
@@ -4183,6 +4158,12 @@
 		(uuid "a65f47be-cc94-4948-b60a-5a09c4c22053")
 	)
 	(junction
+		(at 260.35 133.35)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "c1ca1363-6d9d-44cd-8cc7-1e36789e2e7f")
+	)
+	(junction
 		(at 185.42 180.34)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -4227,6 +4208,26 @@
 			(type default)
 		)
 		(uuid "00bc48d2-9d57-402c-80a9-c45786049db9")
+	)
+	(wire
+		(pts
+			(xy 259.08 106.68) (xy 256.54 106.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "021a13a6-bec3-4323-a14a-25ad12360d7a")
+	)
+	(wire
+		(pts
+			(xy 259.08 110.49) (xy 259.08 106.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0274b190-0588-4327-b9c5-be05b31cd2c4")
 	)
 	(wire
 		(pts
@@ -4337,6 +4338,16 @@
 			(type default)
 		)
 		(uuid "0c9816ee-8581-41bd-9a95-b58f50fadfd2")
+	)
+	(wire
+		(pts
+			(xy 262.89 110.49) (xy 259.08 110.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0ca278f4-d70e-48a5-a519-e17d5b2e81d8")
 	)
 	(wire
 		(pts
@@ -4500,7 +4511,7 @@
 	)
 	(wire
 		(pts
-			(xy 331.47 118.11) (xy 293.37 118.11)
+			(xy 331.47 116.84) (xy 293.37 116.84)
 		)
 		(stroke
 			(width 0)
@@ -4530,7 +4541,7 @@
 	)
 	(wire
 		(pts
-			(xy 256.54 132.08) (xy 261.62 132.08)
+			(xy 260.35 133.35) (xy 261.62 133.35)
 		)
 		(stroke
 			(width 0)
@@ -4587,6 +4598,16 @@
 			(type default)
 		)
 		(uuid "42191502-8386-4cf7-9672-c1b1f9de5332")
+	)
+	(wire
+		(pts
+			(xy 241.3 97.79) (xy 241.3 106.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4314b4e7-e4f6-4dfd-8af5-171b988d9e5b")
 	)
 	(wire
 		(pts
@@ -4650,16 +4671,6 @@
 	)
 	(wire
 		(pts
-			(xy 257.81 110.49) (xy 262.89 110.49)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "4de039f5-ae90-49ac-9e54-46e53cd71e64")
-	)
-	(wire
-		(pts
 			(xy 175.26 228.6) (xy 189.23 228.6)
 		)
 		(stroke
@@ -4680,7 +4691,7 @@
 	)
 	(wire
 		(pts
-			(xy 237.49 128.27) (xy 237.49 132.08)
+			(xy 237.49 128.27) (xy 237.49 133.35)
 		)
 		(stroke
 			(width 0)
@@ -4707,6 +4718,16 @@
 			(type default)
 		)
 		(uuid "5546852e-7db7-4ff1-8916-41b15d23cd26")
+	)
+	(wire
+		(pts
+			(xy 260.35 133.35) (xy 260.35 140.97)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "55a03c49-7157-419d-90fa-af0e0e2f154a")
 	)
 	(wire
 		(pts
@@ -5080,16 +5101,6 @@
 	)
 	(wire
 		(pts
-			(xy 256.54 105.41) (xy 257.81 105.41)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8fe399d0-52cb-4b95-a71f-00650140aed9")
-	)
-	(wire
-		(pts
 			(xy 189.23 203.2) (xy 189.23 228.6)
 		)
 		(stroke
@@ -5150,7 +5161,7 @@
 	)
 	(wire
 		(pts
-			(xy 269.24 132.08) (xy 273.05 132.08)
+			(xy 269.24 133.35) (xy 273.05 133.35)
 		)
 		(stroke
 			(width 0)
@@ -5197,16 +5208,6 @@
 			(type default)
 		)
 		(uuid "9b378dd3-7c30-4766-930b-baec9964c909")
-	)
-	(wire
-		(pts
-			(xy 241.3 105.41) (xy 241.3 97.79)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9b5e57ea-798e-4863-9823-edeb9b64f0cb")
 	)
 	(wire
 		(pts
@@ -5307,16 +5308,6 @@
 			(type default)
 		)
 		(uuid "b23d0997-4b83-4eb3-870d-f917ddf0cb4a")
-	)
-	(wire
-		(pts
-			(xy 257.81 105.41) (xy 257.81 110.49)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b9c49ddc-7195-4f87-b9dd-ac89c346f1f9")
 	)
 	(wire
 		(pts
@@ -5470,7 +5461,7 @@
 	)
 	(wire
 		(pts
-			(xy 293.37 118.11) (xy 293.37 113.03)
+			(xy 293.37 116.84) (xy 293.37 113.03)
 		)
 		(stroke
 			(width 0)
@@ -5650,6 +5641,16 @@
 	)
 	(wire
 		(pts
+			(xy 260.35 133.35) (xy 256.54 133.35)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eafb675c-1248-4ed8-b579-599f45b3dacc")
+	)
+	(wire
+		(pts
 			(xy 82.55 146.05) (xy 82.55 143.51)
 		)
 		(stroke
@@ -5680,6 +5681,16 @@
 	)
 	(wire
 		(pts
+			(xy 260.35 127) (xy 260.35 133.35)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eeee21c5-5c45-40ad-b4d7-754cdcc1f3e6")
+	)
+	(wire
+		(pts
 			(xy 40.64 82.55) (xy 52.07 82.55)
 		)
 		(stroke
@@ -5687,16 +5698,6 @@
 			(type default)
 		)
 		(uuid "f009fc30-5c44-4f3a-ad55-699b3a111243")
-	)
-	(wire
-		(pts
-			(xy 260.35 127) (xy 260.35 140.97)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f5d51042-812a-4ead-93ce-915668d8ff79")
 	)
 	(wire
 		(pts
@@ -5710,7 +5711,7 @@
 	)
 	(wire
 		(pts
-			(xy 241.3 132.08) (xy 237.49 132.08)
+			(xy 241.3 133.35) (xy 237.49 133.35)
 		)
 		(stroke
 			(width 0)
@@ -6750,7 +6751,7 @@
 	)
 	(global_label "MIDI_TX"
 		(shape input)
-		(at 273.05 132.08 0)
+		(at 273.05 133.35 0)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -6760,7 +6761,7 @@
 		)
 		(uuid "a48b0b27-e6db-4465-8e1e-a43680924fcc")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 283.1109 132.08 0)
+			(at 283.1109 133.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8125,6 +8126,166 @@
 		)
 	)
 	(symbol
+		(lib_id "SDS-50J:SDS-50J")
+		(at 237.49 106.68 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "54850caa-2b9b-4af6-9da5-411132c4c9c7")
+		(property "Reference" "J_MIDI_IN1"
+			(at 248.92 115.57 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SDS-50J"
+			(at 248.666 117.602 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "SDS50J"
+			(at 256.54 201.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.sameskydevices.com/product/resource/supplyframepdf/sds-j.pdf"
+			(at 256.54 301.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Description" "5 Pin, Right-Angle Receptacle, 180"
+			(at 237.49 106.68 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Height" ""
+			(at 256.54 501.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer_Name" "Same Sky"
+			(at 256.54 601.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer_Part_Number" "SDS-50J"
+			(at 256.54 701.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Mouser Part Number" "490-SDS-50J"
+			(at 256.54 801.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Mouser Price/Stock" "https://www.mouser.co.uk/ProductDetail/Same-Sky/SDS-50J?qs=WyjlAZoYn50GAH9uA%252BxiOw%3D%3D"
+			(at 256.54 901.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Arrow Part Number" "SDS-50J"
+			(at 256.54 1001.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Arrow Price/Stock" "https://www.arrow.com/en/products/sds-50j/cui-devices?utm_currency=USD&region=nac"
+			(at 256.54 1101.6 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(pin "3"
+			(uuid "62a346a0-585b-4c60-83b6-605231ded8e1")
+		)
+		(pin "4"
+			(uuid "0b2bece5-1ce3-43aa-aa49-e8dd471ba175")
+		)
+		(pin "5"
+			(uuid "3eb72af6-d025-4645-9d93-544506f31142")
+		)
+		(pin "MH1"
+			(uuid "9b9c8327-6568-4512-b0be-1d2c716ca8fa")
+		)
+		(pin "MH2"
+			(uuid "09cb02b9-85f4-4468-ac8c-f7f5951945ca")
+		)
+		(pin "MH3"
+			(uuid "07063979-9dad-480e-ab72-e41cc7f3e414")
+		)
+		(pin "MH4"
+			(uuid "9292e2c4-81da-46f2-bb29-f1f0c2a2eb9e")
+		)
+		(pin "1"
+			(uuid "66e0cd40-fa88-4b9d-9167-8d2eb6a59109")
+		)
+		(pin "2"
+			(uuid "7a6f46e4-977a-44e4-a709-70a133510455")
+		)
+		(instances
+			(project ""
+				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
+					(reference "J_MIDI_IN1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_name "R_3")
 		(lib_id "Device:R")
 		(at 341.63 109.22 0)
@@ -8970,90 +9131,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Connector:DIN-5_180degree")
-		(at 331.47 125.73 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "aa37a17b-91ba-45f7-8565-c5f63f1a30da")
-		(property "Reference" "J_MIDI_THRU1"
-			(at 331.47 133.35 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "DIN-5_180degree"
-			(at 331.47 133.35 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Footprint" ""
-			(at 331.47 125.73 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "http://www.mouser.com/ds/2/18/40_c091_abd_e-75918.pdf"
-			(at 331.47 125.73 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "5-pin DIN connector (5-pin DIN-5 stereo)"
-			(at 331.47 125.73 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "2"
-			(uuid "a28059f5-5818-43c1-bc8b-b429ed275407")
-		)
-		(pin "5"
-			(uuid "a2efb397-2982-47fb-8fbf-d624b9088ac3")
-		)
-		(pin "4"
-			(uuid "9de480d6-f460-4900-91a8-ccc885a91c45")
-		)
-		(pin "1"
-			(uuid "baf170b1-00d7-4104-9343-85562987ef83")
-		)
-		(pin "3"
-			(uuid "4dd29cdb-a81f-4b12-96fa-a85f2632d686")
-		)
-		(instances
-			(project "triptech"
-				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "J_MIDI_THRU1")
-					(unit 1)
-				)
-			)
-			(project "daisy_seed"
-				(path "/a1b2c3d4-2222-4000-8000-000000000002"
-					(reference "J_MIDI_THRU?")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 162.56 85.09 0)
 		(unit 1)
@@ -9120,6 +9197,166 @@
 			(project "daisy_seed"
 				(path "/a1b2c3d4-2222-4000-8000-000000000002"
 					(reference "#PWR?")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "SDS-50J:SDS-50J")
+		(at 237.49 133.35 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "bb33c78f-c5f2-43df-99cb-5acde5be74af")
+		(property "Reference" "J_MIDI_OUT1"
+			(at 248.92 142.24 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SDS-50J"
+			(at 248.666 144.272 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "SDS50J"
+			(at 256.54 228.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.sameskydevices.com/product/resource/supplyframepdf/sds-j.pdf"
+			(at 256.54 328.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Description" "5 Pin, Right-Angle Receptacle, 180"
+			(at 237.49 133.35 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Height" ""
+			(at 256.54 528.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer_Name" "Same Sky"
+			(at 256.54 628.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer_Part_Number" "SDS-50J"
+			(at 256.54 728.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Mouser Part Number" "490-SDS-50J"
+			(at 256.54 828.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Mouser Price/Stock" "https://www.mouser.co.uk/ProductDetail/Same-Sky/SDS-50J?qs=WyjlAZoYn50GAH9uA%252BxiOw%3D%3D"
+			(at 256.54 928.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Arrow Part Number" "SDS-50J"
+			(at 256.54 1028.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Arrow Price/Stock" "https://www.arrow.com/en/products/sds-50j/cui-devices?utm_currency=USD&region=nac"
+			(at 256.54 1128.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(pin "3"
+			(uuid "ed467a9d-bbfe-48a7-a549-5cc00814aa6d")
+		)
+		(pin "4"
+			(uuid "adfe00d8-0f0e-4947-a29a-614f9084275f")
+		)
+		(pin "5"
+			(uuid "9cb024b8-faf6-4761-9a21-511f4554f86d")
+		)
+		(pin "MH1"
+			(uuid "d38422d2-9db4-498c-b7c8-ac1a14e2d5e4")
+		)
+		(pin "MH2"
+			(uuid "0f6a69ec-e537-467f-99d3-214bbe02ecaf")
+		)
+		(pin "MH3"
+			(uuid "c6e42f47-e1c2-4f12-9a4e-da31683d7256")
+		)
+		(pin "MH4"
+			(uuid "8f289b8a-170e-4976-b6d6-a37769c1e521")
+		)
+		(pin "1"
+			(uuid "f155ced3-7f35-49e0-8dea-4c851aa7889f")
+		)
+		(pin "2"
+			(uuid "cd3c6662-7c75-4f92-8832-f7bca539f93d")
+		)
+		(instances
+			(project "triptech"
+				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
+					(reference "J_MIDI_OUT1")
 					(unit 1)
 				)
 			)
@@ -9202,25 +9439,52 @@
 		)
 	)
 	(symbol
-		(lib_id "Connector:DIN-5_180degree")
-		(at 248.92 107.95 0)
+		(lib_id "SDS-50J:SDS-50J")
+		(at 320.04 123.19 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "d087a992-09ff-4564-854e-0780101d0027")
-		(property "Reference" "J_MIDI_IN1"
-			(at 248.92 115.57 0)
+		(uuid "d40fab7d-4040-4a35-9256-39088b83e5c3")
+		(property "Reference" "J_MIDI_THRU1"
+			(at 331.47 132.08 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
 			)
 		)
-		(property "Value" "DIN-5_180degree"
-			(at 248.92 118.11 0)
+		(property "Value" "SDS-50J"
+			(at 331.216 134.112 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "SDS50J"
+			(at 339.09 218.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.sameskydevices.com/product/resource/supplyframepdf/sds-j.pdf"
+			(at 339.09 318.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
+		)
+		(property "Description" "5 Pin, Right-Angle Receptacle, 180"
+			(at 320.04 123.19 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9228,58 +9492,107 @@
 				(hide yes)
 			)
 		)
-		(property "Footprint" ""
-			(at 248.92 107.95 0)
+		(property "Height" ""
+			(at 339.09 518.11 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify left top)
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "http://www.mouser.com/ds/2/18/40_c091_abd_e-75918.pdf"
-			(at 248.92 107.95 0)
+		(property "Manufacturer_Name" "Same Sky"
+			(at 339.09 618.11 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify left top)
 				(hide yes)
 			)
 		)
-		(property "Description" "5-pin DIN connector (5-pin DIN-5 stereo)"
-			(at 248.92 107.95 0)
+		(property "Manufacturer_Part_Number" "SDS-50J"
+			(at 339.09 718.11 0)
 			(effects
 				(font
 					(size 1.27 1.27)
 				)
+				(justify left top)
 				(hide yes)
 			)
 		)
-		(pin "2"
-			(uuid "2c4f64ed-5665-4806-8027-766015a9fa49")
+		(property "Mouser Part Number" "490-SDS-50J"
+			(at 339.09 818.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
 		)
-		(pin "5"
-			(uuid "43975ae1-3c6f-453b-8f33-e9a07bdd6391")
+		(property "Mouser Price/Stock" "https://www.mouser.co.uk/ProductDetail/Same-Sky/SDS-50J?qs=WyjlAZoYn50GAH9uA%252BxiOw%3D%3D"
+			(at 339.09 918.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
 		)
-		(pin "4"
-			(uuid "0213b3a2-d60e-4f48-b1ba-22e2c4c97dab")
+		(property "Arrow Part Number" "SDS-50J"
+			(at 339.09 1018.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
 		)
-		(pin "1"
-			(uuid "b36ac6f9-80c5-4d37-8195-b67c0c7c61d0")
+		(property "Arrow Price/Stock" "https://www.arrow.com/en/products/sds-50j/cui-devices?utm_currency=USD&region=nac"
+			(at 339.09 1118.11 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+				(hide yes)
+			)
 		)
 		(pin "3"
-			(uuid "33f2209b-4fe6-41a7-b2dd-118945e57ebc")
+			(uuid "e92e5da4-38b8-4648-80c4-ecaea0a2ad82")
+		)
+		(pin "4"
+			(uuid "051ab540-a2a6-47b2-91fa-f9b41ff2b775")
+		)
+		(pin "5"
+			(uuid "72819a22-efd3-4840-a72a-41006b5230f8")
+		)
+		(pin "MH1"
+			(uuid "d2607f07-0373-4498-b77b-886cfa0c7dcb")
+		)
+		(pin "MH2"
+			(uuid "654ebc2b-4ae0-4113-9e4f-de4a65d9b444")
+		)
+		(pin "MH3"
+			(uuid "30539ca0-69f2-45a0-b625-bb0dfdc261b8")
+		)
+		(pin "MH4"
+			(uuid "e50eaf48-d1fb-428f-bb82-53c50d68df5e")
+		)
+		(pin "1"
+			(uuid "a3145c3e-7864-4407-ab45-724be09f8861")
+		)
+		(pin "2"
+			(uuid "4f2dcfe2-7afd-472a-bd10-6df4a97e0949")
 		)
 		(instances
-			(project ""
+			(project "triptech"
 				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "J_MIDI_IN1")
-					(unit 1)
-				)
-			)
-			(project "daisy_seed"
-				(path "/a1b2c3d4-2222-4000-8000-000000000002"
-					(reference "J_MIDI_IN?")
+					(reference "J_MIDI_THRU1")
 					(unit 1)
 				)
 			)
@@ -9304,7 +9617,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "1N4148WS"
+		(property "Value" "1N4148W"
 			(at 274.32 105.4099 90)
 			(effects
 				(font
@@ -9313,7 +9626,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Diode_SMD:D_SOD-323"
+		(property "Footprint" "Diode_SMD:D_SOD-123"
 			(at 267.335 104.14 0)
 			(effects
 				(font
@@ -9322,7 +9635,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.vishay.com/docs/85751/1n4148ws.pdf"
+		(property "Datasheet" "https://diotec.com/request/datasheet/1n4148w.pdf"
 			(at 271.78 104.14 0)
 			(effects
 				(font
@@ -9331,7 +9644,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "75V 0.15A Fast switching Diode, SOD-323"
+		(property "Description" "75V 0.15A Fast switching Diode, SOD-123"
 			(at 271.78 104.14 0)
 			(effects
 				(font
@@ -9448,90 +9761,6 @@
 			(project "daisy_seed"
 				(path "/a1b2c3d4-2222-4000-8000-000000000002"
 					(reference "R?")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Connector:DIN-5_180degree")
-		(at 248.92 134.62 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "ef71626c-9615-4a19-a24c-edee99f1a2cf")
-		(property "Reference" "J_MIDI_OUT1"
-			(at 248.92 142.24 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "DIN-5_180degree"
-			(at 248.92 144.78 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Footprint" ""
-			(at 248.92 134.62 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "http://www.mouser.com/ds/2/18/40_c091_abd_e-75918.pdf"
-			(at 248.92 134.62 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "5-pin DIN connector (5-pin DIN-5 stereo)"
-			(at 248.92 134.62 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "2"
-			(uuid "87d6aae8-5575-4175-a607-803e62ab46d0")
-		)
-		(pin "5"
-			(uuid "b46019c9-a5d7-4267-92c8-5e8c6b44c475")
-		)
-		(pin "4"
-			(uuid "d599b411-a8d2-4e1c-b603-3558ba2ca508")
-		)
-		(pin "1"
-			(uuid "539d3fbe-42cb-4222-bbc6-df06bc4cebed")
-		)
-		(pin "3"
-			(uuid "2ca6a7c1-4ce0-4019-9e5e-644c593d5daa")
-		)
-		(instances
-			(project "triptech"
-				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/75aee282-6ddd-4543-b5fc-0fc86bf548ec"
-					(reference "J_MIDI_OUT1")
-					(unit 1)
-				)
-			)
-			(project "daisy_seed"
-				(path "/a1b2c3d4-2222-4000-8000-000000000002"
-					(reference "J_MIDI_OUT?")
 					(unit 1)
 				)
 			)
@@ -9765,7 +9994,7 @@
 	(symbol
 		(lib_name "R_3")
 		(lib_id "Device:R")
-		(at 265.43 132.08 90)
+		(at 265.43 133.35 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -9774,7 +10003,7 @@
 		(fields_autoplaced yes)
 		(uuid "fd5cdb8c-3140-4bd2-bd06-dcd41194a681")
 		(property "Reference" "R13"
-			(at 265.43 125.73 90)
+			(at 265.43 127 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9782,7 +10011,7 @@
 			)
 		)
 		(property "Value" "10R"
-			(at 265.43 128.27 90)
+			(at 265.43 129.54 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9790,7 +10019,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_SMD:R_0805_2012Metric"
-			(at 265.43 133.858 90)
+			(at 265.43 135.128 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9799,7 +10028,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 265.43 132.08 0)
+			(at 265.43 133.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9808,7 +10037,7 @@
 			)
 		)
 		(property "Description" "Resistor"
-			(at 265.43 132.08 0)
+			(at 265.43 133.35 0)
 			(effects
 				(font
 					(size 1.27 1.27)
