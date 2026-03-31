@@ -1,4 +1,4 @@
-27251826955085997
+27262414773681369
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -107911,6 +107911,48 @@ Varistor VF
 0
 2
 2
+daisy
+DAISY_PATCH_SM
+
+
+0
+40
+40
+daisy
+DAISY_PATCH_SM_SMT
+
+
+0
+40
+40
+daisy
+DAISY_SEED
+Embedded platform for audio applications. 96kHz / 24-bit audio hardware. 64MB of SDRAM for up to 10 minute long audio. ARM Cortex-M7 MCU, running at 480MHz. 31 total GPIO pins with configurable functionality. 12-bit Digital to Analog Converters (x2). SD card interfaces. PWM outputs. Serial Protocols for connecting external sensors and devices (SPI, UART, I2S, I2C). Dedicated VIN pin for power. Micro USB port, and additional USB pins for full OTG-support as host and device. https://static1.squarespace.com/static/58d03fdc1b10e3bf442567b8/t/6227e6236f02fb68d1577146/1646781988478/Daisy_Seed_datasheet_v1.0.3.pdf
+Electrosmith Daisy Seed Microcontroller Module ARM Cortex-M7 Audio Codec
+0
+40
+40
+daisy
+DAISY_SEED2_DFM
+
+
+0
+50
+50
+daisy
+DAISY_SEED2_DFM_PTH
+
+
+0
+50
+50
+daisy
+DAISY_SEED_SMT
+
+
+0
+40
+40
 libs
 LC2255EESP
 LC2255EESP-1
