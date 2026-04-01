@@ -4851,6 +4851,107 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "power:PWR_FLAG"
+			(power)
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "#FLG"
+				(at 0 1.905 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Value" "PWR_FLAG"
+				(at 0 3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Special symbol for telling ERC where power comes from"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "flag power"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "PWR_FLAG_0_0"
+				(pin power_out line
+					(at 0 0 90)
+					(length 0)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(symbol "PWR_FLAG_0_1"
+				(polyline
+					(pts
+						(xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 	)
 	(text "Place close to THAT 1646s\n"
 		(exclude_from_sim no)
@@ -5207,6 +5308,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "b18f0aac-5304-4159-b77f-0d0cd6a5f6fb")
+	)
+	(junction
+		(at 31.75 120.65)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "b7c8abdf-72fe-4701-b98d-c69f1e2fe624")
 	)
 	(junction
 		(at 241.3 36.83)
@@ -5678,6 +5785,16 @@
 	)
 	(wire
 		(pts
+			(xy 22.86 125.73) (xy 22.86 120.65)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2334eb97-6a17-40c4-ac5e-0f506ec7bd87")
+	)
+	(wire
+		(pts
 			(xy 184.15 104.14) (xy 195.58 104.14)
 		)
 		(stroke
@@ -5828,6 +5945,16 @@
 	)
 	(wire
 		(pts
+			(xy 31.75 120.65) (xy 31.75 110.49)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3bf6f8c1-9fe6-43b9-9cd2-b5ed38727dc1")
+	)
+	(wire
+		(pts
 			(xy 48.26 110.49) (xy 43.18 110.49)
 		)
 		(stroke
@@ -5845,6 +5972,16 @@
 			(type default)
 		)
 		(uuid "3edb6680-cb24-46c6-8f03-c657f47960aa")
+	)
+	(wire
+		(pts
+			(xy 22.86 120.65) (xy 31.75 120.65)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3ee07c19-0769-4b8f-8656-f4608c4383e6")
 	)
 	(wire
 		(pts
@@ -6878,7 +7015,7 @@
 	)
 	(wire
 		(pts
-			(xy 31.75 121.92) (xy 31.75 110.49)
+			(xy 31.75 121.92) (xy 31.75 120.65)
 		)
 		(stroke
 			(width 0)
@@ -9104,6 +9241,72 @@
 			(project "audio"
 				(path "/a1b2c3d4-7777-4000-8000-000000000007"
 					(reference "C18")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 22.86 125.73 0)
+		(mirror x)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "1fce3706-5385-4184-a005-128403d10567")
+		(property "Reference" "#FLG05"
+			(at 22.86 127.635 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "PWR_FLAG_Earth"
+			(at 22.86 130.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 22.86 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 22.86 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Special symbol for telling ERC where power comes from"
+			(at 22.86 125.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "14d1e5a2-894a-4d60-8364-0dc6a7b9d88e")
+		)
+		(instances
+			(project "triptech"
+				(path "/55cca6a8-30da-4c13-b2f2-a01401e2b54c/a1b2c3d4-7777-4000-8000-000000000007"
+					(reference "#FLG05")
 					(unit 1)
 				)
 			)
