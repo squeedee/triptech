@@ -235,7 +235,10 @@ static constexpr uint8_t kTrigNote[NUM_CH] = {60, 61, 62};
 // Per-channel LFO — phase-accumulator with duty cycle
 // ============================================================
 
-static float LfoSample(float phase, uint8_t shape, float duty) {
+// `ramp` is the transition width in phase units (0..1). Only used by the
+// trapezoidal "square" shape; ignored otherwise. Caller sizes it from lfoFreq
+// so the slew stays roughly constant in wall-clock time across all rates.
+static float LfoSample(float phase, uint8_t shape, float duty, float ramp) {
     if (duty < 0.01f) duty = 0.01f;
     if (duty > 0.99f) duty = 0.99f;
     switch (shape) {
@@ -247,8 +250,16 @@ static float LfoSample(float phase, uint8_t shape, float duty) {
                                  : 0.5f + 0.5f * (phase - duty) / (1.f - duty);
         return -cosf(w * 6.283185307f);
     }
-    case 2: // Square — PWM
-        return (phase < duty) ? 1.f : -1.f;
+    case 2: { // Trapezoid — square with slew centered on each transition
+        float maxR = (duty < (1.f - duty) ? duty : (1.f - duty)) * 0.9f;
+        float r = ramp > maxR ? maxR : ramp;
+        float half = r * 0.5f;
+        if (phase < half)        return 2.f * phase / r;                          // rising tail (0 → +1)
+        if (phase < duty - half) return 1.f;                                      // high plateau
+        if (phase < duty + half) return 1.f - 2.f * (phase - duty + half) / r;    // falling (+1 → -1)
+        if (phase < 1.f - half)  return -1.f;                                     // low plateau
+        return -1.f + 2.f * (phase - 1.f + half) / r;                             // rising head (-1 → 0)
+    }
     default:
         return 0.f;
     }
@@ -689,8 +700,9 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         delayR.SetDelay(delaySmps);
     }
 
-    // Per-channel LFO phase increment
-    float lfoInc[NUM_CH];
+    // Per-channel LFO phase increment + trapezoid slew width.
+    // Slew = ~1.5 ms in wall-clock terms → lfoFreq * 0.0015 in phase units.
+    float lfoInc[NUM_CH], lfoRamp[NUM_CH];
     for (int c = 0; c < NUM_CH; c++) {
         float lfoFreq;
         if (preset.ch[c].lfoSynced) {
@@ -699,6 +711,7 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
             lfoFreq = CcLog(preset.ch[c].lfoParam, 0.1f, 20.f);
         }
         lfoInc[c] = lfoFreq / sample_rate;
+        lfoRamp[c] = lfoFreq * 0.0015f;
     }
 
     for (int c = 0; c < NUM_CH; c++) {
@@ -757,7 +770,7 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         for (int c = 0; c < NUM_CH; c++) {
             ch[c].lfoPhase += lfoInc[c];
             if (ch[c].lfoPhase >= 1.f) ch[c].lfoPhase -= 1.f;
-            ch[c].lfoVal = LfoSample(ch[c].lfoPhase, preset.ch[c].lfoShape, preset.ch[c].lfoDuty);
+            ch[c].lfoVal = LfoSample(ch[c].lfoPhase, preset.ch[c].lfoShape, preset.ch[c].lfoDuty, lfoRamp[c]);
         }
 
         float inL = in[0][i];
