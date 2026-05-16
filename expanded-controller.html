@@ -969,6 +969,9 @@ const FMT = {
   delayDiv: cc => ['1/2','1/2T','1/4','1/4T','1/8','1/8T','1/16','1/16T'][Math.min(7, cc >> 4)],
   delayFre: cc => { const v = logMap(cc, 10, 2000); return v >= 1000 ? (v/1000).toFixed(2)+'s' : Math.round(v)+'ms'; },
   lfoSync:  cc => ['1/2','1/2T','1/4','1/4T','1/8','1/8T','1/16','1/16T'][Math.min(7, cc >> 4)],
+  // 9-zone clock divider/multiplier — midway (CC 56–71, includes 64) = ×1.
+  // Mirrors firmware kClockRatios / ClockDivIndex in Triptech.cpp.
+  clockDiv: cc => ['÷4','÷3','÷2','÷1.5','×1','×1.5','×2','×3','×4'][Math.min(8, (cc * 9) >> 7)],
 };
 
 // ── SVG knob ──────────────────────────────────────────────────────────────────
@@ -1241,6 +1244,8 @@ function makeSyncGroup(row, knobOpts, cc, getSynced, onToggle) {
 
 (function buildGlobals() {
   const row = document.getElementById('global-knobs');
+  // CC 5: pattern clock divider/multiplier — default 64 = ×1 (midway)
+  globalKnobMap[5] = new Knob({ parent: row, cc: 5, dflt: 64, label: 'PAT DIV', fmt: 'clockDiv', color: '#7799ff', size: 'md', globalVal: true });
   globalKnobMap[4] = new Knob({ parent: row, cc: 4, dflt: 0, label: 'DRY', fmt: 'level', color: '#7799ff', size: 'md', globalVal: true });
 })();
 
@@ -1554,8 +1559,8 @@ document.addEventListener('keydown', e => {
 const msbCache = {}; // stores last received MSB for 14-bit CC pairs, keyed by CC number
 
 function handleIncomingCC(cc, val) {
-  // Global knobs (delay + dry)
-  if (cc >= 1 && cc <= 4) { globalKnobMap[cc]?.set(val, false); return; }
+  // Global knobs (delay + clock div + dry)
+  if (cc >= 1 && cc <= 5) { globalKnobMap[cc]?.set(val, false); return; }
   if (cc === 6) { applyDelaySyncMode(val >= 64); return; }
   // Pattern select
   if (cc === 14) {

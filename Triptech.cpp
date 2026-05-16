@@ -116,13 +116,14 @@ struct ChannelPreset {
 
 struct Preset {
     ChannelPreset ch[NUM_CH];
-    float bpm;           // 20–300
-    float delayFeedback; // 0–0.95
-    float delayWidth;    // 0=mono, 1=full ping-pong
-    float dryLevel;      // 0–1
-    uint8_t pattern;     // 0–15
-    uint8_t delayParam;  // CC 1 raw value
-    bool delaySynced;    // true = clock-synced divisions, false = free ms
+    float bpm;             // 20–300
+    float delayFeedback;   // 0–0.95
+    float delayWidth;      // 0=mono, 1=full ping-pong
+    float dryLevel;        // 0–1
+    uint8_t pattern;       // 0–15
+    uint8_t delayParam;    // CC 1 raw value
+    uint8_t clockDivParam; // CC 5 raw value — pattern clock divider/multiplier
+    bool delaySynced;      // true = clock-synced divisions, false = free ms
 };
 
 struct PatchStorage {
@@ -133,7 +134,26 @@ struct PatchStorage {
     }
 };
 
-static constexpr uint32_t PATCH_VERSION = 2;
+static constexpr uint32_t PATCH_VERSION = 3;
+
+// Pattern clock divider/multiplier — steps-per-tick scaler.
+// CC byte 0–127 binned into 9 zones; midway (56–71, includes 64) = 1:1.
+static const float kClockRatios[9] = {
+    0.25f,       // /4    (slower)
+    1.f / 3.f,   // /3
+    0.5f,        // /2
+    2.f / 3.f,   // /1.5  (dotted slow)
+    1.f,         // 1:1   (midway)
+    1.5f,        // ×1.5  (dotted fast)
+    2.f,         // ×2    (faster)
+    3.f,         // ×3
+    4.f,         // ×4
+};
+
+static inline uint8_t ClockDivIndex(uint8_t cc) {
+    uint8_t idx = cc * 9u / 128u;
+    return idx > 8 ? 8 : idx;
+}
 
 struct Channel {
     Svf fltL, fltR;          // SVF: LP/HP/BP/Notch at 12 dB
@@ -186,8 +206,13 @@ static uint32_t lastLoadMs = 0;
 static float ticksPerUs = 1.f; // populated after init
 
 static uint8_t cur_step = 0;
-static int tick_count = 0;
+static float tick_accum = 0.f;
 static bool seq_running = false;
+
+// Incoming-clock BPM detection (updates preset.bpm when external clock is active)
+static uint32_t last_clock_us = 0;
+static float clock_bpm_ema = 0.f;
+static uint8_t last_bpm_cc = 255;
 
 static bool trs_active = false;
 static uint32_t trs_last_ms = 0;
@@ -245,6 +270,7 @@ static Preset DefaultPreset() {
     Preset p = {};
     p.bpm = 120.f;
     p.delayParam = 32;
+    p.clockDivParam = 64; // midway = 1:1
     p.delaySynced = true;
     p.delayFeedback = 0.4f;
     p.delayWidth = 1.f;
@@ -350,6 +376,7 @@ static void SendAllState() {
     SendCC(2, CcLinInv(preset.delayFeedback, 0.f, 0.95f));
     SendCC(3, CcLinInv(preset.delayWidth, 0.f, 1.f));
     SendCC(4, CcLinInv(preset.dryLevel, 0.f, 1.f));
+    SendCC(5, preset.clockDivParam);
     SendCC(6, preset.delaySynced ? 127 : 0);
     SendCC(14, preset.pattern * 8);
     SendCC(15, seq_running ? 127 : 0);
@@ -423,9 +450,11 @@ static void TriggerGate(int c) {
 // ============================================================
 
 static void AdvanceClock() {
-    tick_count++;
-    if (tick_count >= TICKS_PER_STEP) {
-        tick_count = 0;
+    // ratio = pattern-steps consumed per incoming tick. >1 multiplies, <1 divides.
+    float ratio = kClockRatios[ClockDivIndex(preset.clockDivParam)];
+    tick_accum += ratio;
+    while (tick_accum >= (float)TICKS_PER_STEP) {
+        tick_accum -= (float)TICKS_PER_STEP;
         cur_step = (cur_step + 1) % NUM_STEPS;
         if (cur_step % 4 == 0)
             led2_flash_ms = System::GetNow();
@@ -453,6 +482,9 @@ static void HandleCC(uint8_t ctrl, uint8_t val) {
         return;
     case 4:
         preset.dryLevel = CcLin(val, 0.f, 1.f);
+        return;
+    case 5:
+        preset.clockDivParam = val;
         return;
     case 6:
         preset.delaySynced = (val >= 64);
@@ -566,15 +598,30 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
                     usb_clock_active = true;
                     usb_last_ms = System::GetNow();
                 }
-                if (allow_trans && seq_running)
-                    AdvanceClock();
+                if (allow_trans) {
+                    // BPM estimate from inter-tick interval (24 PPQN), EMA-smoothed.
+                    uint32_t now_us = System::GetUs();
+                    if (last_clock_us != 0) {
+                        uint32_t dt = now_us - last_clock_us;
+                        if (dt > 1000u && dt < 200000u) {
+                            float inst = 60000000.f / ((float)dt * 24.f);
+                            clock_bpm_ema = (clock_bpm_ema == 0.f)
+                                                ? inst
+                                                : (clock_bpm_ema * 0.8f + inst * 0.2f);
+                            preset.bpm = fclamp(clock_bpm_ema, 20.f, 300.f);
+                        }
+                    }
+                    last_clock_us = now_us;
+                    if (seq_running)
+                        AdvanceClock();
+                }
                 break;
 
             case Start:
                 if (allow_trans) {
                     seq_running = true;
                     cur_step = 0;
-                    tick_count = 0;
+                    tick_accum = 0.f;
                 }
                 break;
 
@@ -860,6 +907,13 @@ int main(void) {
 
         bool midi_active = trs_active || usb_clock_active;
 
+        // Drop tempo estimator when no external clock is streaming, so resumes
+        // don't average across a long silence.
+        if (!midi_active) {
+            last_clock_us = 0;
+            clock_bpm_ema = 0.f;
+        }
+
         // Service MIDI (resets on UART overrun)
         pod.midi.Listen();
         usb_midi.Listen();
@@ -903,7 +957,7 @@ int main(void) {
             seq_running = !seq_running;
             if (!seq_running) {
                 cur_step = 0;
-                tick_count = 0;
+                tick_accum = 0.f;
             }
             SendCC(15, seq_running ? 127 : 0);
         }
@@ -973,6 +1027,13 @@ int main(void) {
             SendCC(12, (uint8_t)fclamp(loopLoadAvg / 500.f * 127.f, 0.f, 127.f));
             SendCC(13, (uint8_t)fclamp(loopPeak / 500.f * 127.f, 0.f, 127.f));
             loopPeak = 0.f;
+            // BPM echo — covers tempo drift from external clock and tap tempo.
+            uint8_t bpm_cc =
+                (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
+            if (bpm_cc != last_bpm_cc) {
+                SendCC(19, bpm_cc);
+                last_bpm_cc = bpm_cc;
+            }
         }
     }
 }
