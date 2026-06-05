@@ -1,5 +1,7 @@
 #include "daisysp.h"
 #include "daisy_pod.h"
+#include "Ili9341.h"
+#include "Mux4067.h"
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
@@ -129,9 +131,7 @@ struct Preset {
 struct PatchStorage {
     uint32_t version;
     Preset patches[NUM_PATCHES];
-    bool operator!=(const PatchStorage &o) const {
-        return memcmp(this, &o, sizeof(*this)) != 0;
-    }
+    bool operator!=(const PatchStorage &o) const { return memcmp(this, &o, sizeof(*this)) != 0; }
 };
 
 static constexpr uint32_t PATCH_VERSION = 3;
@@ -139,15 +139,15 @@ static constexpr uint32_t PATCH_VERSION = 3;
 // Pattern clock divider/multiplier — steps-per-tick scaler.
 // CC byte 0–127 binned into 9 zones; midway (56–71, includes 64) = 1:1.
 static const float kClockRatios[9] = {
-    0.25f,       // /4    (slower)
-    1.f / 3.f,   // /3
-    0.5f,        // /2
-    2.f / 3.f,   // /1.5  (dotted slow)
-    1.f,         // 1:1   (midway)
-    1.5f,        // ×1.5  (dotted fast)
-    2.f,         // ×2    (faster)
-    3.f,         // ×3
-    4.f,         // ×4
+    0.25f,     // /4    (slower)
+    1.f / 3.f, // /3
+    0.5f,      // /2
+    2.f / 3.f, // /1.5  (dotted slow)
+    1.f,       // 1:1   (midway)
+    1.5f,      // ×1.5  (dotted fast)
+    2.f,       // ×2    (faster)
+    3.f,       // ×3
+    4.f,       // ×4
 };
 
 static inline uint8_t ClockDivIndex(uint8_t cc) {
@@ -160,9 +160,9 @@ struct Channel {
     LadderFilter ladL, ladR; // Ladder: LP/HP/BP at 12 or 24 dB
     OnePole poleL, poleR;    // OnePole: LP/HP at 6 dB
     AdEnv env;
-    float lfoPhase;      // 0–1 phase accumulator
-    float lfoVal;        // last computed LFO sample
-    uint8_t lfoAmtMsb;  // 14-bit MSB cache for filter lfoAmount
+    float lfoPhase;    // 0–1 phase accumulator
+    float lfoVal;      // last computed LFO sample
+    uint8_t lfoAmtMsb; // 14-bit MSB cache for filter lfoAmount
     bool note_active;
     bool env_started;
 };
@@ -231,6 +231,17 @@ static constexpr int kCcBase[NUM_CH] = {20, 36, 52};
 // Note triggers: all on MIDI channel 1 — C4, C#4, D4
 static constexpr uint8_t kTrigNote[NUM_CH] = {60, 61, 62};
 
+// --- Menu UI state (240x320 TFT + 4 encoders). Driven from the main loop
+//     only — see the "Menu UI" section below. Declared here so ProcessMidi and
+//     the telemetry block can flag the screen dirty. ---
+static const char *const CH_NAME[NUM_CH] = {"CH1", "CH2", "CH3"};
+static uint8_t ui_ctx = 0;         // 0..2 = channel, 3 = global
+static uint8_t ui_sec = 0;         // section within the current context
+static uint8_t ui_patch_sel = 0;   // patch slot highlighted on the PATCH page
+static bool ui_full_dirty = true;  // full-screen redraw pending
+static bool ui_foot_dirty = false; // footer (BPM) redraw pending
+static bool ui_band_dirty[3] = {true, true, true};
+
 // ============================================================
 // Per-channel LFO — phase-accumulator with duty cycle
 // ============================================================
@@ -239,26 +250,32 @@ static constexpr uint8_t kTrigNote[NUM_CH] = {60, 61, 62};
 // trapezoidal "square" shape; ignored otherwise. Caller sizes it from lfoFreq
 // so the slew stays roughly constant in wall-clock time across all rates.
 static float LfoSample(float phase, uint8_t shape, float duty, float ramp) {
-    if (duty < 0.01f) duty = 0.01f;
-    if (duty > 0.99f) duty = 0.99f;
+    if (duty < 0.01f)
+        duty = 0.01f;
+    if (duty > 0.99f)
+        duty = 0.99f;
     switch (shape) {
     case 0: // Triangle — peak position at duty
         return (phase < duty) ? -1.f + 2.f * phase / duty
                               : 1.f - 2.f * (phase - duty) / (1.f - duty);
     case 1: { // Sine — skewed via phase warp, peak at duty
-        float w = (phase < duty) ? 0.5f * phase / duty
-                                 : 0.5f + 0.5f * (phase - duty) / (1.f - duty);
+        float w =
+            (phase < duty) ? 0.5f * phase / duty : 0.5f + 0.5f * (phase - duty) / (1.f - duty);
         return -cosf(w * 6.283185307f);
     }
     case 2: { // Trapezoid — square with slew centered on each transition
         float maxR = (duty < (1.f - duty) ? duty : (1.f - duty)) * 0.9f;
         float r = ramp > maxR ? maxR : ramp;
         float half = r * 0.5f;
-        if (phase < half)        return 2.f * phase / r;                          // rising tail (0 → +1)
-        if (phase < duty - half) return 1.f;                                      // high plateau
-        if (phase < duty + half) return 1.f - 2.f * (phase - duty + half) / r;    // falling (+1 → -1)
-        if (phase < 1.f - half)  return -1.f;                                     // low plateau
-        return -1.f + 2.f * (phase - 1.f + half) / r;                             // rising head (-1 → 0)
+        if (phase < half)
+            return 2.f * phase / r; // rising tail (0 → +1)
+        if (phase < duty - half)
+            return 1.f; // high plateau
+        if (phase < duty + half)
+            return 1.f - 2.f * (phase - duty + half) / r; // falling (+1 → -1)
+        if (phase < 1.f - half)
+            return -1.f;                              // low plateau
+        return -1.f + 2.f * (phase - 1.f + half) / r; // rising head (-1 → 0)
     }
     default:
         return 0.f;
@@ -382,41 +399,94 @@ static void SendNoteOff(uint8_t note) {
     usb_midi.SendMessage(msg, 3);
 }
 
+// Inverse of HandleCC: the current 7-bit value for a given CC, derived from the
+// live preset/state. This is the single source of truth for both outbound state
+// dumps (SendAllState) and the on-device menu UI's value display + edit base.
+static uint8_t CcGet(uint8_t cc) {
+    switch (cc) {
+    case 1:
+        return preset.delayParam;
+    case 2:
+        return CcLinInv(preset.delayFeedback, 0.f, 0.95f);
+    case 3:
+        return CcLinInv(preset.delayWidth, 0.f, 1.f);
+    case 4:
+        return CcLinInv(preset.dryLevel, 0.f, 1.f);
+    case 5:
+        return preset.clockDivParam;
+    case 6:
+        return preset.delaySynced ? 127 : 0;
+    case 14:
+        return preset.pattern * 8;
+    case 15:
+        return seq_running ? 127 : 0;
+    case 18:
+        return bypass ? 127 : 0;
+    case 19:
+        return (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
+    case 68:
+        return (ch_muted[0] ? 1 : 0) | (ch_muted[1] ? 2 : 0) | (ch_muted[2] ? 4 : 0);
+    default:
+        break;
+    }
+    for (int c = 0; c < NUM_CH; c++) {
+        int off = (int)cc - kCcBase[c];
+        if (off < 0 || off > 15)
+            continue;
+        const ChannelPreset &cp = preset.ch[c];
+        switch (off) {
+        case 0:
+            return CcLogInv(cp.cutoff, 100.f, 20000.f);
+        case 1:
+            return CcLinInv(cp.resonance, 0.f, 0.95f);
+        case 2:
+            return CcLinInv(cp.drive, 1.f, 4.f);
+        case 3:
+            return cp.lfoParam;
+        case 4:
+            return CcLogInv(cp.attack, 0.001f, 2.f);
+        case 5:
+            return CcLogInv(cp.decay, 0.01f, 2.f);
+        case 6:
+            return CcLinInv(cp.level, 0.f, 1.f);
+        case 7:
+            return CcLinInv(cp.pan, 0.f, 1.f);
+        case 8: {
+            uint16_t v14 =
+                (uint16_t)(fclamp((cp.lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f) + 0.5f);
+            return v14 >> 7;
+        }
+        case 12: {
+            uint16_t v14 =
+                (uint16_t)(fclamp((cp.lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f) + 0.5f);
+            return v14 & 0x7F;
+        }
+        case 9:
+            return cp.filterType * 32;
+        case 10:
+            return cp.filterSlope * 63;
+        case 11:
+            return cp.lfoShape * 21 + (cp.lfoSynced ? 64 : 0);
+        case 13:
+            return CcLinInv(cp.delayAmount, 0.f, 1.f);
+        case 14:
+            return CcLinInv(cp.lfoDuty, 0.f, 1.f);
+        case 15:
+            return CcLinInv(cp.ampLfoAmount, -1.f, 1.f);
+        }
+    }
+    return 0;
+}
+
 static void SendAllState() {
-    SendCC(1, preset.delayParam);
-    SendCC(2, CcLinInv(preset.delayFeedback, 0.f, 0.95f));
-    SendCC(3, CcLinInv(preset.delayWidth, 0.f, 1.f));
-    SendCC(4, CcLinInv(preset.dryLevel, 0.f, 1.f));
-    SendCC(5, preset.clockDivParam);
-    SendCC(6, preset.delaySynced ? 127 : 0);
-    SendCC(14, preset.pattern * 8);
-    SendCC(15, seq_running ? 127 : 0);
-    SendCC(18, bypass ? 127 : 0);
-    SendCC(19, (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f));
-    SendCC(68, (ch_muted[0] ? 1 : 0) | (ch_muted[1] ? 2 : 0) | (ch_muted[2] ? 4 : 0));
+    static const uint8_t kGlobalCc[] = {1, 2, 3, 4, 5, 6, 14, 15, 18, 19, 68};
+    for (uint8_t cc : kGlobalCc)
+        SendCC(cc, CcGet(cc));
     SendProgramChange(cur_patch);
     for (int c = 0; c < NUM_CH; c++) {
         int base = kCcBase[c];
-        SendCC(base + 0, CcLogInv(preset.ch[c].cutoff, 100.f, 20000.f));
-        SendCC(base + 1, CcLinInv(preset.ch[c].resonance, 0.f, 0.95f));
-        SendCC(base + 2, CcLinInv(preset.ch[c].drive, 1.f, 4.f));
-        SendCC(base + 4, CcLogInv(preset.ch[c].attack, 0.001f, 2.f));
-        SendCC(base + 5, CcLogInv(preset.ch[c].decay, 0.01f, 2.f));
-        SendCC(base + 6, CcLinInv(preset.ch[c].level, 0.f, 1.f));
-        SendCC(base + 7, CcLinInv(preset.ch[c].pan, 0.f, 1.f));
-        {
-            uint16_t v14 =
-                (uint16_t)(fclamp((preset.ch[c].lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f) + 0.5f);
-            SendCC(base + 8, v14 >> 7);
-            SendCC(base + 12, v14 & 0x7F);
-        }
-        SendCC(base + 9, preset.ch[c].filterType * 32);
-        SendCC(base + 10, preset.ch[c].filterSlope * 63);
-        SendCC(base + 13, CcLinInv(preset.ch[c].delayAmount, 0.f, 1.f));
-        SendCC(base + 3, preset.ch[c].lfoParam);
-        SendCC(base + 11, preset.ch[c].lfoShape * 21 + (preset.ch[c].lfoSynced ? 64 : 0));
-        SendCC(base + 14, CcLinInv(preset.ch[c].lfoDuty, 0.f, 1.f));
-        SendCC(base + 15, CcLinInv(preset.ch[c].ampLfoAmount, -1.f, 1.f));
+        for (int off = 0; off <= 15; off++)
+            SendCC(base + off, CcGet(base + off));
     }
 }
 
@@ -425,18 +495,20 @@ static void SendAllState() {
 // ============================================================
 
 static void LoadPatch(uint8_t idx) {
-    if (idx >= NUM_PATCHES) return;
+    if (idx >= NUM_PATCHES)
+        return;
     cur_patch = idx;
     preset = patchStorage.GetSettings().patches[idx];
     SendAllState();
 }
 
 static void SavePatch(uint8_t idx) {
-    if (idx >= NUM_PATCHES) return;
+    if (idx >= NUM_PATCHES)
+        return;
     cur_patch = idx;
     PatchStorage &store = patchStorage.GetSettings();
     store.patches[idx] = preset;
-    patchStorage.Save(); // brief audio glitch possible during flash write
+    patchStorage.Save();          // brief audio glitch possible during flash write
     SendProgramChange(cur_patch); // echo back saved location
     SendCC(87, idx);              // confirm save to controller
 }
@@ -652,10 +724,14 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
         } else if (msg.type == ControlChange) {
             auto cc = msg.AsControlChange();
             HandleCC(cc.control_number, cc.value);
+            ui_full_dirty = true; // reflect external edits on the screen
         } else if (msg.type == ProgramChange) {
             auto pc = msg.AsProgramChange();
-            if (pc.program < NUM_PATCHES)
+            if (pc.program < NUM_PATCHES) {
                 LoadPatch(pc.program);
+                ui_patch_sel = pc.program;
+                ui_full_dirty = true;
+            }
         } else if (msg.type == NoteOn) {
             auto note = msg.AsNoteOn();
             if (note.velocity > 0 && msg.channel == 0) {
@@ -667,6 +743,756 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
                 }
             }
         }
+    }
+}
+
+// ============================================================
+// Menu UI — 240x320 ILI9341 TFT + 4 PEC11H encoders (CD74HC4067 mux)
+//
+// A port of menu-controller.html to the device. Layout: a top bar, three
+// horizontal "bands", and a footer. The NAV encoder (below the screen) selects
+// the context (CH1/CH2/CH3/GLOBAL) and the section within it; the three
+// right-hand encoders (E1/E2/E3) each edit the parameter shown in their band.
+//
+// IMPORTANT: everything here runs from the main loop, never the audio callback.
+// Every edit routes through HandleCC()/SendCC(), so the MIDI map stays the one
+// source of truth and external controllers stay in sync (just like the Pod's
+// own physical controls already do).
+//
+// Pin map comes from the `menu` board (Seed GPIO: display on D7/D8/D9/D10/D17/
+// D20, mux on D9/D15/D18/D19/D21). On a bare DaisySeed / Daisy Studio carrier
+// these are free; on a DaisyPod some overlap the Pod's onboard pots/LEDs.
+// ============================================================
+
+static Ili9341 tft;
+static Mux4067 mux;
+
+// --- Quadrature decode + button debounce (from menu/firmware encoder-test) ---
+static const int8_t kQuadLut[16] = {0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0};
+
+struct Quad {
+    uint8_t prev = 0;
+    int8_t accum = 0;
+    int Update(uint8_t a, uint8_t b) {
+        uint8_t s = (uint8_t)((a << 1) | b);
+        accum += kQuadLut[(prev << 2) | s];
+        prev = s;
+        if (accum >= 4) {
+            accum -= 4;
+            return +1;
+        }
+        if (accum <= -4) {
+            accum += 4;
+            return -1;
+        }
+        return 0;
+    }
+};
+
+struct EncBtn {
+    static constexpr uint8_t kStable = 5; // ~5 ms at a 1 kHz scan
+    bool state = false;
+    uint8_t cnt = 0;
+    bool Update(bool raw) { // returns true on a press edge
+        if (raw == state) {
+            cnt = 0;
+            return false;
+        }
+        if (++cnt >= kStable) {
+            state = raw;
+            cnt = 0;
+            return state;
+        }
+        return false;
+    }
+};
+
+static Quad q_enc[4];
+static EncBtn b_enc[4];
+
+// Physical mux-encoder index per role. Mux channels: A=3i, B=3i+1, SW=3i+2.
+// The three value encoders are the right-hand column (mux 0/1/2, top to bottom);
+// the NAV/menu encoder sits below the screen and is the last group (mux 3).
+enum { ENC_E1 = 0, ENC_E2 = 1, ENC_E3 = 2, ENC_NAV = 3 };
+
+// --- Parameter model (mirrors the ROWS table in menu-controller.html) ---
+enum BandKind : uint8_t { B_CONT, B_ENUM, B_TOGGLE, B_PATIDX, B_PATCH, B_ACTION };
+enum Fmt : uint8_t {
+    F_NONE,
+    F_CUTOFF,
+    F_RES,
+    F_DRIVE,
+    F_LEVEL,
+    F_ATTACK,
+    F_DECAY,
+    F_PAN,
+    F_LFORATE,
+    F_PCT,
+    F_BIPCT,
+    F_DELAYTIME,
+    F_CLOCKDIV,
+    F_BPM
+};
+enum Push : uint8_t {
+    P_NONE,
+    P_MUTE,
+    P_LFOSYNC,
+    P_DELAYSYNC,
+    P_RUN,
+    P_TAP,
+    P_BYPASS,
+    P_LOAD,
+    P_SAVE,
+    P_SYNC
+};
+
+struct Band {
+    const char *label;
+    uint8_t kind;
+    uint8_t cc;     // absolute CC, or a per-channel offset when chRel != 0
+    uint8_t chRel;  // 1 = cc is an offset added to kCcBase[ctx]
+    uint8_t fmt;    // value formatter (B_CONT)
+    uint8_t bip;    // bipolar bar (centred)
+    uint8_t push;   // encoder-press action
+    uint8_t lsbOff; // 14-bit LSB offset (255 = none)
+    uint8_t muteCh; // channel index for P_MUTE bands
+    const char *opts[4];
+    uint8_t optVal[4];
+    uint8_t nOpt;
+};
+struct Section {
+    const char *name;
+    const Band *bands;
+    uint8_t n;
+};
+
+// label,kind,cc,chRel,fmt,bip,push,lsbOff,muteCh,opts,optVal,nOpt
+static const Band kFilter[] = {
+    {"TYPE",
+     B_ENUM,
+     9,
+     1,
+     F_NONE,
+     0,
+     P_NONE,
+     255,
+     0,
+     {"LP", "BP", "HP", "NOTCH"},
+     {0, 32, 64, 96},
+     4},
+    {"SLOPE",
+     B_ENUM,
+     10,
+     1,
+     F_NONE,
+     0,
+     P_NONE,
+     255,
+     0,
+     {"6DB", "12DB", "24DB", 0},
+     {0, 63, 126, 0},
+     3},
+    {"FREQ", B_CONT, 0, 1, F_CUTOFF, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kTone[] = {
+    {"Q", B_CONT, 1, 1, F_RES, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"DRIVE", B_CONT, 2, 1, F_DRIVE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"LFO>FILT", B_CONT, 8, 1, F_BIPCT, 1, P_NONE, 12, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kEnv[] = {
+    {"ATTACK", B_CONT, 4, 1, F_ATTACK, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"DECAY", B_CONT, 5, 1, F_DECAY, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"LEVEL", B_CONT, 6, 1, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kLfo[] = {
+    {"SHAPE",
+     B_ENUM,
+     11,
+     1,
+     F_NONE,
+     0,
+     P_LFOSYNC,
+     255,
+     0,
+     {"TRI", "SIN", "SQ", 0},
+     {0, 21, 42, 0},
+     3},
+    {"RATE", B_CONT, 3, 1, F_LFORATE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"DUTY", B_CONT, 14, 1, F_PCT, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kOut[] = {
+    {"PAN", B_CONT, 7, 1, F_PAN, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"AMP MOD", B_CONT, 15, 1, F_BIPCT, 1, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"DLY SEND", B_CONT, 13, 1, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Section kChSections[] = {
+    {"FILTER", kFilter, 3}, {"TONE", kTone, 3}, {"ENV", kEnv, 3},
+    {"LFO", kLfo, 3},       {"OUT", kOut, 3},
+};
+
+static const Band kSeq[] = {
+    {"PATTERN", B_PATIDX, 14, 0, F_NONE, 0, P_RUN, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"CLK DIV", B_CONT, 5, 0, F_CLOCKDIV, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"BPM", B_CONT, 19, 0, F_BPM, 0, P_TAP, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kDelay[] = {
+    {"TIME", B_CONT, 1, 0, F_DELAYTIME, 0, P_DELAYSYNC, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"FDBK", B_CONT, 2, 0, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"WIDTH", B_CONT, 3, 0, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kMix[] = {
+    {"CH1 LVL", B_CONT, 26, 0, F_LEVEL, 0, P_MUTE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"CH2 LVL", B_CONT, 42, 0, F_LEVEL, 0, P_MUTE, 255, 1, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"CH3 LVL", B_CONT, 58, 0, F_LEVEL, 0, P_MUTE, 255, 2, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kMaster[] = {
+    {"DRY", B_CONT, 4, 0, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"BYPASS", B_TOGGLE, 18, 0, F_NONE, 0, P_BYPASS, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"RUN", B_TOGGLE, 15, 0, F_NONE, 0, P_RUN, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kPatch[] = {
+    {"PATCH", B_PATCH, 0, 0, F_NONE, 0, P_LOAD, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"SAVE", B_ACTION, 0, 0, F_NONE, 0, P_SAVE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"STATE", B_ACTION, 0, 0, F_NONE, 0, P_SYNC, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Section kGlSections[] = {
+    {"SEQ", kSeq, 3},       {"DELAY", kDelay, 3}, {"MIX", kMix, 3},
+    {"MASTER", kMaster, 3}, {"PATCH", kPatch, 3},
+};
+
+static constexpr uint8_t kNumSec = 5;
+
+static const char *const kDivName[8] = {"1/2", "1/2T", "1/4",  "1/4T",
+                                        "1/8", "1/8T", "1/16", "1/16T"};
+static const char *const kClockName[9] = {"/4", "/3", "/2", "/1.5", "X1", "X1.5", "X2", "X3", "X4"};
+
+// --- colours (RGB565) ---
+static const uint16_t kChCol[3] = {0x07E0, 0xFFE0, 0xF800};
+static constexpr uint16_t kAccent = 0x4C7F;
+static constexpr uint16_t kPanel = 0x1082;
+static constexpr uint16_t kPanel2 = 0x0841;
+static constexpr uint16_t kHdrBg = 0x2104;
+static constexpr uint16_t kFootBg = 0x0841;
+static constexpr uint16_t kDimCol = 0x52AA;
+static constexpr uint16_t kTxt = 0xFFFF;
+
+static const Section *ui_sectionTbl() { return ui_ctx < 3 ? kChSections : kGlSections; }
+static const Section &ui_cur() { return ui_sectionTbl()[ui_sec]; }
+static uint16_t ui_col() { return ui_ctx < 3 ? kChCol[ui_ctx] : kAccent; }
+static uint8_t ui_absCC(const Band &b) {
+    return b.chRel ? (uint8_t)(kCcBase[ui_ctx] + b.cc) : b.cc;
+}
+
+static uint8_t ui_enumIdx(const Band &b) {
+    int raw = CcGet(ui_absCC(b));
+    if (b.push == P_LFOSYNC)
+        raw &= 0x3F; // mask the sync bit out of the shape byte
+    uint8_t best = 0;
+    int bd = 1000;
+    for (uint8_t i = 0; i < b.nOpt; i++) {
+        int d = raw - (int)b.optVal[i];
+        if (d < 0)
+            d = -d;
+        if (d < bd) {
+            bd = d;
+            best = i;
+        }
+    }
+    return best;
+}
+
+// --- tiny string builders. Hand-rolled to avoid linking newlib's printf,
+//     which alone overflows the 128 KB internal flash. Glyphs are limited to
+//     what the 5x7 font provides (uppercase, digits, . - : / % + >). ---
+static char *ui_puts(char *p, const char *s) {
+    while (*s)
+        *p++ = *s++;
+    return p;
+}
+static char *ui_putl(char *p, long v) {
+    if (v < 0) {
+        *p++ = '-';
+        v = -v;
+    }
+    char tmp[12];
+    int n = 0;
+    if (v == 0)
+        tmp[n++] = '0';
+    while (v) {
+        tmp[n++] = (char)('0' + v % 10);
+        v /= 10;
+    }
+    while (n)
+        *p++ = tmp[--n];
+    return p;
+}
+// `v` rounded to `dec` decimal places.
+static char *ui_putf(char *p, float v, int dec) {
+    if (v < 0.f) {
+        *p++ = '-';
+        v = -v;
+    }
+    long scale = 1;
+    for (int i = 0; i < dec; i++)
+        scale *= 10;
+    long n = (long)(v * scale + 0.5f);
+    p = ui_putl(p, n / scale);
+    if (dec > 0) {
+        *p++ = '.';
+        for (long div = scale / 10; div > 0; div /= 10)
+            *p++ = (char)('0' + (n / div) % 10);
+    }
+    return p;
+}
+
+static void ui_text(const Band &b, char *out) {
+    char *p = out;
+    if (b.kind == B_ENUM) {
+        const char *s = b.opts[ui_enumIdx(b)];
+        p = ui_puts(p, s ? s : "");
+        *p = 0;
+        return;
+    }
+    if (b.kind == B_TOGGLE) {
+        p = ui_puts(p, CcGet(b.cc) >= 64 ? "ON" : "OFF");
+        *p = 0;
+        return;
+    }
+    if (b.kind == B_PATIDX) {
+        p = ui_puts(p, "PAT ");
+        p = ui_putl(p, preset.pattern + 1);
+        *p++ = '/';
+        p = ui_putl(p, NUM_PATTERNS);
+        *p = 0;
+        return;
+    }
+    if (b.kind == B_PATCH) {
+        *p++ = 'P';
+        if (ui_patch_sel + 1 < 10)
+            *p++ = '0';
+        p = ui_putl(p, ui_patch_sel + 1);
+        *p = 0;
+        return;
+    }
+    if (b.kind == B_ACTION) {
+        *p++ = '-';
+        *p = 0;
+        return;
+    }
+    uint8_t raw = CcGet(ui_absCC(b));
+    switch (b.fmt) {
+    case F_CUTOFF: {
+        float v = CcLog(raw, 100.f, 20000.f);
+        if (v >= 1000.f) {
+            p = ui_putf(p, v / 1000.f, 1);
+            p = ui_puts(p, "KHZ");
+        } else {
+            p = ui_putf(p, v, 0);
+            p = ui_puts(p, "HZ");
+        }
+        break;
+    }
+    case F_RES:
+    case F_LEVEL:
+        p = ui_putf(p, raw / 127.f, 2);
+        break;
+    case F_DRIVE:
+        *p++ = 'X';
+        p = ui_putf(p, CcLin(raw, 1.f, 4.f), 2);
+        break;
+    case F_ATTACK: {
+        float v = CcLog(raw, 0.001f, 2.f);
+        if (v < 1.f) {
+            p = ui_putf(p, v * 1000.f, 0);
+            p = ui_puts(p, "MS");
+        } else {
+            p = ui_putf(p, v, 2);
+            *p++ = 'S';
+        }
+        break;
+    }
+    case F_DECAY: {
+        float v = CcLog(raw, 0.01f, 2.f);
+        if (v < 1.f) {
+            p = ui_putf(p, v * 1000.f, 0);
+            p = ui_puts(p, "MS");
+        } else {
+            p = ui_putf(p, v, 2);
+            *p++ = 'S';
+        }
+        break;
+    }
+    case F_PAN: {
+        int d = (int)raw - 64;
+        if (d > -4 && d < 4)
+            p = ui_puts(p, "CTR");
+        else {
+            float a = raw > 63.5f ? raw - 63.5f : 63.5f - raw;
+            *p++ = d < 0 ? 'L' : 'R';
+            p = ui_putl(p, (long)(a / 63.5f * 100.f + 0.5f));
+        }
+        break;
+    }
+    case F_LFORATE: {
+        if (preset.ch[ui_ctx].lfoSynced) {
+            int i = raw >> 4;
+            p = ui_puts(p, kDivName[i > 7 ? 7 : i]);
+        } else {
+            p = ui_putf(p, CcLog(raw, 0.1f, 20.f), 1);
+            p = ui_puts(p, "HZ");
+        }
+        break;
+    }
+    case F_PCT:
+        p = ui_putl(p, (long)(raw / 127.f * 100.f + 0.5f));
+        *p++ = '%';
+        break;
+    case F_BIPCT: {
+        int q = (int)((raw - 64) / 63.f * 100.f + (raw >= 64 ? 0.5f : -0.5f));
+        if (q > 100)
+            q = 100;
+        if (q < -100)
+            q = -100;
+        if (q >= 0)
+            *p++ = '+';
+        p = ui_putl(p, q);
+        *p++ = '%';
+        break;
+    }
+    case F_DELAYTIME: {
+        if (preset.delaySynced) {
+            int i = raw >> 4;
+            p = ui_puts(p, kDivName[i > 7 ? 7 : i]);
+        } else {
+            float v = CcLog(raw, 0.01f, 2.f);
+            if (v < 1.f) {
+                p = ui_putf(p, v * 1000.f, 0);
+                p = ui_puts(p, "MS");
+            } else {
+                p = ui_putf(p, v, 2);
+                *p++ = 'S';
+            }
+        }
+        break;
+    }
+    case F_CLOCKDIV: {
+        int i = (raw * 9) >> 7;
+        p = ui_puts(p, kClockName[i > 8 ? 8 : i]);
+        break;
+    }
+    case F_BPM:
+        p = ui_putl(p, (long)(20.f + raw / 127.f * 280.f + 0.5f));
+        p = ui_puts(p, "BPM");
+        break;
+    default:
+        p = ui_putl(p, raw);
+        break;
+    }
+    *p = 0;
+}
+
+// --- edits: all route through HandleCC()+SendCC() ---
+static void ui_bandPush(const Band &b) {
+    switch (b.push) {
+    case P_MUTE: {
+        ch_muted[b.muteCh] = !ch_muted[b.muteCh];
+        SendCC(68, (ch_muted[0] ? 1 : 0) | (ch_muted[1] ? 2 : 0) | (ch_muted[2] ? 4 : 0));
+        break;
+    }
+    case P_LFOSYNC: {
+        preset.ch[ui_ctx].lfoSynced = !preset.ch[ui_ctx].lfoSynced;
+        uint8_t v = preset.ch[ui_ctx].lfoShape * 21 + (preset.ch[ui_ctx].lfoSynced ? 64 : 0);
+        HandleCC(kCcBase[ui_ctx] + 11, v);
+        SendCC(kCcBase[ui_ctx] + 11, v);
+        break;
+    }
+    case P_DELAYSYNC:
+        preset.delaySynced = !preset.delaySynced;
+        SendCC(6, preset.delaySynced ? 127 : 0);
+        break;
+    case P_RUN:
+        seq_running = !seq_running;
+        if (!seq_running) {
+            cur_step = 0;
+            tick_accum = 0.f;
+        }
+        SendCC(15, seq_running ? 127 : 0);
+        break;
+    case P_TAP: {
+        uint32_t now = System::GetNow();
+        uint32_t gap = now - tap_last_ms;
+        if (gap > 0 && gap < 2000)
+            preset.bpm = fclamp(60000.f / (float)gap, 20.f, 300.f);
+        tap_last_ms = now;
+        SendCC(19, (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f));
+        break;
+    }
+    case P_BYPASS:
+        bypass = !bypass;
+        SendCC(18, bypass ? 127 : 0);
+        break;
+    case P_LOAD:
+        LoadPatch(ui_patch_sel);
+        break;
+    case P_SAVE:
+        SavePatch(ui_patch_sel);
+        break;
+    case P_SYNC:
+        SendAllState();
+        break;
+    default:
+        break;
+    }
+}
+
+static void ui_bandTurn(const Band &b, int dir) {
+    uint8_t acc = ui_absCC(b);
+    switch (b.kind) {
+    case B_ENUM: {
+        uint8_t i = (uint8_t)((ui_enumIdx(b) + (dir > 0 ? 1 : b.nOpt - 1)) % b.nOpt);
+        uint8_t v = b.optVal[i];
+        if (b.push == P_LFOSYNC)
+            v += (preset.ch[ui_ctx].lfoSynced ? 64 : 0);
+        HandleCC(acc, v);
+        SendCC(acc, v);
+        break;
+    }
+    case B_TOGGLE:
+        ui_bandPush(b);
+        break;
+    case B_PATIDX: {
+        int i = (preset.pattern + dir + NUM_PATTERNS) % NUM_PATTERNS;
+        uint8_t v = (uint8_t)(i * 8);
+        HandleCC(14, v);
+        SendCC(14, v);
+        break;
+    }
+    case B_PATCH: {
+        int p = ui_patch_sel + dir;
+        if (p < 0)
+            p = 0;
+        if (p >= NUM_PATCHES)
+            p = NUM_PATCHES - 1;
+        ui_patch_sel = (uint8_t)p;
+        break;
+    }
+    case B_ACTION:
+        break;
+    default: {
+        int v = (int)CcGet(acc) + dir * 2;
+        if (v < 0)
+            v = 0;
+        if (v > 127)
+            v = 127;
+        HandleCC(acc, (uint8_t)v);
+        SendCC(acc, (uint8_t)v);
+        if (b.lsbOff != 255) { // 14-bit pair: keep the LSB at 0
+            uint8_t lcc = (uint8_t)(kCcBase[ui_ctx] + b.lsbOff);
+            HandleCC(lcc, 0);
+            SendCC(lcc, 0);
+        }
+        break;
+    }
+    }
+}
+
+static void ui_navTurn(int dir) {
+    ui_sec = (uint8_t)((ui_sec + dir + kNumSec) % kNumSec);
+    ui_full_dirty = true;
+}
+static void ui_navPush() {
+    ui_ctx = (uint8_t)((ui_ctx + 1) % 4);
+    if (ui_sec >= kNumSec)
+        ui_sec = kNumSec - 1;
+    ui_full_dirty = true;
+}
+
+// --- rendering ---
+static int ui_strw(const char *s, uint8_t size) {
+    int n = 0;
+    while (s[n])
+        n++;
+    return n * 6 * size;
+}
+
+static void ui_drawHeader() {
+    tft.FillRect(0, 0, 240, 28, kHdrBg);
+    uint16_t col = ui_col();
+    tft.FillRect(4, 5, 46, 18, col);
+    const char *cn = ui_ctx < 3 ? CH_NAME[ui_ctx] : "GLBL";
+    tft.DrawString(4 + (46 - ui_strw(cn, 1)) / 2, 8, cn, Ili9341::kBlack, col, 1);
+    tft.DrawString(58, 6, ui_cur().name, kTxt, kHdrBg, 2);
+    int dx = 240 - 6 - kNumSec * 8;
+    for (int i = 0; i < kNumSec; i++)
+        tft.FillRect(dx + i * 8, 12, 5, 5, i == ui_sec ? col : kDimCol);
+}
+
+static void ui_drawFooter() {
+    tft.FillRect(0, 300, 240, 20, kFootBg);
+    tft.DrawString(4, 306, "NAV:SEC PUSH:CTX", kDimCol, kFootBg, 1);
+    char t[16];
+    char *q = ui_putl(t, (long)(20.f + CcGet(19) / 127.f * 280.f + 0.5f));
+    q = ui_puts(q, "BPM");
+    *q = 0;
+    tft.DrawString(236 - ui_strw(t, 1), 306, t, kDimCol, kFootBg, 1);
+}
+
+static void ui_drawBand(int i) {
+    const Section &s = ui_cur();
+    int y = 30 + i * 90; // 30, 120, 210
+    int h = 86;
+    uint16_t col = ui_col();
+    tft.FillRect(2, y, 236, h, kPanel);
+    if (i >= s.n)
+        return;
+    const Band &b = s.bands[i];
+    tft.FillRect(2, y, 3, h, col); // accent stripe
+    tft.DrawString(8, y + 5, b.label, col, kPanel, 1);
+    char et[3] = {'E', (char)('1' + i), 0};
+    tft.DrawString(224, y + 5, et, kDimCol, kPanel, 1);
+
+    // status badge (mute / lfo sync / delay sync)
+    const char *badge = nullptr;
+    uint16_t bcol = Ili9341::kRed;
+    if (b.push == P_MUTE && ch_muted[b.muteCh]) {
+        badge = "MUTE";
+        bcol = Ili9341::kRed;
+    } else if (b.push == P_LFOSYNC) {
+        badge = preset.ch[ui_ctx].lfoSynced ? "SYNC" : "FREE";
+        bcol = preset.ch[ui_ctx].lfoSynced ? kAccent : kDimCol;
+    } else if (b.push == P_DELAYSYNC) {
+        badge = preset.delaySynced ? "SYNC" : "FREE";
+        bcol = preset.delaySynced ? kAccent : kDimCol;
+    }
+    if (badge) {
+        int bw = ui_strw(badge, 1) + 6;
+        tft.FillRect(120, y + 4, bw, 11, bcol);
+        tft.DrawString(123, y + 5, badge, Ili9341::kBlack, bcol, 1);
+    }
+
+    if (b.kind == B_ENUM) {
+        uint8_t cur = ui_enumIdx(b);
+        int n = b.nOpt, gap = 4, cw = (222 - (n - 1) * gap) / n;
+        for (int k = 0; k < n; k++) {
+            int cx = 8 + k * (cw + gap);
+            uint16_t f = (k == cur) ? col : kPanel2;
+            tft.FillRect(cx, y + 40, cw, 22, f);
+            int tw = ui_strw(b.opts[k], 1);
+            tft.DrawString(cx + (cw - tw) / 2, y + 47, b.opts[k],
+                           k == cur ? Ili9341::kBlack : kDimCol, f, 1);
+        }
+        return;
+    }
+    if (b.kind == B_TOGGLE) {
+        bool on = CcGet(b.cc) >= 64;
+        uint16_t f = on ? col : kPanel2;
+        tft.FillRect(8, y + 40, 222, 24, f);
+        const char *tx = on ? "ON" : "OFF";
+        tft.DrawString(8 + (222 - ui_strw(tx, 2)) / 2, y + 45, tx, on ? Ili9341::kBlack : kDimCol,
+                       f, 2);
+        return;
+    }
+
+    char val[20];
+    ui_text(b, val);
+    tft.DrawString(232 - ui_strw(val, 2), y + 22, val, kTxt, kPanel, 2);
+    if (b.kind == B_CONT) {
+        int raw = CcGet(ui_absCC(b));
+        float frac = raw / 127.f;
+        tft.FillRect(8, y + 62, 222, 12, kPanel2);
+        if (b.bip) {
+            int cx = 8 + 111;
+            int w = (int)((frac > 0.5f ? frac - 0.5f : 0.5f - frac) * 222.f);
+            if (w < 2)
+                w = 2;
+            tft.FillRect(frac >= 0.5f ? cx : cx - w, y + 62, w, 12, col);
+            tft.FillRect(cx, y + 62, 1, 12, Ili9341::kBlack);
+        } else {
+            int w = (int)(frac * 222.f);
+            if (w < 2)
+                w = 2;
+            tft.FillRect(8, y + 62, w, 12, col);
+        }
+    } else {
+        const char *hint =
+            b.kind == B_PATCH
+                ? "PUSH:LOAD"
+                : b.push == P_SAVE ? "PUSH:SAVE" : b.push == P_SYNC ? "PUSH:SYNC" : "";
+        if (hint[0])
+            tft.DrawString(8, y + 62, hint, kDimCol, kPanel, 1);
+    }
+}
+
+static void MenuInit() {
+    tft.Init(); // SPI1 first ...
+    mux.Init(); // ... then mux, so D9 ends configured as the mux SIG input
+    ui_full_dirty = true;
+}
+
+static uint32_t ui_next_scan_ms = 0;
+static uint32_t ui_last_render_ms = 0;
+
+// Read the encoders (~1 kHz) and dispatch turns/presses. Main loop only.
+static void MenuPoll(uint32_t now) {
+    if (now < ui_next_scan_ms)
+        return;
+    ui_next_scan_ms = now + 1;
+
+    uint16_t bits = mux.Scan(12);
+    for (int i = 0; i < 4; i++) {
+        uint8_t a = (bits >> (3 * i + 0)) & 1;
+        uint8_t bbit = (bits >> (3 * i + 1)) & 1;
+        bool sw = (bits >> (3 * i + 2)) & 1;
+        int d = q_enc[i].Update(a, bbit);
+        bool pressed = b_enc[i].Update(sw);
+
+        int idx = (i == ENC_E1) ? 0 : (i == ENC_E2) ? 1 : (i == ENC_E3) ? 2 : -1;
+        if (d != 0) {
+            if (i == ENC_NAV)
+                ui_navTurn(d);
+            else if (idx >= 0 && idx < ui_cur().n) {
+                ui_bandTurn(ui_cur().bands[idx], d);
+                ui_band_dirty[idx] = true;
+            }
+        }
+        if (pressed) {
+            if (i == ENC_NAV)
+                ui_navPush();
+            else if (idx >= 0 && idx < ui_cur().n) {
+                ui_bandPush(ui_cur().bands[idx]);
+                ui_full_dirty = true;
+            }
+        }
+    }
+}
+
+// Redraw whatever is dirty, batched to ~50 Hz. Main loop only.
+static void MenuRender(uint32_t now) {
+    bool any =
+        ui_full_dirty || ui_foot_dirty || ui_band_dirty[0] || ui_band_dirty[1] || ui_band_dirty[2];
+    if (!any)
+        return;
+    if (now - ui_last_render_ms < 20)
+        return;
+    ui_last_render_ms = now;
+
+    if (ui_full_dirty) {
+        tft.FillScreen(Ili9341::kBlack);
+        ui_drawHeader();
+        for (int i = 0; i < 3; i++)
+            ui_drawBand(i);
+        ui_drawFooter();
+        ui_full_dirty = false;
+        ui_foot_dirty = false;
+        ui_band_dirty[0] = ui_band_dirty[1] = ui_band_dirty[2] = false;
+    } else {
+        for (int i = 0; i < 3; i++)
+            if (ui_band_dirty[i]) {
+                ui_drawBand(i);
+                ui_band_dirty[i] = false;
+            }
+        ui_drawFooter();
+        ui_foot_dirty = false;
     }
 }
 
@@ -769,8 +1595,10 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         // Advance per-channel LFOs
         for (int c = 0; c < NUM_CH; c++) {
             ch[c].lfoPhase += lfoInc[c];
-            if (ch[c].lfoPhase >= 1.f) ch[c].lfoPhase -= 1.f;
-            ch[c].lfoVal = LfoSample(ch[c].lfoPhase, preset.ch[c].lfoShape, preset.ch[c].lfoDuty, lfoRamp[c]);
+            if (ch[c].lfoPhase >= 1.f)
+                ch[c].lfoPhase -= 1.f;
+            ch[c].lfoVal =
+                LfoSample(ch[c].lfoPhase, preset.ch[c].lfoShape, preset.ch[c].lfoDuty, lfoRamp[c]);
         }
 
         float inL = in[0][i];
@@ -813,8 +1641,10 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
             }
 
             float env = ch[c].env.Process();
-            float lvl = fclamp(preset.ch[c].level + preset.ch[c].ampLfoAmount * ch[c].lfoVal, 0.f, 1.f);
-            if (ch_muted[c]) lvl = 0.f;
+            float lvl =
+                fclamp(preset.ch[c].level + preset.ch[c].ampLfoAmount * ch[c].lfoVal, 0.f, 1.f);
+            if (ch_muted[c])
+                lvl = 0.f;
             float chL = filtL * env * lvl;
             float chR = filtR * env * lvl;
             chanL += chL * panL[c];
@@ -903,6 +1733,10 @@ int main(void) {
 
     // --- Start audio ---
     pod.StartAudio(AudioCallback);
+
+    // --- Init the menu UI (TFT + encoders). After audio so its blocking
+    //     panel-reset delays don't hold up codec/MIDI bring-up. ---
+    MenuInit();
 
     // Seed internal clock timer so first tick doesn't fire immediately
     int_tick_ms = System::GetNow();
@@ -1024,6 +1858,10 @@ int main(void) {
 
         pod.UpdateLeds();
 
+        // Menu UI — encoder scan + screen redraw. Never touches audio.
+        MenuPoll(now);
+        MenuRender(now);
+
         // Smooth main-loop iteration time (µs) and track per-window peak
         float loopUs = (System::GetTick() - loopStart) / ticksPerUs;
         loopLoadAvg = 0.05f * loopUs + 0.95f * loopLoadAvg;
@@ -1041,11 +1879,11 @@ int main(void) {
             SendCC(13, (uint8_t)fclamp(loopPeak / 500.f * 127.f, 0.f, 127.f));
             loopPeak = 0.f;
             // BPM echo — covers tempo drift from external clock and tap tempo.
-            uint8_t bpm_cc =
-                (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
+            uint8_t bpm_cc = (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
             if (bpm_cc != last_bpm_cc) {
                 SendCC(19, bpm_cc);
                 last_bpm_cc = bpm_cc;
+                ui_foot_dirty = true; // keep the footer BPM readout fresh
             }
         }
     }

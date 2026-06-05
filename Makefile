@@ -3,6 +3,11 @@ TARGET = triptech
 
 USE_DAISYSP_LGPL = 1
 
+# Optimise for size: the STM32H750 has only 128 KB internal flash (APP_TYPE
+# BOOT_NONE) and the menu UI pushes us right up against it. -Os on this TU keeps
+# the image inside the region without moving to the QSPI bootloader.
+OPT = -Os
+
 # Sources
 CPP_SOURCES = Triptech.cpp
 
