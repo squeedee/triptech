@@ -2099,6 +2099,14 @@ int main(void) {
             if (bpm_cc != last_bpm_cc) {
                 SendCC(19, bpm_cc);
                 last_bpm_cc = bpm_cc;
+                // Tempo changed without a UI edit (external clock / tap). Refresh
+                // the BPM band too if it's the page on screen.
+                if (!ui_settings) {
+                    const Section &s = ui_cur();
+                    for (int i = 0; i < s.n; i++)
+                        if (s.bands[i].fmt == F_BPM)
+                            ui_band_dirty[i] = true;
+                }
             }
         }
     }
