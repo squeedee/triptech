@@ -253,6 +253,7 @@ static uint32_t usb_last_ms = 0;
 // Internal clock
 static uint32_t int_tick_ms = 0;   // timestamp of last internal tick
 static uint32_t led2_flash_ms = 0; // timestamp of last beat flash
+static uint32_t g_step_ms = 0;     // timestamp of last sequencer step (global dot tick)
 static uint32_t tap_last_ms = 0;   // timestamp of last tap-tempo tap
 static bool bypass = false;
 static bool ch_muted[NUM_CH] = {false, false, false};
@@ -572,6 +573,7 @@ static void AdvanceClock() {
     while (tick_accum >= (float)TICKS_PER_STEP) {
         tick_accum -= (float)TICKS_PER_STEP;
         cur_step = (cur_step + 1) % NUM_STEPS;
+        g_step_ms = System::GetNow(); // global activity-dot tick (divided rate)
         if (cur_step % 4 == 0)
             led2_flash_ms = System::GetNow();
         for (int c = 0; c < NUM_CH; c++) {
@@ -1465,13 +1467,15 @@ static int ui_strw(const char *s, uint8_t size) {
     return n * 6 * size;
 }
 
-// --- channel activity dots (centre top). Brightness tracks each channel's AD
-//     envelope: a trigger flashes the dot, then it fades with the gate. ---
-static const int kDotCx[3] = {104, 120, 136};
+// --- activity dots (centre top). Dots 0-2 track each channel's AD envelope
+//     (trigger flashes, fades with the gate); dot 3 is GLOBAL and ticks on each
+//     divided sequencer step. A box around a dot marks the selected context. ---
+static const int kDotCx[4] = {106, 120, 134, 148};
+static constexpr int kDotN = 4;
 static constexpr int kDotY = 8;
 static constexpr int kDotSz = 9;
-static constexpr int kDotRowY = 7; // flush region for a dots-only refresh
-static constexpr int kDotRowH = 12;
+static constexpr int kDotRowY = 5; // flush region (covers the selection box)
+static constexpr int kDotRowH = 16;
 
 static uint16_t ui_scale(uint16_t c, float f) {
     if (f < 0.f)
@@ -1484,13 +1488,34 @@ static uint16_t ui_scale(uint16_t c, float f) {
     return (uint16_t)((r << 11) | (g << 5) | b);
 }
 
+// Which dot the selection box belongs to (0..3, or -1 for none).
+static int ui_selDot() {
+    if (ui_settings)
+        return ui_sec < 4 ? ui_sec : -1; // colour pages map onto the dots
+    return ui_ctx;                       // 0..2 channels, 3 global
+}
+
 static void ui_drawDots() {
-    for (int c = 0; c < 3; c++) {
-        float e = ch[c].env.GetValue();
+    uint32_t now = System::GetNow();
+    int sel = ui_selDot();
+    for (int c = 0; c < kDotN; c++) {
+        float e;
+        uint16_t col;
+        if (c < 3) {
+            e = ch[c].env.GetValue();
+            col = ui_color[c];
+        } else {
+            uint32_t dt = now - g_step_ms; // global step tick (~120 ms flash)
+            e = (seq_running && dt < 120) ? 1.f - dt / 120.f : 0.f;
+            col = ui_color[3];
+        }
+        int bx = kDotCx[c] - 6;
+        tft.FillRect(bx, kDotY - 2, 13, 13, kHdrBg); // clear dot + box area
         int x = kDotCx[c] - kDotSz / 2;
-        tft.FillRect(x, kDotY, kDotSz, kDotSz, kHdrBg);  // clear
         tft.DrawRect(x, kDotY, kDotSz, kDotSz, kPanel2); // idle ring
-        tft.FillRect(x + 1, kDotY + 1, kDotSz - 2, kDotSz - 2, ui_scale(ui_color[c], e));
+        tft.FillRect(x + 1, kDotY + 1, kDotSz - 2, kDotSz - 2, ui_scale(col, e));
+        if (c == sel)
+            tft.DrawRect(bx, kDotY - 2, 13, 13, col); // selected-context box
     }
 }
 
