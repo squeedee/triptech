@@ -230,7 +230,9 @@ static CpuLoadMeter dspLoad;
 static float loopLoadAvg = 0.f; // smoothed main-loop µs per iteration
 static float loopPeak = 0.f;    // peak µs in current 250ms window
 static uint32_t lastLoadMs = 0;
-static float ticksPerUs = 1.f; // populated after init
+static float ticksPerUs = 1.f;   // populated after init
+static float ui_dsp_load = 0.f;  // audio DSP load 0..1 (for the footer meter)
+static float ui_ctrl_load = 0.f; // control/main-loop load 0..1 (vs 500 µs)
 
 static uint8_t cur_step = 0;
 static float tick_accum = 0.f;
@@ -1464,9 +1466,29 @@ static void ui_drawHeader() {
         tft.FillRect(dx + i * 8, 12, 5, 5, i == ui_sec ? col : kDimCol);
 }
 
+// One labelled CPU meter: a letter + a bar that goes green -> yellow -> red as
+// the load climbs. `load` is 0..1.
+static void ui_drawMeter(int x, int y, char label, float load) {
+    if (load < 0.f)
+        load = 0.f;
+    if (load > 1.f)
+        load = 1.f;
+    char l[2] = {label, 0};
+    tft.DrawString(x, y, l, kDimCol, kFootBg, 1);
+    const int bx = x + 8, bw = 64;
+    tft.FillRect(bx, y, bw, 7, kPanel2);
+    uint16_t c = load < 0.7f ? 0x07E0 : load < 0.9f ? 0xFFE0 : 0xF800;
+    int w = (int)(load * bw + 0.5f);
+    if (w > 0)
+        tft.FillRect(bx, y, w, 7, c);
+}
+
 static void ui_drawFooter() {
     tft.FillRect(0, 300, 240, 20, kFootBg);
-    tft.DrawString(4, 306, "NAV:SEC PUSH:CTX", kDimCol, kFootBg, 1);
+    // bottom-left: audio (A) and control (C) CPU meters
+    ui_drawMeter(4, 302, 'A', ui_dsp_load);
+    ui_drawMeter(4, 311, 'C', ui_ctrl_load);
+    // bottom-right: BPM
     char t[16];
     char *q = ui_putl(t, (long)(20.f + CcGet(19) / 127.f * 280.f + 0.5f));
     q = ui_puts(q, "BPM");
@@ -2062,19 +2084,21 @@ int main(void) {
         if ((now - lastLoadMs) >= 250) {
             lastLoadMs = now;
             // DSP: CC 10 = avg, CC 11 = peak (0–127 = 0–100 %)
-            SendCC(10, (uint8_t)fclamp(dspLoad.GetAvgCpuLoad() * 127.f, 0.f, 127.f));
+            ui_dsp_load = dspLoad.GetAvgCpuLoad(); // captured for the on-screen meter
+            SendCC(10, (uint8_t)fclamp(ui_dsp_load * 127.f, 0.f, 127.f));
             SendCC(11, (uint8_t)fclamp(dspLoad.GetMaxCpuLoad() * 127.f, 0.f, 127.f));
             dspLoad.Reset();
-            // Loop: CC 12 = avg, CC 13 = peak (0–127 = 0–500 µs)
-            SendCC(12, (uint8_t)fclamp(loopLoadAvg / 500.f * 127.f, 0.f, 127.f));
+            // Loop: CC 12 = avg, CC 13 = peak (0–127 = 0–500 µs); meter vs 500 µs
+            ui_ctrl_load = loopLoadAvg / 500.f;
+            SendCC(12, (uint8_t)fclamp(ui_ctrl_load * 127.f, 0.f, 127.f));
             SendCC(13, (uint8_t)fclamp(loopPeak / 500.f * 127.f, 0.f, 127.f));
             loopPeak = 0.f;
+            ui_foot_dirty = true; // refresh the footer meters + BPM
             // BPM echo — covers tempo drift from external clock and tap tempo.
             uint8_t bpm_cc = (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
             if (bpm_cc != last_bpm_cc) {
                 SendCC(19, bpm_cc);
                 last_bpm_cc = bpm_cc;
-                ui_foot_dirty = true; // keep the footer BPM readout fresh
             }
         }
     }
