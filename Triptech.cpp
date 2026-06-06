@@ -233,6 +233,8 @@ static uint32_t lastLoadMs = 0;
 static float ticksPerUs = 1.f;   // populated after init
 static float ui_dsp_load = 0.f;  // audio DSP load 0..1 (for the footer meter)
 static float ui_ctrl_load = 0.f; // control/main-loop load 0..1 (vs 500 µs)
+// Peak in/out levels for the VU page (written by the audio callback, decaying).
+static volatile float vu_in_l = 0.f, vu_in_r = 0.f, vu_out_l = 0.f, vu_out_r = 0.f;
 
 static uint8_t cur_step = 0;
 static float tick_accum = 0.f;
@@ -268,6 +270,7 @@ static uint8_t ui_ctx = 0;         // 0..2 = channel, 3 = global
 static uint8_t ui_sec = 0;         // section within the current context
 static uint8_t ui_patch_sel = 0;   // patch slot highlighted on the PATCH page
 static bool ui_settings = false;   // hidden settings mode (hold NAV + click E1)
+static bool ui_vu = false;         // hidden I/O VU meter (hold NAV + click E2)
 static bool ui_full_dirty = true;  // full-screen redraw pending
 static bool ui_foot_dirty = false; // footer (BPM) redraw pending
 static bool ui_band_dirty[3] = {true, true, true};
@@ -1442,7 +1445,15 @@ static void ui_settingsToggle() {
     if (ui_settings)
         ui_settingsSave(); // leaving settings → persist
     ui_settings = !ui_settings;
+    if (ui_settings)
+        ui_vu = false; // modes are exclusive
     ui_sec = 0;
+    ui_full_dirty = true;
+}
+static void ui_vuToggle() {
+    ui_vu = !ui_vu;
+    if (ui_vu)
+        ui_settings = false; // modes are exclusive
     ui_full_dirty = true;
 }
 
@@ -1454,16 +1465,46 @@ static int ui_strw(const char *s, uint8_t size) {
     return n * 6 * size;
 }
 
+// --- channel activity dots (centre top). Brightness tracks each channel's AD
+//     envelope: a trigger flashes the dot, then it fades with the gate. ---
+static const int kDotCx[3] = {104, 120, 136};
+static constexpr int kDotY = 8;
+static constexpr int kDotSz = 9;
+static constexpr int kDotRowY = 7; // flush region for a dots-only refresh
+static constexpr int kDotRowH = 12;
+
+static uint16_t ui_scale(uint16_t c, float f) {
+    if (f < 0.f)
+        f = 0.f;
+    if (f > 1.f)
+        f = 1.f;
+    int r = (int)(((c >> 11) & 0x1F) * f);
+    int g = (int)(((c >> 5) & 0x3F) * f);
+    int b = (int)((c & 0x1F) * f);
+    return (uint16_t)((r << 11) | (g << 5) | b);
+}
+
+static void ui_drawDots() {
+    for (int c = 0; c < 3; c++) {
+        float e = ch[c].env.GetValue();
+        int x = kDotCx[c] - kDotSz / 2;
+        tft.FillRect(x, kDotY, kDotSz, kDotSz, kHdrBg);  // clear
+        tft.DrawRect(x, kDotY, kDotSz, kDotSz, kPanel2); // idle ring
+        tft.FillRect(x + 1, kDotY + 1, kDotSz - 2, kDotSz - 2, ui_scale(ui_color[c], e));
+    }
+}
+
 static void ui_drawHeader() {
     tft.FillRect(0, 0, 240, 28, kHdrBg);
     uint16_t col = ui_col();
     tft.FillRect(4, 5, 46, 18, col);
     const char *cn = ui_settings ? "SET" : (ui_ctx < 3 ? CH_NAME[ui_ctx] : "GLBL");
     tft.DrawString(4 + (46 - ui_strw(cn, 1)) / 2, 8, cn, Ili9341::kBlack, col, 1);
-    tft.DrawString(58, 6, ui_cur().name, kTxt, kHdrBg, 2);
+    tft.DrawString(54, 10, ui_cur().name, kTxt, kHdrBg, 1); // size 1, left of the dots
     int dx = 240 - 6 - kNumSec * 8;
     for (int i = 0; i < kNumSec; i++)
         tft.FillRect(dx + i * 8, 12, 5, 5, i == ui_sec ? col : kDimCol);
+    ui_drawDots();
 }
 
 // One labelled CPU meter: a letter + a bar that goes green -> yellow -> red as
@@ -1507,8 +1548,6 @@ static void ui_drawBand(int i) {
     const Band &b = s.bands[i];
     tft.FillRect(2, y, 3, h, col); // accent stripe
     tft.DrawString(8, y + 5, b.label, col, kPanel, 1);
-    char et[3] = {'E', (char)('1' + i), 0};
-    tft.DrawString(224, y + 5, et, kDimCol, kPanel, 1);
 
     // status badge (mute / lfo sync / delay sync)
     const char *badge = nullptr;
@@ -1663,7 +1702,7 @@ static void MenuPoll(uint32_t now) {
         if (i == ENC_NAV) {
             if (pressEdge)
                 nav_turned_while_held = false;
-            if (d != 0) {
+            if (d != 0 && !ui_vu) {
                 if (ui_settings) {
                     ui_navTurn(d); // settings: turn = page
                 } else if (held) {
@@ -1674,7 +1713,9 @@ static void MenuPoll(uint32_t now) {
                 }
             }
             if (releaseEdge && !nav_turned_while_held) {
-                if (ui_settings)
+                if (ui_vu)
+                    ui_vuToggle(); // click exits VU
+                else if (ui_settings)
                     ui_settingsToggle(); // click exits settings
                 else
                     ui_navCtx(1); // plain click: next context (channel)
@@ -1684,12 +1725,18 @@ static void MenuPoll(uint32_t now) {
 
         int idx = (i == ENC_E1) ? 0 : (i == ENC_E2) ? 1 : 2;
 
-        // Hidden settings entry/exit: hold NAV, then click E1.
-        if (i == ENC_E1 && pressEdge && b_enc[ENC_NAV].state) {
-            ui_settingsToggle();
+        // Hidden mode entry/exit: hold NAV, then click E1 (settings) or E2 (VU).
+        if (pressEdge && b_enc[ENC_NAV].state) {
+            if (i == ENC_E1)
+                ui_settingsToggle();
+            else if (i == ENC_E2)
+                ui_vuToggle();
             nav_turned_while_held = true; // suppress NAV's own click on release
             continue;
         }
+
+        if (ui_vu)
+            continue; // VU page ignores the value encoders
 
         if (d != 0 && idx < ui_cur().n) {
             ui_bandTurn(ui_cur().bands[idx], d);
@@ -1702,8 +1749,66 @@ static void MenuPoll(uint32_t now) {
     }
 }
 
+// --- I/O VU page (hidden: hold NAV + click E2) ---
+static const int kVuBarX = 56;
+static const int kVuBarW = 176;
+static const int kVuBarH = 26;
+static const int kVuY[4] = {54, 92, 168, 206};
+static const char *const kVuLab[4] = {"IN L", "IN R", "OUT L", "OUT R"};
+
+static void ui_drawVuStatic() {
+    tft.FillScreen(Ili9341::kBlack);
+    tft.FillRect(0, 0, 240, 28, kHdrBg);
+    tft.FillRect(4, 5, 46, 18, kAccent);
+    tft.DrawString(4 + (46 - ui_strw("VU", 1)) / 2, 8, "VU", Ili9341::kBlack, kAccent, 1);
+    tft.DrawString(56, 10, "I/O METER", kTxt, kHdrBg, 1);
+    tft.DrawString(8, 36, "INPUT", kDimCol, Ili9341::kBlack, 1);
+    tft.DrawString(8, 150, "OUTPUT", kDimCol, Ili9341::kBlack, 1);
+    for (int i = 0; i < 4; i++) {
+        tft.DrawString(8, kVuY[i] + kVuBarH / 2 - 3, kVuLab[i], kTxt, Ili9341::kBlack, 1);
+        tft.DrawRect(kVuBarX - 1, kVuY[i] - 1, kVuBarW + 2, kVuBarH + 2, kPanel2);
+    }
+    tft.FillRect(0, 300, 240, 20, kFootBg);
+    tft.DrawString(4, 306, "NAV CLICK = EXIT", kDimCol, kFootBg, 1);
+}
+
+static void ui_drawVuBars() {
+    const float lv[4] = {vu_in_l, vu_in_r, vu_out_l, vu_out_r};
+    for (int i = 0; i < 4; i++) {
+        tft.FillRect(kVuBarX, kVuY[i], kVuBarW, kVuBarH, kPanel2);
+        float level = lv[i];
+        float db = level > 1e-4f ? 20.f * log10f(level) : -80.f;
+        float frac = (db + 60.f) / 60.f; // -60 dB .. 0 dB full scale
+        if (frac < 0.f)
+            frac = 0.f;
+        if (frac > 1.f)
+            frac = 1.f;
+        int w = (int)(frac * kVuBarW);
+        uint16_t c = frac < 0.8f ? 0x07E0 : frac < 0.95f ? 0xFFE0 : 0xF800;
+        if (w > 0)
+            tft.FillRect(kVuBarX, kVuY[i], w, kVuBarH, c);
+    }
+}
+
 // Redraw whatever is dirty, batched to ~50 Hz. Main loop only.
 static void MenuRender(uint32_t now) {
+    if (ui_vu) { // VU page: static layout once, bars refreshed ~30 Hz
+        if (!ui_full_dirty && now - ui_last_render_ms < 33)
+            return;
+        if (tft.FlushBusy())
+            return;
+        ui_last_render_ms = now;
+        if (ui_full_dirty) {
+            ui_drawVuStatic();
+            ui_full_dirty = false;
+            tft.FlushRows(0, Ili9341::kHeight);
+        } else {
+            ui_drawVuBars();
+            tft.FlushRows(50, 70);  // input bars
+            tft.FlushRows(164, 72); // output bars
+        }
+        return;
+    }
     bool any =
         ui_full_dirty || ui_foot_dirty || ui_band_dirty[0] || ui_band_dirty[1] || ui_band_dirty[2];
     if (!any)
@@ -1739,20 +1844,51 @@ static void MenuRender(uint32_t now) {
     }
 }
 
+// Refresh the channel activity dots (~30 Hz) without a full header redraw.
+static uint32_t ui_dots_ms = 0;
+static void MenuDots(uint32_t now) {
+    if (ui_vu || ui_settings)
+        return; // dots live in the normal header only
+    if (now - ui_dots_ms < 33)
+        return;
+    if (tft.FlushBusy())
+        return;
+    ui_dots_ms = now;
+    ui_drawDots();
+    tft.FlushRows(kDotRowY, kDotRowH);
+}
+
 // ============================================================
 // Audio callback — non-interleaved stereo
 // ============================================================
 
+// Peak-hold-with-decay update for the VU page, called once per audio block.
+static void VuCommit(float iL, float iR, float oL, float oR) {
+    const float k = 0.96f; // per-block decay -> a few hundred ms release
+    vu_in_l = iL > vu_in_l ? iL : vu_in_l * k;
+    vu_in_r = iR > vu_in_r ? iR : vu_in_r * k;
+    vu_out_l = oL > vu_out_l ? oL : vu_out_l * k;
+    vu_out_r = oR > vu_out_r ? oR : vu_out_r * k;
+}
+
 static void AudioCallback(const float *const *in, float **out, size_t size) {
     dspLoad.OnBlockStart();
 
+    float biL = 0.f, biR = 0.f, boL = 0.f, boR = 0.f; // block peaks for the VU
+
     if (bypass) {
         for (size_t i = 0; i < size; i++) {
-            out[0][i] = in[0][i] * soft_gain;
-            out[1][i] = in[1][i] * soft_gain;
+            float l = in[0][i], r = in[1][i];
+            out[0][i] = l * soft_gain;
+            out[1][i] = r * soft_gain;
             if (soft_gain < 1.f)
                 soft_gain = soft_gain + soft_inc > 1.f ? 1.f : soft_gain + soft_inc;
+            biL = fabsf(l) > biL ? fabsf(l) : biL;
+            biR = fabsf(r) > biR ? fabsf(r) : biR;
+            boL = fabsf(out[0][i]) > boL ? fabsf(out[0][i]) : boL;
+            boR = fabsf(out[1][i]) > boR ? fabsf(out[1][i]) : boR;
         }
+        VuCommit(biL, biR, boL, boR);
         dspLoad.OnBlockEnd();
         return;
     }
@@ -1848,6 +1984,8 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
 
         float inL = in[0][i];
         float inR = in[1][i];
+        biL = fabsf(inL) > biL ? fabsf(inL) : biL;
+        biR = fabsf(inR) > biR ? fabsf(inR) : biR;
 
         // Accumulate channel mix separately — used as sidechain source
         float chanL = 0.f, chanR = 0.f, delaySend = 0.f;
@@ -1918,7 +2056,10 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         out[1][i] = fasttanh(outR) * soft_gain;
         if (soft_gain < 1.f)
             soft_gain = soft_gain + soft_inc > 1.f ? 1.f : soft_gain + soft_inc;
+        boL = fabsf(out[0][i]) > boL ? fabsf(out[0][i]) : boL;
+        boR = fabsf(out[1][i]) > boR ? fabsf(out[1][i]) : boR;
     }
+    VuCommit(biL, biR, boL, boR);
 
     dspLoad.OnBlockEnd();
 }
@@ -2073,6 +2214,7 @@ int main(void) {
         // Menu UI — encoder scan + screen redraw. Never touches audio.
         MenuPoll(now);
         MenuRender(now);
+        MenuDots(now);
         tft.ServiceFlush(); // pump the background DMA flush queue
 
         // Smooth main-loop iteration time (µs) and track per-window peak
