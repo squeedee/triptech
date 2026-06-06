@@ -195,6 +195,26 @@ static DaisySeed hw;
 static MidiUartHandler midi; // TRS MIDI — USART1 default pins (PB6/PB7 = D13/D14)
 static MidiUsbHandler usb_midi;
 static PersistentStorage<PatchStorage> patchStorage(hw.qspi);
+
+// Global UI prefs persisted in QSPI, in its own sector well clear of the patch
+// bank (which lives at offset 0).
+struct UiSettings {
+    uint32_t version;
+    uint16_t color[4];
+    uint8_t brightness;
+    bool operator!=(const UiSettings &o) const {
+        if (version != o.version || brightness != o.brightness)
+            return true;
+        for (int i = 0; i < 4; i++)
+            if (color[i] != o.color[i])
+                return true;
+        return false;
+    }
+};
+static constexpr uint32_t UI_VERSION = 1;
+static constexpr uint32_t UI_QSPI_OFFSET = 0x80000; // 512 KB in
+static PersistentStorage<UiSettings> uiStore(hw.qspi);
+
 static Preset preset;
 static Channel ch[NUM_CH];
 static float sample_rate;
@@ -1026,9 +1046,10 @@ static constexpr uint16_t kFootBg = 0x0841;
 static constexpr uint16_t kDimCol = 0x52AA;
 static constexpr uint16_t kTxt = 0xFFFF;
 
-// Editable channel/global colours (CH1, CH2, CH3, GLOBAL) + backlight level.
-// Runtime only for now (not persisted across reboot).
-static uint16_t ui_color[4] = {0x07E0, 0xFFE0, 0xF800, 0x4C7F};
+// Editable channel/global colours (CH1=green, CH2=yellow, CH3=purple,
+// GLOBAL=blue) + backlight level. Persisted in QSPI (see uiStore).
+static const uint16_t kDefaultColor[4] = {0x07E0, 0xFFE0, 0x801F, 0x4C7F};
+static uint16_t ui_color[4] = {0x07E0, 0xFFE0, 0x801F, 0x4C7F};
 static uint8_t ui_brightness = 255;
 
 static const Section *ui_sectionTbl() {
@@ -1405,7 +1426,19 @@ static void ui_navCtx(int dir) {
         ui_sec = kNumSec - 1;
     ui_full_dirty = true;
 }
+// Commit colours + brightness to QSPI (no-op if unchanged). Called on exit so we
+// write at most once per settings session, not on every encoder tick.
+static void ui_settingsSave() {
+    UiSettings &s = uiStore.GetSettings();
+    s.version = UI_VERSION;
+    for (int i = 0; i < 4; i++)
+        s.color[i] = ui_color[i];
+    s.brightness = ui_brightness;
+    uiStore.Save();
+}
 static void ui_settingsToggle() {
+    if (ui_settings)
+        ui_settingsSave(); // leaving settings → persist
     ui_settings = !ui_settings;
     ui_sec = 0;
     ui_full_dirty = true;
@@ -1917,6 +1950,24 @@ int main(void) {
         patchStorage.RestoreDefaults();
     // Load patch 0
     preset = patchStorage.GetSettings().patches[0];
+
+    // --- Init UI settings storage (separate QSPI sector) ---
+    {
+        UiSettings d;
+        d.version = UI_VERSION;
+        for (int i = 0; i < 4; i++)
+            d.color[i] = kDefaultColor[i];
+        d.brightness = 255;
+        uiStore.Init(d, UI_QSPI_OFFSET);
+    }
+    if (uiStore.GetSettings().version != UI_VERSION)
+        uiStore.RestoreDefaults();
+    {
+        const UiSettings &s = uiStore.GetSettings();
+        for (int i = 0; i < 4; i++)
+            ui_color[i] = s.color[i];
+        ui_brightness = s.brightness;
+    }
 
     // --- Init MIDI ---
     MidiUartHandler::Config midi_cfg; // defaults: USART1, RX=PB7 (D14), TX=PB6 (D13)
