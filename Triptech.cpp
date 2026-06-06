@@ -906,7 +906,8 @@ enum Push : uint8_t {
     P_BYPASS,
     P_LOAD,
     P_SAVE,
-    P_SYNC
+    P_SYNC,
+    P_RESET // click resets the band to a value held in its muteCh field
 };
 
 struct Band {
@@ -959,12 +960,12 @@ static const Band kFilter[] = {
 };
 static const Band kTone[] = {
     {"Q", B_CONT, 1, 1, F_RES, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"DRIVE", B_CONT, 2, 1, F_DRIVE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"LFO>FILT", B_CONT, 8, 1, F_BIPCT, 1, P_NONE, 12, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"DRIVE", B_CONT, 2, 1, F_DRIVE, 0, P_RESET, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"LFO>FILT", B_CONT, 8, 1, F_BIPCT, 1, P_RESET, 12, 64, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Band kEnv[] = {
-    {"ATTACK", B_CONT, 4, 1, F_ATTACK, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"DECAY", B_CONT, 5, 1, F_DECAY, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"ATTACK", B_CONT, 4, 1, F_ATTACK, 0, P_RESET, 255, 27, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"DECAY", B_CONT, 5, 1, F_DECAY, 0, P_RESET, 255, 63, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"LEVEL/MUTE", B_CONT, 6, 1, F_LEVEL, 0, P_MUTE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Band kLfo[] = {
@@ -981,11 +982,11 @@ static const Band kLfo[] = {
      {0, 21, 42, 0},
      3},
     {"RATE", B_CONT, 3, 1, F_LFORATE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"DUTY", B_CONT, 14, 1, F_PCT, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"DUTY", B_CONT, 14, 1, F_PCT, 0, P_RESET, 255, 64, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Band kOut[] = {
-    {"PAN", B_CONT, 7, 1, F_PAN, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"AMP MOD", B_CONT, 15, 1, F_BIPCT, 1, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"PAN", B_CONT, 7, 1, F_PAN, 0, P_RESET, 255, 64, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"AMP MOD", B_CONT, 15, 1, F_BIPCT, 1, P_RESET, 255, 64, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"DLY SEND", B_CONT, 13, 1, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Section kChSections[] = {
@@ -995,13 +996,13 @@ static const Section kChSections[] = {
 
 static const Band kSeq[] = {
     {"PATTERN", B_PATIDX, 14, 0, F_NONE, 0, P_RUN, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"CLK DIV", B_CONT, 5, 0, F_CLOCKDIV, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"CLK DIV", B_CONT, 5, 0, F_CLOCKDIV, 0, P_RESET, 255, 64, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"BPM", B_CONT, 19, 0, F_BPM, 0, P_TAP, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Band kDelay[] = {
     {"TIME", B_CONT, 1, 0, F_DELAYTIME, 0, P_DELAYSYNC, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"FDBK", B_CONT, 2, 0, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"WIDTH", B_CONT, 3, 0, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"WIDTH", B_CONT, 3, 0, F_LEVEL, 0, P_RESET, 255, 127, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Band kMix[] = {
     {"CH1 LVL", B_CONT, 26, 0, F_LEVEL, 0, P_MUTE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
@@ -1354,6 +1355,17 @@ static void ui_bandPush(const Band &b) {
     case P_SYNC:
         SendAllState();
         break;
+    case P_RESET: {
+        uint8_t acc = ui_absCC(b);
+        HandleCC(acc, b.muteCh);
+        SendCC(acc, b.muteCh);
+        if (b.lsbOff != 255) { // 14-bit pair: zero the LSB
+            uint8_t lcc = (uint8_t)(kCcBase[ui_ctx] + b.lsbOff);
+            HandleCC(lcc, 0);
+            SendCC(lcc, 0);
+        }
+        break;
+    }
     default:
         break;
     }
