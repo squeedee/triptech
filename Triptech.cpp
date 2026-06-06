@@ -200,6 +200,12 @@ static Channel ch[NUM_CH];
 static float sample_rate;
 static uint8_t cur_patch = 0;
 
+// Output soft-start: ramp the audio out from silence over ~150 ms so the engine
+// starting up (and any garbage in the first DMA block) slews in instead of
+// popping. soft_inc is set in main() once the sample rate is known.
+static float soft_gain = 0.f;
+static float soft_inc = 1.f;
+
 static CpuLoadMeter dspLoad;
 static float loopLoadAvg = 0.f; // smoothed main-loop µs per iteration
 static float loopPeak = 0.f;    // peak µs in current 250ms window
@@ -239,6 +245,7 @@ static const char *const CH_NAME[NUM_CH] = {"CH1", "CH2", "CH3"};
 static uint8_t ui_ctx = 0;         // 0..2 = channel, 3 = global
 static uint8_t ui_sec = 0;         // section within the current context
 static uint8_t ui_patch_sel = 0;   // patch slot highlighted on the PATCH page
+static bool ui_settings = false;   // hidden settings mode (hold NAV + click E1)
 static bool ui_full_dirty = true;  // full-screen redraw pending
 static bool ui_foot_dirty = false; // footer (BPM) redraw pending
 static bool ui_band_dirty[3] = {true, true, true};
@@ -818,7 +825,20 @@ static EncBtn b_enc[4];
 enum { ENC_E1 = 0, ENC_E2 = 1, ENC_E3 = 2, ENC_NAV = 3 };
 
 // --- Parameter model (mirrors the ROWS table in menu-controller.html) ---
-enum BandKind : uint8_t { B_CONT, B_ENUM, B_TOGGLE, B_PATIDX, B_PATCH, B_ACTION };
+// B_COL_* / B_BRIGHT are settings-mode bands; for those `cc` holds the colour
+// index (0..3 = CH1/CH2/CH3/GLOBAL) rather than a MIDI CC.
+enum BandKind : uint8_t {
+    B_CONT,
+    B_ENUM,
+    B_TOGGLE,
+    B_PATIDX,
+    B_PATCH,
+    B_ACTION,
+    B_COL_R,
+    B_COL_G,
+    B_COL_B,
+    B_BRIGHT,
+};
 enum Fmt : uint8_t {
     F_NONE,
     F_CUTOFF,
@@ -962,15 +982,43 @@ static const Section kGlSections[] = {
     {"MASTER", kMaster, 3}, {"PATCH", kPatch, 3},
 };
 
-static constexpr uint8_t kNumSec = 5;
+// Hidden settings mode. Colour pages carry the colour index in `cc` (0..3).
+static const Band kColCh1[] = {
+    {"RED", B_COL_R, 0, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"GREEN", B_COL_G, 0, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"BLUE", B_COL_B, 0, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kColCh2[] = {
+    {"RED", B_COL_R, 1, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"GREEN", B_COL_G, 1, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"BLUE", B_COL_B, 1, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kColCh3[] = {
+    {"RED", B_COL_R, 2, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"GREEN", B_COL_G, 2, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"BLUE", B_COL_B, 2, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kColGbl[] = {
+    {"RED", B_COL_R, 3, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"GREEN", B_COL_G, 3, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"BLUE", B_COL_B, 3, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kDisplay[] = {
+    {"BRIGHT", B_BRIGHT, 0, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Section kSetSections[] = {
+    {"CH1 COL", kColCh1, 3}, {"CH2 COL", kColCh2, 3},  {"CH3 COL", kColCh3, 3},
+    {"GBL COL", kColGbl, 3}, {"DISPLAY", kDisplay, 1},
+};
+
+static constexpr uint8_t kNumSec = 5; // both normal and settings modes have 5
 
 static const char *const kDivName[8] = {"1/2", "1/2T", "1/4",  "1/4T",
                                         "1/8", "1/8T", "1/16", "1/16T"};
 static const char *const kClockName[9] = {"/4", "/3", "/2", "/1.5", "X1", "X1.5", "X2", "X3", "X4"};
 
 // --- colours (RGB565) ---
-static const uint16_t kChCol[3] = {0x07E0, 0xFFE0, 0xF800};
-static constexpr uint16_t kAccent = 0x4C7F;
+static constexpr uint16_t kAccent = 0x4C7F; // fixed accent (sync badges etc.)
 static constexpr uint16_t kPanel = 0x1082;
 static constexpr uint16_t kPanel2 = 0x0841;
 static constexpr uint16_t kHdrBg = 0x2104;
@@ -978,9 +1026,24 @@ static constexpr uint16_t kFootBg = 0x0841;
 static constexpr uint16_t kDimCol = 0x52AA;
 static constexpr uint16_t kTxt = 0xFFFF;
 
-static const Section *ui_sectionTbl() { return ui_ctx < 3 ? kChSections : kGlSections; }
+// Editable channel/global colours (CH1, CH2, CH3, GLOBAL) + backlight level.
+// Runtime only for now (not persisted across reboot).
+static uint16_t ui_color[4] = {0x07E0, 0xFFE0, 0xF800, 0x4C7F};
+static uint8_t ui_brightness = 255;
+
+static const Section *ui_sectionTbl() {
+    return ui_settings ? kSetSections : (ui_ctx < 3 ? kChSections : kGlSections);
+}
 static const Section &ui_cur() { return ui_sectionTbl()[ui_sec]; }
-static uint16_t ui_col() { return ui_ctx < 3 ? kChCol[ui_ctx] : kAccent; }
+static uint16_t ui_col() {
+    if (ui_settings) {
+        const Band &b0 = ui_cur().bands[0];
+        if (b0.kind == B_COL_R) // colour page: preview the colour being edited
+            return ui_color[b0.cc];
+        return kAccent;
+    }
+    return ui_color[ui_ctx < 3 ? ui_ctx : 3];
+}
 static uint8_t ui_absCC(const Band &b) {
     return b.chRel ? (uint8_t)(kCcBase[ui_ctx] + b.cc) : b.cc;
 }
@@ -1280,6 +1343,40 @@ static void ui_bandTurn(const Band &b, int dir) {
     }
     case B_ACTION:
         break;
+    case B_COL_R: {
+        uint16_t &c = ui_color[b.cc];
+        int r = (c >> 11) & 0x1F;
+        r += dir;
+        r = r < 0 ? 0 : r > 31 ? 31 : r;
+        c = (uint16_t)((c & ~0xF800) | (r << 11));
+        ui_full_dirty = true;
+        break;
+    }
+    case B_COL_G: {
+        uint16_t &c = ui_color[b.cc];
+        int g = (c >> 5) & 0x3F;
+        g += dir;
+        g = g < 0 ? 0 : g > 63 ? 63 : g;
+        c = (uint16_t)((c & ~0x07E0) | (g << 5));
+        ui_full_dirty = true;
+        break;
+    }
+    case B_COL_B: {
+        uint16_t &c = ui_color[b.cc];
+        int bl = c & 0x1F;
+        bl += dir;
+        bl = bl < 0 ? 0 : bl > 31 ? 31 : bl;
+        c = (uint16_t)((c & ~0x001F) | bl);
+        ui_full_dirty = true;
+        break;
+    }
+    case B_BRIGHT: {
+        int v = (int)ui_brightness + dir * 8;
+        v = v < 8 ? 8 : v > 255 ? 255 : v; // keep some backlight on
+        ui_brightness = (uint8_t)v;
+        tft.SetBrightness(ui_brightness / 255.f);
+        break;
+    }
     default: {
         int v = (int)CcGet(acc) + dir * 2;
         if (v < 0)
@@ -1308,6 +1405,11 @@ static void ui_navCtx(int dir) {
         ui_sec = kNumSec - 1;
     ui_full_dirty = true;
 }
+static void ui_settingsToggle() {
+    ui_settings = !ui_settings;
+    ui_sec = 0;
+    ui_full_dirty = true;
+}
 
 // --- rendering ---
 static int ui_strw(const char *s, uint8_t size) {
@@ -1321,7 +1423,7 @@ static void ui_drawHeader() {
     tft.FillRect(0, 0, 240, 28, kHdrBg);
     uint16_t col = ui_col();
     tft.FillRect(4, 5, 46, 18, col);
-    const char *cn = ui_ctx < 3 ? CH_NAME[ui_ctx] : "GLBL";
+    const char *cn = ui_settings ? "SET" : (ui_ctx < 3 ? CH_NAME[ui_ctx] : "GLBL");
     tft.DrawString(4 + (46 - ui_strw(cn, 1)) / 2, 8, cn, Ili9341::kBlack, col, 1);
     tft.DrawString(58, 6, ui_cur().name, kTxt, kHdrBg, 2);
     int dx = 240 - 6 - kNumSec * 8;
@@ -1370,6 +1472,45 @@ static void ui_drawBand(int i) {
         int bw = ui_strw(badge, 1) + 6;
         tft.FillRect(120, y + 4, bw, 11, bcol);
         tft.DrawString(123, y + 5, badge, Ili9341::kBlack, bcol, 1);
+    }
+
+    if (b.kind == B_COL_R || b.kind == B_COL_G || b.kind == B_COL_B) {
+        uint16_t c = ui_color[b.cc];
+        int comp, maxv;
+        uint16_t barcol;
+        if (b.kind == B_COL_R) {
+            comp = (c >> 11) & 0x1F;
+            maxv = 31;
+            barcol = 0xF800;
+        } else if (b.kind == B_COL_G) {
+            comp = (c >> 5) & 0x3F;
+            maxv = 63;
+            barcol = 0x07E0;
+        } else {
+            comp = c & 0x1F;
+            maxv = 31;
+            barcol = 0x001F;
+        }
+        char v[8];
+        char *p = ui_putl(v, comp);
+        *p = 0;
+        tft.DrawString(232 - ui_strw(v, 2), y + 22, v, kTxt, kPanel, 2);
+        tft.FillRect(8, y + 62, 222, 12, kPanel2);
+        int w = comp * 222 / maxv;
+        tft.FillRect(8, y + 62, w < 2 ? 2 : w, 12, barcol);
+        return;
+    }
+    if (b.kind == B_BRIGHT) {
+        int pct = ui_brightness * 100 / 255;
+        char v[8];
+        char *p = ui_putl(v, pct);
+        *p++ = '%';
+        *p = 0;
+        tft.DrawString(232 - ui_strw(v, 2), y + 22, v, kTxt, kPanel, 2);
+        tft.FillRect(8, y + 62, 222, 12, kPanel2);
+        int w = ui_brightness * 222 / 255;
+        tft.FillRect(8, y + 62, w < 2 ? 2 : w, 12, col);
+        return;
     }
 
     if (b.kind == B_ENUM) {
@@ -1434,6 +1575,7 @@ static void MenuInit() {
     tft.Init();                  // SPI1 first ...
     mux.Init();                  // ... then mux, so D9 ends configured as the mux SIG input
     tft.SetFramebuffer(menu_fb); // all drawing now targets the framebuffer
+    tft.SetBrightness(ui_brightness / 255.f);
     ui_full_dirty = true;
 }
 
@@ -1467,19 +1609,33 @@ static void MenuPoll(uint32_t now) {
             if (pressEdge)
                 nav_turned_while_held = false;
             if (d != 0) {
-                if (held) {
+                if (ui_settings) {
+                    ui_navTurn(d); // settings: turn = page
+                } else if (held) {
                     ui_navCtx(d); // shifted: cycle CH1/CH2/CH3/GLOBAL
                     nav_turned_while_held = true;
                 } else {
                     ui_navTurn(d); // section
                 }
             }
-            if (releaseEdge && !nav_turned_while_held)
-                ui_navCtx(1); // plain click: next context (channel)
+            if (releaseEdge && !nav_turned_while_held) {
+                if (ui_settings)
+                    ui_settingsToggle(); // click exits settings
+                else
+                    ui_navCtx(1); // plain click: next context (channel)
+            }
             continue;
         }
 
         int idx = (i == ENC_E1) ? 0 : (i == ENC_E2) ? 1 : 2;
+
+        // Hidden settings entry/exit: hold NAV, then click E1.
+        if (i == ENC_E1 && pressEdge && b_enc[ENC_NAV].state) {
+            ui_settingsToggle();
+            nav_turned_while_held = true; // suppress NAV's own click on release
+            continue;
+        }
+
         if (d != 0 && idx < ui_cur().n) {
             ui_bandTurn(ui_cur().bands[idx], d);
             ui_band_dirty[idx] = true;
@@ -1537,8 +1693,10 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
 
     if (bypass) {
         for (size_t i = 0; i < size; i++) {
-            out[0][i] = in[0][i];
-            out[1][i] = in[1][i];
+            out[0][i] = in[0][i] * soft_gain;
+            out[1][i] = in[1][i] * soft_gain;
+            if (soft_gain < 1.f)
+                soft_gain = soft_gain + soft_inc > 1.f ? 1.f : soft_gain + soft_inc;
         }
         dspLoad.OnBlockEnd();
         return;
@@ -1699,9 +1857,12 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         float outL = chanL + delOutL + inL * preset.dryLevel;
         float outR = chanR + delOutR + inR * preset.dryLevel;
 
-        // Soft clip — handles summing of multiple channels gracefully
-        out[0][i] = fasttanh(outL);
-        out[1][i] = fasttanh(outR);
+        // Soft clip — handles summing of multiple channels gracefully.
+        // soft_gain ramps the output up from silence at startup (anti-pop).
+        out[0][i] = fasttanh(outL) * soft_gain;
+        out[1][i] = fasttanh(outR) * soft_gain;
+        if (soft_gain < 1.f)
+            soft_gain = soft_gain + soft_inc > 1.f ? 1.f : soft_gain + soft_inc;
     }
 
     dspLoad.OnBlockEnd();
@@ -1716,6 +1877,7 @@ int main(void) {
     hw.Init(true); // boost to 480 MHz for audio + display headroom
     hw.SetAudioBlockSize(48);
     sample_rate = hw.AudioSampleRate();
+    soft_inc = 1.f / (sample_rate * 0.15f); // ~150 ms output fade-in
 
     // --- Init load meters ---
     dspLoad.Init(sample_rate, 48, 10.f); // 10 Hz cutoff — fast enough for 250ms windows

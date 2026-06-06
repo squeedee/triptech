@@ -17,6 +17,7 @@
 #pragma once
 
 #include "daisy_seed.h"
+#include "per/pwm.h"
 
 class Ili9341 {
   public:
@@ -50,16 +51,16 @@ class Ili9341 {
         dc_.Init(dc_cfg);
         dc_.Write(true);
 
-        // --- LED backlight: just drive it on for the test ---------------
-        // (Production firmware should PWM this above ~20 kHz on TIM3_CH4 to
-        // keep switching noise out of the audio band -- see README.)
-        GPIO::Config bl_cfg;
-        bl_cfg.pin = seed::D17;
-        bl_cfg.mode = GPIO::Mode::OUTPUT;
-        bl_cfg.pull = GPIO::Pull::NOPULL;
-        bl_cfg.speed = GPIO::Speed::LOW;
-        backlight_.Init(bl_cfg);
-        backlight_.Write(true);
+        // --- LED backlight: hardware PWM on TIM3_CH4 (PB1 = D17) ---------
+        // ~117 kHz (well above the audio band, as the README requires) with
+        // 1024 brightness steps. Channel4 defaults to PB1/D17.
+        PWMHandle::Config pcfg;
+        pcfg.periph = PWMHandle::Config::Peripheral::TIM_3;
+        pcfg.prescaler = 0;
+        pcfg.period = 1023;
+        bl_pwm_.Init(pcfg);
+        bl_pwm_.Channel4().Init();
+        bl_pwm_.Channel4().Set(1.f); // full brightness
 
         // --- SPI1, master, TX-only, hardware NSS on D7 ------------------
         SpiHandle::Config scfg;
@@ -84,6 +85,9 @@ class Ili9341 {
     // aligned, in DMA-reachable memory e.g. SDRAM). All drawing then writes into
     // this buffer; call FlushRows()/ServiceFlush() to push pixels to the panel.
     void SetFramebuffer(uint16_t *fb) { fb_ = fb; }
+
+    // Backlight brightness, 0..1 (PWM duty on TIM3_CH4 / D17).
+    void SetBrightness(float v) { bl_pwm_.Channel4().Set(v < 0.f ? 0.f : v > 1.f ? 1.f : v); }
 
     // Fill the whole screen with one colour.
     void FillScreen(uint16_t color) { FillRect(0, 0, kWidth, kHeight, color); }
@@ -312,7 +316,7 @@ class Ili9341 {
 
     daisy::SpiHandle spi_;
     daisy::GPIO dc_;
-    daisy::GPIO backlight_;
+    daisy::PWMHandle bl_pwm_;
 
     // Flush queue. 240*136*2 = 65280 bytes <= the DMA's 16-bit byte count.
     struct Job {
