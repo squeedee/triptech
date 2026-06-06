@@ -134,7 +134,7 @@ struct PatchStorage {
     bool operator!=(const PatchStorage &o) const { return memcmp(this, &o, sizeof(*this)) != 0; }
 };
 
-static constexpr uint32_t PATCH_VERSION = 3;
+static constexpr uint32_t PATCH_VERSION = 4;
 
 // Pattern clock divider/multiplier — steps-per-tick scaler.
 // CC byte 0–127 binned into 9 zones; midway (56–71, includes 64) = 1:1.
@@ -202,8 +202,14 @@ struct UiSettings {
     uint32_t version;
     uint16_t color[4];
     uint8_t brightness;
+    // Persisted transport/global state (restored on boot).
+    uint8_t run;    // sequencer running 0/1
+    uint8_t bypass; // 0/1
+    uint8_t dry;    // dry level as CC 0..127
+    uint8_t bpm;    // manual BPM as CC 0..127
     bool operator!=(const UiSettings &o) const {
-        if (version != o.version || brightness != o.brightness)
+        if (version != o.version || brightness != o.brightness || run != o.run ||
+            bypass != o.bypass || dry != o.dry || bpm != o.bpm)
             return true;
         for (int i = 0; i < 4; i++)
             if (color[i] != o.color[i])
@@ -211,7 +217,7 @@ struct UiSettings {
         return false;
     }
 };
-static constexpr uint32_t UI_VERSION = 1;
+static constexpr uint32_t UI_VERSION = 2;
 static constexpr uint32_t UI_QSPI_OFFSET = 0x80000; // 512 KB in
 static PersistentStorage<UiSettings> uiStore(hw.qspi);
 
@@ -235,10 +241,13 @@ static float ui_dsp_load = 0.f;  // audio DSP load 0..1 (for the footer meter)
 static float ui_ctrl_load = 0.f; // control/main-loop load 0..1 (vs 500 µs)
 // Peak in/out levels for the VU page (written by the audio callback, decaying).
 static volatile float vu_in_l = 0.f, vu_in_r = 0.f, vu_out_l = 0.f, vu_out_r = 0.f;
+// Debounced persistence of transport/global state (run/bypass/dry/bpm) to QSPI.
+static uint32_t ui_persist_ms = 0;
+static uint8_t ui_seen_run = 0xFF, ui_seen_byp = 0xFF, ui_seen_dry = 0xFF, ui_seen_bpm = 0xFF;
 
 static uint8_t cur_step = 0;
 static float tick_accum = 0.f;
-static bool seq_running = false;
+static bool seq_running = true; // sequencer runs by default at power-on
 
 // Incoming-clock BPM detection (updates preset.bpm when external clock is active)
 static uint32_t last_clock_us = 0;
@@ -359,7 +368,7 @@ static Preset DefaultPreset() {
     InitChannelLfo(p.ch[0]);
 
     // Ch2 — BP, left
-    p.ch[1].cutoff = 2000.f;
+    p.ch[1].cutoff = 1000.f;
     p.ch[1].resonance = 0.5f;
     p.ch[1].drive = 1.f;
     p.ch[1].attack = 0.005f;
@@ -373,7 +382,7 @@ static Preset DefaultPreset() {
     InitChannelLfo(p.ch[1]);
 
     // Ch3 — HP, right
-    p.ch[2].cutoff = 1200.f;
+    p.ch[2].cutoff = 600.f;
     p.ch[2].resonance = 0.5f;
     p.ch[2].drive = 1.f;
     p.ch[2].attack = 0.005f;
@@ -2174,6 +2183,10 @@ int main(void) {
         for (int i = 0; i < 4; i++)
             d.color[i] = kDefaultColor[i];
         d.brightness = 255;
+        d.run = 1; // sequencer running
+        d.bypass = 0;
+        d.dry = 0;  // dry level 0
+        d.bpm = 45; // ~120 BPM
         uiStore.Init(d, UI_QSPI_OFFSET);
     }
     if (uiStore.GetSettings().version != UI_VERSION)
@@ -2183,6 +2196,11 @@ int main(void) {
         for (int i = 0; i < 4; i++)
             ui_color[i] = s.color[i];
         ui_brightness = s.brightness;
+        // Restore persisted transport/global state (override patch 0's values).
+        seq_running = s.run != 0;
+        bypass = s.bypass != 0;
+        HandleCC(4, s.dry);  // dry level
+        HandleCC(19, s.bpm); // manual BPM
     }
 
     // --- Init MIDI ---
@@ -2303,6 +2321,34 @@ int main(void) {
                             ui_band_dirty[i] = true;
                 }
             }
+        }
+
+        // Persist transport/global state (run/bypass/dry/manual bpm) to QSPI so a
+        // power cycle restores it. Only when a value has been stable for one ~1 s
+        // tick (so we don't write mid-tweak) and actually differs from flash —
+        // PersistentStorage.Save() skips the erase/write if nothing changed.
+        // BPM under external clock is left alone (only the manual tempo persists).
+        if (now - ui_persist_ms >= 1000) {
+            ui_persist_ms = now;
+            UiSettings &s = uiStore.GetSettings();
+            uint8_t run = seq_running ? 1 : 0;
+            uint8_t byp = bypass ? 1 : 0;
+            uint8_t dry = CcGet(4);
+            uint8_t bpmv = midi_active ? s.bpm : CcGet(19);
+            if (run == ui_seen_run && byp == ui_seen_byp && dry == ui_seen_dry &&
+                bpmv == ui_seen_bpm) {
+                if (s.run != run || s.bypass != byp || s.dry != dry || s.bpm != bpmv) {
+                    s.run = run;
+                    s.bypass = byp;
+                    s.dry = dry;
+                    s.bpm = bpmv;
+                    uiStore.Save();
+                }
+            }
+            ui_seen_run = run;
+            ui_seen_byp = byp;
+            ui_seen_dry = dry;
+            ui_seen_bpm = bpmv;
         }
     }
 }
