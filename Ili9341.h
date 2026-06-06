@@ -70,7 +70,7 @@ class Ili9341 {
         scfg.clock_polarity = SpiHandle::Config::ClockPolarity::LOW;
         scfg.clock_phase = SpiHandle::Config::ClockPhase::ONE_EDGE;
         scfg.nss = SpiHandle::Config::NSS::HARD_OUTPUT;
-        scfg.baud_prescaler = SpiHandle::Config::BaudPrescaler::PS_8;
+        scfg.baud_prescaler = SpiHandle::Config::BaudPrescaler::PS_4;
         scfg.pin_config.sclk = seed::D8;
         scfg.pin_config.mosi = seed::D10;
         scfg.pin_config.miso = seed::D9; // unused, but the periph wants a pin
@@ -80,12 +80,17 @@ class Ili9341 {
         InitPanel();
     }
 
+    // Point the driver at an external RGB565 framebuffer (kWidth*kHeight, 32-byte
+    // aligned, in DMA-reachable memory e.g. SDRAM). All drawing then writes into
+    // this buffer; call FlushRows()/ServiceFlush() to push pixels to the panel.
+    void SetFramebuffer(uint16_t *fb) { fb_ = fb; }
+
     // Fill the whole screen with one colour.
     void FillScreen(uint16_t color) { FillRect(0, 0, kWidth, kHeight, color); }
 
-    // Fill a rectangle. Clipped to the panel bounds.
+    // Fill a rectangle in the framebuffer. Clipped to the panel bounds.
     void FillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
-        if (w <= 0 || h <= 0 || x >= kWidth || y >= kHeight)
+        if (!fb_ || w <= 0 || h <= 0 || x >= kWidth || y >= kHeight)
             return;
         if (x < 0) {
             w += x;
@@ -100,22 +105,14 @@ class Ili9341 {
         if (y + h > kHeight)
             h = kHeight - y;
 
-        SetAddrWindow(x, y, x + w - 1, y + h - 1);
-
-        // Fill a small staging buffer with the colour, then blit it in chunks.
-        const uint8_t hi = color >> 8;
-        const uint8_t lo = color & 0xFF;
-        for (size_t i = 0; i < kChunkPixels; ++i) {
-            chunk_[2 * i] = hi;
-            chunk_[2 * i + 1] = lo;
-        }
-
-        uint32_t remaining = (uint32_t)w * (uint32_t)h;
-        SetDc(true);
-        while (remaining) {
-            size_t n = remaining > kChunkPixels ? kChunkPixels : remaining;
-            spi_.BlockingTransmit(chunk_, n * 2, 1000);
-            remaining -= n;
+        // The panel wants RGB565 MSB-first. We DMA the framebuffer as a raw byte
+        // stream, and the M7 is little-endian, so store each pixel byte-swapped
+        // (hi,lo in memory) to put the high byte on the wire first.
+        const uint16_t c = (uint16_t)((color >> 8) | (color << 8));
+        for (int16_t row = 0; row < h; ++row) {
+            uint16_t *p = fb_ + (size_t)(y + row) * kWidth + x;
+            for (int16_t col = 0; col < w; ++col)
+                *p++ = c;
         }
     }
 
@@ -151,7 +148,60 @@ class Ili9341 {
         }
     }
 
+    // --- Background DMA flush -------------------------------------------
+    // The panel is written full-width, so a row range [y, y+h) is contiguous in
+    // the framebuffer and streams in one DMA. Transfers are capped at the DMA
+    // controller's 16-bit byte count, so tall ranges split into several jobs.
+
+    // Queue rows [y, y+h) for transfer. Non-blocking.
+    void FlushRows(int16_t y, int16_t h) {
+        if (!fb_)
+            return;
+        if (y < 0) {
+            h += y;
+            y = 0;
+        }
+        if (y + h > kHeight)
+            h = kHeight - y;
+        while (h > 0) {
+            int16_t n = h > kMaxJobRows ? kMaxJobRows : h;
+            int next = (q_tail_ + 1) % kQ;
+            if (next == q_head_)
+                break; // queue full (shouldn't happen for our layout)
+            q_[q_tail_].y = y;
+            q_[q_tail_].h = n;
+            q_tail_ = next;
+            y += n;
+            h -= n;
+        }
+    }
+
+    // True while any queued or in-flight transfer remains.
+    bool FlushBusy() const { return dma_busy_ || q_head_ != q_tail_; }
+
+    // Pump the queue: issue the next region's window commands (tiny, blocking)
+    // then kick a background DMA for its pixels. Call from the main loop.
+    void ServiceFlush() {
+        if (dma_busy_ || q_head_ == q_tail_ || !fb_)
+            return;
+        Job j = q_[q_head_];
+        q_head_ = (q_head_ + 1) % kQ;
+        SetAddrWindow(0, j.y, kWidth - 1, j.y + j.h - 1);
+        SetDc(true);
+        uint8_t *ptr = (uint8_t *)(fb_ + (size_t)j.y * kWidth);
+        size_t sz = (size_t)j.h * kWidth * 2;
+        // libDaisy's SPI DMA does no cache maintenance; clean so the controller
+        // reads the pixels we just wrote, not stale cache. (j.y*kWidth*2 and
+        // j.h*kWidth*2 are both multiples of 32, so this is cache-line aligned.)
+        SCB_CleanDCache_by_Addr((uint32_t *)ptr, (int32_t)sz);
+        dma_busy_ = true;
+        spi_.DmaTransmit(ptr, sz, nullptr, &Ili9341::DmaDone, this);
+    }
+
   private:
+    static void DmaDone(void *ctx, daisy::SpiHandle::Result) {
+        ((Ili9341 *)ctx)->dma_busy_ = false;
+    }
     // ILI9341 command set (only what we use).
     enum Cmd : uint8_t {
         SWRESET = 0x01,
@@ -264,7 +314,15 @@ class Ili9341 {
     daisy::GPIO dc_;
     daisy::GPIO backlight_;
 
-    // Staging buffer for block fills (kChunkPixels * 2 bytes).
-    static constexpr size_t kChunkPixels = 256;
-    uint8_t chunk_[kChunkPixels * 2];
+    // Flush queue. 240*136*2 = 65280 bytes <= the DMA's 16-bit byte count.
+    struct Job {
+        int16_t y, h;
+    };
+    static constexpr int kQ = 8;
+    static constexpr int16_t kMaxJobRows = 136;
+    uint16_t *fb_ = nullptr;
+    Job q_[kQ];
+    volatile int q_head_ = 0;
+    volatile int q_tail_ = 0;
+    volatile bool dma_busy_ = false;
 };

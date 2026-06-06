@@ -1,5 +1,5 @@
 #include "daisysp.h"
-#include "daisy_pod.h"
+#include "daisy_seed.h"
 #include "Ili9341.h"
 #include "Mux4067.h"
 #include <cmath>
@@ -191,9 +191,10 @@ static const float kDivBeats[8] = {
 static DelayLine<float, 192001> DSY_SDRAM_BSS delayL;
 static DelayLine<float, 192001> DSY_SDRAM_BSS delayR;
 
-static DaisyPod pod;
+static DaisySeed hw;
+static MidiUartHandler midi; // TRS MIDI — USART1 default pins (PB6/PB7 = D13/D14)
 static MidiUsbHandler usb_midi;
-static PersistentStorage<PatchStorage> patchStorage(pod.seed.qspi);
+static PersistentStorage<PatchStorage> patchStorage(hw.qspi);
 static Preset preset;
 static Channel ch[NUM_CH];
 static float sample_rate;
@@ -377,25 +378,25 @@ static inline float fasttanh(float x) {
 
 static void SendCC(uint8_t cc, uint8_t val) {
     uint8_t msg[3] = {0xB0, cc, val};
-    pod.midi.SendMessage(msg, 3);
+    midi.SendMessage(msg, 3);
     usb_midi.SendMessage(msg, 3);
 }
 
 static void SendProgramChange(uint8_t prog) {
     uint8_t msg[2] = {0xC0, prog};
-    pod.midi.SendMessage(msg, 2);
+    midi.SendMessage(msg, 2);
     usb_midi.SendMessage(msg, 2);
 }
 
 static void SendNoteOn(uint8_t note, uint8_t vel) {
     uint8_t msg[3] = {0x90, note, vel};
-    pod.midi.SendMessage(msg, 3);
+    midi.SendMessage(msg, 3);
     usb_midi.SendMessage(msg, 3);
 }
 
 static void SendNoteOff(uint8_t note) {
     uint8_t msg[3] = {0x80, note, 0};
-    pod.midi.SendMessage(msg, 3);
+    midi.SendMessage(msg, 3);
     usb_midi.SendMessage(msg, 3);
 }
 
@@ -756,12 +757,13 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
 //
 // IMPORTANT: everything here runs from the main loop, never the audio callback.
 // Every edit routes through HandleCC()/SendCC(), so the MIDI map stays the one
-// source of truth and external controllers stay in sync (just like the Pod's
-// own physical controls already do).
+// source of truth and external controllers stay in sync.
 //
 // Pin map comes from the `menu` board (Seed GPIO: display on D7/D8/D9/D10/D17/
-// D20, mux on D9/D15/D18/D19/D21). On a bare DaisySeed / Daisy Studio carrier
-// these are free; on a DaisyPod some overlap the Pod's onboard pots/LEDs.
+// D20, mux on D9/D15/D18/D19/D21). The firmware targets a bare DaisySeed (Daisy
+// Studio carrier), so nothing else claims these pins. (It is NOT DaisyPod-
+// compatible: the Pod uses D17-D21 for its LEDs/pots, which would fight the
+// display and mux.)
 // ============================================================
 
 static Ili9341 tft;
@@ -1300,8 +1302,8 @@ static void ui_navTurn(int dir) {
     ui_sec = (uint8_t)((ui_sec + dir + kNumSec) % kNumSec);
     ui_full_dirty = true;
 }
-static void ui_navPush() {
-    ui_ctx = (uint8_t)((ui_ctx + 1) % 4);
+static void ui_navCtx(int dir) {
+    ui_ctx = (uint8_t)((ui_ctx + dir + 4) % 4);
     if (ui_sec >= kNumSec)
         ui_sec = kNumSec - 1;
     ui_full_dirty = true;
@@ -1423,9 +1425,15 @@ static void ui_drawBand(int i) {
     }
 }
 
+// Off-screen RGB565 framebuffer in SDRAM (150 KB). Drawing writes here; pixels
+// reach the panel via background DMA. 32-byte aligned for cache-clean ops.
+static uint16_t menu_fb[Ili9341::kWidth * Ili9341::kHeight] __attribute__((aligned(32)))
+DSY_SDRAM_BSS;
+
 static void MenuInit() {
-    tft.Init(); // SPI1 first ...
-    mux.Init(); // ... then mux, so D9 ends configured as the mux SIG input
+    tft.Init();                  // SPI1 first ...
+    mux.Init();                  // ... then mux, so D9 ends configured as the mux SIG input
+    tft.SetFramebuffer(menu_fb); // all drawing now targets the framebuffer
     ui_full_dirty = true;
 }
 
@@ -1438,30 +1446,47 @@ static void MenuPoll(uint32_t now) {
         return;
     ui_next_scan_ms = now + 1;
 
+    // NAV: turn = section; hold + turn = cycle context; click (press+release with
+    // no turn) = next context. Tracks whether a turn happened during the hold so
+    // the release doesn't also register as a click.
+    static bool nav_turned_while_held = false;
+
     uint16_t bits = mux.Scan(12);
     for (int i = 0; i < 4; i++) {
         uint8_t a = (bits >> (3 * i + 0)) & 1;
         uint8_t bbit = (bits >> (3 * i + 1)) & 1;
         bool sw = (bits >> (3 * i + 2)) & 1;
         int d = q_enc[i].Update(a, bbit);
-        bool pressed = b_enc[i].Update(sw);
+        bool prevPressed = b_enc[i].state;
+        b_enc[i].Update(sw);
+        bool held = b_enc[i].state;
+        bool pressEdge = !prevPressed && held;
+        bool releaseEdge = prevPressed && !held;
 
-        int idx = (i == ENC_E1) ? 0 : (i == ENC_E2) ? 1 : (i == ENC_E3) ? 2 : -1;
-        if (d != 0) {
-            if (i == ENC_NAV)
-                ui_navTurn(d);
-            else if (idx >= 0 && idx < ui_cur().n) {
-                ui_bandTurn(ui_cur().bands[idx], d);
-                ui_band_dirty[idx] = true;
+        if (i == ENC_NAV) {
+            if (pressEdge)
+                nav_turned_while_held = false;
+            if (d != 0) {
+                if (held) {
+                    ui_navCtx(d); // shifted: cycle CH1/CH2/CH3/GLOBAL
+                    nav_turned_while_held = true;
+                } else {
+                    ui_navTurn(d); // section
+                }
             }
+            if (releaseEdge && !nav_turned_while_held)
+                ui_navCtx(1); // plain click: next context (channel)
+            continue;
         }
-        if (pressed) {
-            if (i == ENC_NAV)
-                ui_navPush();
-            else if (idx >= 0 && idx < ui_cur().n) {
-                ui_bandPush(ui_cur().bands[idx]);
-                ui_full_dirty = true;
-            }
+
+        int idx = (i == ENC_E1) ? 0 : (i == ENC_E2) ? 1 : 2;
+        if (d != 0 && idx < ui_cur().n) {
+            ui_bandTurn(ui_cur().bands[idx], d);
+            ui_band_dirty[idx] = true;
+        }
+        if (pressEdge && idx < ui_cur().n) {
+            ui_bandPush(ui_cur().bands[idx]);
+            ui_full_dirty = true;
         }
     }
 }
@@ -1471,6 +1496,10 @@ static void MenuRender(uint32_t now) {
     bool any =
         ui_full_dirty || ui_foot_dirty || ui_band_dirty[0] || ui_band_dirty[1] || ui_band_dirty[2];
     if (!any)
+        return;
+    // Single framebuffer: don't redraw into it while a previous flush is still
+    // streaming it out over DMA. Drains first, which also coalesces fast turns.
+    if (tft.FlushBusy())
         return;
     if (now - ui_last_render_ms < 20)
         return;
@@ -1485,14 +1514,17 @@ static void MenuRender(uint32_t now) {
         ui_full_dirty = false;
         ui_foot_dirty = false;
         ui_band_dirty[0] = ui_band_dirty[1] = ui_band_dirty[2] = false;
+        tft.FlushRows(0, Ili9341::kHeight);
     } else {
         for (int i = 0; i < 3; i++)
             if (ui_band_dirty[i]) {
                 ui_drawBand(i);
                 ui_band_dirty[i] = false;
+                tft.FlushRows(30 + i * 90, 90);
             }
         ui_drawFooter();
         ui_foot_dirty = false;
+        tft.FlushRows(300, 20);
     }
 }
 
@@ -1680,9 +1712,10 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
 // ============================================================
 
 int main(void) {
-    pod.Init();
-    pod.SetAudioBlockSize(48);
-    sample_rate = pod.AudioSampleRate();
+    hw.Configure();
+    hw.Init(true); // boost to 480 MHz for audio + display headroom
+    hw.SetAudioBlockSize(48);
+    sample_rate = hw.AudioSampleRate();
 
     // --- Init load meters ---
     dspLoad.Init(sample_rate, 48, 10.f); // 10 Hz cutoff — fast enough for 250ms windows
@@ -1724,7 +1757,9 @@ int main(void) {
     preset = patchStorage.GetSettings().patches[0];
 
     // --- Init MIDI ---
-    pod.midi.StartReceive();
+    MidiUartHandler::Config midi_cfg; // defaults: USART1, RX=PB7 (D14), TX=PB6 (D13)
+    midi.Init(midi_cfg);
+    midi.StartReceive();
 
     MidiUsbHandler::Config usb_cfg;
     usb_cfg.transport_config.periph = MidiUsbTransport::Config::INTERNAL;
@@ -1732,7 +1767,7 @@ int main(void) {
     usb_midi.StartReceive();
 
     // --- Start audio ---
-    pod.StartAudio(AudioCallback);
+    hw.StartAudio(AudioCallback);
 
     // --- Init the menu UI (TFT + encoders). After audio so its blocking
     //     panel-reset delays don't hold up codec/MIDI bring-up. ---
@@ -1762,11 +1797,11 @@ int main(void) {
         }
 
         // Service MIDI (resets on UART overrun)
-        pod.midi.Listen();
+        midi.Listen();
         usb_midi.Listen();
 
         // Process events
-        ProcessMidi(pod.midi, true);
+        ProcessMidi(midi, true);
         ProcessMidi(usb_midi, false);
 
         // Internal clock — only when no MIDI clock is present
@@ -1796,71 +1831,14 @@ int main(void) {
             }
         }
 
-        // Physical controls
-        pod.ProcessDigitalControls();
-
-        // Button 1: toggle start / stop (stop resets to step 0)
-        if (pod.button1.RisingEdge()) {
-            seq_running = !seq_running;
-            if (!seq_running) {
-                cur_step = 0;
-                tick_accum = 0.f;
-            }
-            SendCC(15, seq_running ? 127 : 0);
-        }
-
-        // Button 2: tap tempo — sets BPM from interval between taps (< 2 s apart)
-        if (pod.button2.RisingEdge()) {
-            uint32_t gap = now - tap_last_ms;
-            if (gap > 0 && gap < 2000)
-                preset.bpm = fclamp(60000.f / (float)gap, 20.f, 300.f);
-            tap_last_ms = now;
-            uint8_t bpm_cc = (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
-            SendCC(19, bpm_cc);
-        }
-
-        // Encoder click: toggle bypass
-        if (pod.encoder.RisingEdge()) {
-            bypass = !bypass;
-            SendCC(18, bypass ? 127 : 0);
-        }
-
-        // Encoder turn: select pattern
-        int enc = pod.encoder.Increment();
-        if (enc != 0) {
-            preset.pattern = (uint8_t)((preset.pattern + NUM_PATTERNS + enc) % NUM_PATTERNS);
-            SendCC(14, preset.pattern * 8);
-        }
-
-        // LED 1: envelope brightness per channel (LP=blue, BP=green, HP=red)
-        pod.led1.Set(ch[2].env.GetValue(), // red   = HP
-                     ch[1].env.GetValue(), // green = BP
-                     ch[0].env.GetValue()  // blue  = LP
-        );
-
-        // LED 2:
-        //   Bypass              → solid white
-        //   MIDI clock active   → solid green while running, off while stopped
-        //   Internal clock mode → red beat-pulse while running, dim red while stopped
-        if (bypass) {
-            pod.led2.Set(1.f, 1.f, 1.f);
-        } else if (midi_active) {
-            pod.led2.Set(0.f, seq_running ? 1.f : 0.f, 0.f);
-        } else {
-            if (seq_running) {
-                uint32_t elapsed = now - led2_flash_ms;
-                float red = (elapsed < 100) ? (1.f - elapsed / 100.f) : 0.f;
-                pod.led2.Set(red, 0.f, 0.f);
-            } else {
-                pod.led2.Set(0.15f, 0.f, 0.f); // dim red = internal clock mode, stopped
-            }
-        }
-
-        pod.UpdateLeds();
+        // Physical controls (run/tap/bypass/pattern) and status LEDs are all
+        // handled by the menu UI now. The old DaisyPod button/encoder/LED code
+        // is gone: those pins (D17-D21) are the display + mux, not Pod LEDs/pots.
 
         // Menu UI — encoder scan + screen redraw. Never touches audio.
         MenuPoll(now);
         MenuRender(now);
+        tft.ServiceFlush(); // pump the background DMA flush queue
 
         // Smooth main-loop iteration time (µs) and track per-window peak
         float loopUs = (System::GetTick() - loopStart) / ticksPerUs;
