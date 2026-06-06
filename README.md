@@ -25,7 +25,22 @@ git submodule update --init --recursive
 make all
 ```
 
-Flash with the Daisy web programmer or `make program-dfu`.
+## Flashing
+
+The app runs from the Daisy's 8 MB external **QSPI** flash (`APP_TYPE = BOOT_QSPI`),
+not the 128 KB internal flash. Because the on-board micro-USB is blocked by the
+menu header, flashing is done over **SWD/JTAG with an ST-Link**, not DFU:
+
+```bash
+make program             # build/triptech.elf -> QSPI (0x90040000), verify, reset
+make program-bootloader  # one-time: Daisy bootloader -> internal flash (0x08000000)
+```
+
+This uses OpenOCD with the ST-Link **DAP** driver (`PGM_DEVICE = interface/stlink-dap.cfg`)
+plus `daisy_qspi.cfg`, which brings up the QUADSPI and unlocks the IS25LP064A so
+OpenOCD's `stmqspi` driver can write it. (The default HLA ST-Link driver makes
+`stmqspi` hang — DAP mode is required.) Override the probe with
+`make program PGM_DEVICE=...`.
 
 ## Clock Sources
 
