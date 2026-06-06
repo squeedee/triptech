@@ -257,6 +257,11 @@ static uint32_t g_step_ms = 0;     // timestamp of last sequencer step (global d
 static uint32_t tap_last_ms = 0;   // timestamp of last tap-tempo tap
 static bool bypass = false;
 static bool ch_muted[NUM_CH] = {false, false, false};
+static bool ch_solo[NUM_CH] = {false, false, false};
+
+// A channel is silenced if it's muted, or if any channel is soloed and it isn't.
+static inline bool any_solo() { return ch_solo[0] || ch_solo[1] || ch_solo[2]; }
+static inline bool ch_silenced(int c) { return ch_muted[c] || (any_solo() && !ch_solo[c]); }
 
 // MIDI CC base per channel — 16 CC slots each (offsets 0-15 used)
 static constexpr int kCcBase[NUM_CH] = {20, 36, 52};
@@ -951,7 +956,7 @@ static const Band kTone[] = {
 static const Band kEnv[] = {
     {"ATTACK", B_CONT, 4, 1, F_ATTACK, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"DECAY", B_CONT, 5, 1, F_DECAY, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"LEVEL", B_CONT, 6, 1, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"LEVEL/MUTE", B_CONT, 6, 1, F_LEVEL, 0, P_MUTE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Band kLfo[] = {
     {"SHAPE",
@@ -1284,11 +1289,18 @@ static void ui_text(const Band &b, char *out) {
     *p = 0;
 }
 
+// Shift + click on a mute band solos its channel (toggle).
+static void ui_bandSolo(const Band &b) {
+    int sc = b.chRel ? ui_ctx : b.muteCh;
+    ch_solo[sc] = !ch_solo[sc];
+}
+
 // --- edits: all route through HandleCC()+SendCC() ---
 static void ui_bandPush(const Band &b) {
     switch (b.push) {
     case P_MUTE: {
-        ch_muted[b.muteCh] = !ch_muted[b.muteCh];
+        int mc = b.chRel ? ui_ctx : b.muteCh; // per-channel band mutes the current channel
+        ch_muted[mc] = !ch_muted[mc];
         SendCC(68, (ch_muted[0] ? 1 : 0) | (ch_muted[1] ? 2 : 0) | (ch_muted[2] ? 4 : 0));
         break;
     }
@@ -1501,8 +1513,10 @@ static void ui_drawDots() {
     for (int c = 0; c < kDotN; c++) {
         float e;
         uint16_t col;
+        bool muted = false;
         if (c < 3) {
-            e = ch[c].env.GetValue();
+            muted = ch_silenced(c); // muted, or silenced by another channel's solo
+            e = muted ? 0.f : ch[c].env.GetValue();
             col = ui_color[c];
         } else {
             uint32_t dt = now - g_step_ms; // global step tick (~120 ms flash)
@@ -1513,7 +1527,13 @@ static void ui_drawDots() {
         tft.FillRect(bx, kDotY - 2, 13, 13, kHdrBg); // clear dot + box area
         int x = kDotCx[c] - kDotSz / 2;
         tft.DrawRect(x, kDotY, kDotSz, kDotSz, kPanel2); // idle ring
-        tft.FillRect(x + 1, kDotY + 1, kDotSz - 2, kDotSz - 2, ui_scale(col, e));
+        tft.FillRect(x + 1, kDotY + 1, kDotSz - 2, kDotSz - 2, ui_scale(col, muted ? 0.2f : e));
+        if (muted) { // cross it out
+            for (int i = 0; i < kDotSz; i++) {
+                tft.FillRect(x + i, kDotY + i, 1, 1, Ili9341::kRed);
+                tft.FillRect(x + (kDotSz - 1 - i), kDotY + i, 1, 1, Ili9341::kRed);
+            }
+        }
         if (c == sel)
             tft.DrawRect(bx, kDotY - 2, 13, 13, col); // selected-context box
     }
@@ -1574,10 +1594,13 @@ static void ui_drawBand(int i) {
     tft.FillRect(2, y, 3, h, col); // accent stripe
     tft.DrawString(8, y + 5, b.label, col, kPanel, 1);
 
-    // status badge (mute / lfo sync / delay sync)
+    // status badge (solo / mute / lfo sync / delay sync)
     const char *badge = nullptr;
     uint16_t bcol = Ili9341::kRed;
-    if (b.push == P_MUTE && ch_muted[b.muteCh]) {
+    if (b.push == P_MUTE && ch_solo[b.chRel ? ui_ctx : b.muteCh]) {
+        badge = "SOLO";
+        bcol = Ili9341::kYellow;
+    } else if (b.push == P_MUTE && ch_muted[b.chRel ? ui_ctx : b.muteCh]) {
         badge = "MUTE";
         bcol = Ili9341::kRed;
     } else if (b.push == P_LFOSYNC) {
@@ -1750,12 +1773,17 @@ static void MenuPoll(uint32_t now) {
 
         int idx = (i == ENC_E1) ? 0 : (i == ENC_E2) ? 1 : 2;
 
-        // Hidden mode entry/exit: hold NAV, then click E1 (settings) or E2 (VU).
+        // Shift (NAV held) + click. E1/E2 are the hidden mode toggles (settings /
+        // VU); on any other encoder, shift-click on a mute band solos it instead.
         if (pressEdge && b_enc[ENC_NAV].state) {
             if (i == ENC_E1)
                 ui_settingsToggle();
             else if (i == ENC_E2)
                 ui_vuToggle();
+            else if (idx >= 0 && idx < ui_cur().n && ui_cur().bands[idx].push == P_MUTE) {
+                ui_bandSolo(ui_cur().bands[idx]);
+                ui_full_dirty = true;
+            }
             nav_turned_while_held = true; // suppress NAV's own click on release
             continue;
         }
@@ -2051,7 +2079,7 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
             float env = ch[c].env.Process();
             float lvl =
                 fclamp(preset.ch[c].level + preset.ch[c].ampLfoAmount * ch[c].lfoVal, 0.f, 1.f);
-            if (ch_muted[c])
+            if (ch_silenced(c))
                 lvl = 0.f;
             float chL = filtL * env * lvl;
             float chR = filtR * env * lvl;
