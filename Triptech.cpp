@@ -2050,7 +2050,16 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         float target = fclamp(delaySec * sample_rate, 1.f, 192000.f);
         if (delaySmpsSmoothed < 0.f)
             delaySmpsSmoothed = target; // seed on first block
-        delaySmpsSmoothed += (target - delaySmpsSmoothed) * 0.01f;
+        // Deadband, then slew. Hold the read pointer perfectly still unless the
+        // target moves by more than ~0.5% (a real tempo/division change). Without
+        // this, the clock-derived length wiggles every block, and continuously
+        // micro-modulating a high-feedback delay line makes it resonate into noise
+        // — the difference vs. a rock-steady internal clock. A genuine change
+        // exceeds the band and slews smoothly (tape-style).
+        float diff = target - delaySmpsSmoothed;
+        float band = delaySmpsSmoothed * 0.005f;
+        if (diff > band || diff < -band)
+            delaySmpsSmoothed += diff * 0.02f;
         delayL.SetDelay(delaySmpsSmoothed);
         delayR.SetDelay(delaySmpsSmoothed);
     }
