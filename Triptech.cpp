@@ -6,9 +6,11 @@
 #include <cstring>
 #include <cstdlib>
 
+#include "Hardware.h" // extern peripheral handles (hw, midi, usb_midi)
 #include "Model.h"    // shared data model: constants, POD presets, scale helpers
 #include "State.h"    // shared runtime state: preset, channels, transport
 #include "ParamMap.h" // CC map module (parammap::Handle / parammap::Get)
+#include "MidiOut.h"  // outbound MIDI module (SendCC/SendNote.../SendAllState)
 
 using namespace daisysp;
 using namespace daisy;
@@ -102,9 +104,11 @@ static const bool kPatterns[NUM_PATTERNS][NUM_STEPS][NUM_CH] = {
 static DelayLine<float, 192001> DSY_SDRAM_BSS delayL;
 static DelayLine<float, 192001> DSY_SDRAM_BSS delayR;
 
-static DaisySeed hw;
-static MidiUartHandler midi; // TRS MIDI — USART1 default pins (PB6/PB7 = D13/D14)
-static MidiUsbHandler usb_midi;
+// hw, midi, usb_midi are declared extern in Hardware.h; defined here (non-static)
+// so the header modules can reach them. hw must precede anything built from hw.qspi.
+DaisySeed hw;
+MidiUartHandler midi; // TRS MIDI — USART1 default pins (PB6/PB7 = D13/D14)
+MidiUsbHandler usb_midi;
 static PersistentStorage<PatchStorage> patchStorage(hw.qspi);
 
 // Global UI prefs persisted in QSPI, in its own sector well clear of the patch
@@ -348,46 +352,8 @@ static inline float fasttanh(float x) {
     return x * (27.f + x2) / (27.f + 9.f * x2);
 }
 
-// MIDI out helpers — every message goes to BOTH ports (TRS + USB) so an attached
-// controller and a host DAW stay in sync regardless of which one is driving us.
-static void SendCC(uint8_t cc, uint8_t val) {
-    uint8_t msg[3] = {0xB0, cc, val};
-    midi.SendMessage(msg, 3);
-    usb_midi.SendMessage(msg, 3);
-}
-
-static void SendProgramChange(uint8_t prog) {
-    uint8_t msg[2] = {0xC0, prog};
-    midi.SendMessage(msg, 2);
-    usb_midi.SendMessage(msg, 2);
-}
-
-static void SendNoteOn(uint8_t note, uint8_t vel) {
-    uint8_t msg[3] = {0x90, note, vel};
-    midi.SendMessage(msg, 3);
-    usb_midi.SendMessage(msg, 3);
-}
-
-static void SendNoteOff(uint8_t note) {
-    uint8_t msg[3] = {0x80, note, 0};
-    midi.SendMessage(msg, 3);
-    usb_midi.SendMessage(msg, 3);
-}
-
-// Broadcast the entire live state — every global CC, the program-change for the
-// current patch, and all 16 per-channel CCs × NUM_CH — so a freshly-connected
-// controller can mirror the device. Triggered by CC 119 or the PATCH "STATE" action.
-void SendAllState() {
-    static const uint8_t kGlobalCc[] = {1, 2, 3, 4, 5, 6, 14, 15, 18, 19, 68};
-    for (uint8_t cc : kGlobalCc)
-        SendCC(cc, parammap::Get(cc));
-    SendProgramChange(cur_patch);
-    for (int c = 0; c < NUM_CH; c++) {
-        int base = kCcBase[c];
-        for (int off = 0; off <= 15; off++)
-            SendCC(base + off, parammap::Get(base + off));
-    }
-}
+// SendCC / SendProgramChange / SendNoteOn / SendNoteOff / SendAllState now live in
+// MidiOut.h.
 
 // ============================================================
 // Patch management
@@ -2101,9 +2067,9 @@ int main(void) {
         uint32_t now = System::GetNow();
 
         // Clock source timeouts
-        if (trs_active && (now - trs_last_ms) > TRS_TIMEOUT_MS)
+        if (trs_active && (now - trs_last_ms) > CLOCK_TIMEOUT_MS)
             trs_active = false;
-        if (usb_clock_active && (now - usb_last_ms) > TRS_TIMEOUT_MS)
+        if (usb_clock_active && (now - usb_last_ms) > CLOCK_TIMEOUT_MS)
             usb_clock_active = false;
 
         bool midi_active = trs_active || usb_clock_active;

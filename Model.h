@@ -21,7 +21,7 @@ static constexpr int NUM_STEPS = 16;
 static constexpr int NUM_PATTERNS = 16;
 static constexpr int TICKS_PER_STEP = 6; // 24 PPQN → 6 ticks per 16th note
 static constexpr int NUM_PATCHES = 64;
-static constexpr uint32_t TRS_TIMEOUT_MS = 500;
+static constexpr uint32_t CLOCK_TIMEOUT_MS = 500;
 static constexpr float HALF_PI = 1.5707963268f;
 
 // ============================================================
