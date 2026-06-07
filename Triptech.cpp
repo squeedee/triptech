@@ -58,6 +58,17 @@ static float sample_rate; // audio sample rate in Hz, captured in main() after h
 static float soft_gain = 0.f;
 static float soft_inc = 1.f;
 
+// Master peak limiter: an envelope follower with instant attack + slow release.
+// Feedforward (gain derived from the current sample's own peak), so it bounds every
+// output sample to <= kLimCeil with no lookahead/latency and no overshoot — the
+// "user never has to manage levels" safety net. lim_rel is set in main().
+static float limEnv = 0.f;               // linked L/R peak envelope
+static float lim_rel = 0.999f;           // release coefficient (per-sample decay)
+static constexpr float kLimCeil = 0.95f; // ceiling (~-0.45 dBFS), below the soft knee
+// Resonance makeup: attenuate each channel as Q rises so a high-Q peak doesn't slam
+// the bus (keeps the limiter relaxed/transparent). makeup = 1/(1 + kResComp*res).
+static constexpr float kResComp = 1.5f;
+
 // Slewed delay length (samples). The synced length is derived from preset.bpm,
 // which jitters when slaved to external MIDI clock; slewing absorbs that so the
 // read pointer never jumps. -1 = uninitialised (seed on first audio block).
@@ -190,15 +201,19 @@ static Preset DefaultPreset() {
 
 // CC <-> value scaling helpers (CcLin/CcLog/CcLinInv/CcLogInv) now live in Model.h.
 
-// Cheap rational tanh approximation for the output soft-clipper — hard-saturates
-// beyond ±3 so the per-sample mix can't overflow without a real tanhf() call.
-static inline float fasttanh(float x) {
-    if (x > 3.f)
-        return 1.f;
-    if (x < -3.f)
-        return -1.f;
-    float x2 = x * x;
-    return x * (27.f + x2) / (27.f + 9.f * x2);
+// Final-stage soft saturator. Transparent (unity gain) below ±kSatLin, then a
+// smooth knee that asymptotes to a hard ±1 ceiling — no flat-top corner like the
+// old ±3 hard-clamp. The master limiter (below) holds the bus under the ceiling,
+// so normal signal passes untouched; this only rounds off the rare overshoot.
+static inline float softclip(float x) {
+    constexpr float lin = 0.8f;       // transparent below this magnitude
+    constexpr float knee = 1.f - lin; // soft-knee width up to the ±1 ceiling
+    float a = fabsf(x);
+    if (a <= lin)
+        return x;
+    float over = a - lin;
+    float shaped = lin + knee * over / (over + knee); // -> 1 as over -> inf
+    return x < 0.f ? -shaped : shaped;
 }
 
 // SendCC / SendProgramChange / SendNoteOn / SendNoteOff / SendAllState now live in
@@ -247,6 +262,7 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
 
     // Per-block: update filter + delay coefficients once, cache pan/mode flags.
     float panL[NUM_CH], panR[NUM_CH];
+    float makeup[NUM_CH]; // resonance makeup gain per channel
     bool use6[NUM_CH], use24[NUM_CH];
 
     // Delay time: synced to clock divisions or free ms. The synced length is
@@ -340,6 +356,7 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
 
         panL[c] = cosf(preset.ch[c].pan * HALF_PI);
         panR[c] = sinf(preset.ch[c].pan * HALF_PI);
+        makeup[c] = 1.f / (1.f + kResComp * preset.ch[c].resonance);
     }
 
     for (size_t i = 0; i < size; i++) {
@@ -395,7 +412,8 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
 
             float env = ch[c].env.Process();
             float lvl =
-                fclamp(preset.ch[c].level + preset.ch[c].ampLfoAmount * ch[c].lfoVal, 0.f, 1.f);
+                fclamp(preset.ch[c].level + preset.ch[c].ampLfoAmount * ch[c].lfoVal, 0.f, 1.f) *
+                makeup[c]; // resonance makeup keeps high-Q peaks in check
             if (ch_silenced(c))
                 lvl = 0.f;
             float chL = filtL * env * lvl;
@@ -420,10 +438,20 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
         float outL = chanL + delOutL + inL * preset.dryLevel;
         float outR = chanR + delOutR + inR * preset.dryLevel;
 
-        // Soft clip — handles summing of multiple channels gracefully.
+        // Master limiter: pull the linked L/R bus under the ceiling. Instant attack
+        // (env jumps to a new peak) bounds this very sample; slow release avoids
+        // pumping. The gain can only reduce, so it never adds level — just prevents
+        // the channel sum / delay feedback (worst at high Q) from ever clipping.
+        float peak = fmaxf(fabsf(outL), fabsf(outR));
+        limEnv = peak > limEnv ? peak : peak + (limEnv - peak) * lim_rel;
+        float limGain = limEnv > kLimCeil ? kLimCeil / limEnv : 1.f;
+        outL *= limGain;
+        outR *= limGain;
+
+        // Soft clip — final smooth ceiling (transparent below the limiter's level).
         // soft_gain ramps the output up from silence at startup (anti-pop).
-        out[0][i] = fasttanh(outL) * soft_gain;
-        out[1][i] = fasttanh(outR) * soft_gain;
+        out[0][i] = softclip(outL) * soft_gain;
+        out[1][i] = softclip(outR) * soft_gain;
         if (soft_gain < 1.f)
             soft_gain = soft_gain + soft_inc > 1.f ? 1.f : soft_gain + soft_inc;
         boL = fabsf(out[0][i]) > boL ? fabsf(out[0][i]) : boL;
@@ -446,7 +474,8 @@ int main(void) {
     hw.Init(true); // boost to 480 MHz for audio + display headroom
     hw.SetAudioBlockSize(48);
     sample_rate = hw.AudioSampleRate();
-    soft_inc = 1.f / (sample_rate * 0.15f); // ~150 ms output fade-in
+    soft_inc = 1.f / (sample_rate * 0.15f);      // ~150 ms output fade-in
+    lim_rel = expf(-1.f / (0.1f * sample_rate)); // ~100 ms limiter release
 
     // --- Init load meters ---
     telemetry::Init(sample_rate); // 10 Hz cutoff — fast enough for 250ms windows
