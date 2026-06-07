@@ -102,6 +102,16 @@ inline uint8_t Get(uint8_t cc) {
 // authority on the CC map: global params (delay/seq/transport) are matched first,
 // then the per-channel block (kCcBase[c] + offset 0–15). Get() is its inverse.
 inline void Handle(uint8_t ctrl, uint8_t val) {
+    // Any edit to a stored patch parameter marks the live preset dirty (for the
+    // load/save prompts). Transport (15 run / 18 bypass / 68 mute) and actions
+    // (87 save / 119 sync) are not patch state, so they don't. The external clock
+    // writes preset.bpm directly (not via Handle), so it never falsely dirties.
+    bool patchCC = (ctrl >= kCcBase[0] && ctrl <= kCcBase[NUM_CH - 1] + 15) || ctrl == 1 ||
+                   ctrl == 2 || ctrl == 3 || ctrl == 4 || ctrl == 5 || ctrl == 6 || ctrl == 14 ||
+                   ctrl == 19;
+    if (patchCC)
+        patch_dirty = true;
+
     switch (ctrl) {
     case 1:
         preset.delayParam = val;

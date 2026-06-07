@@ -33,6 +33,11 @@ static bool ui_full_dirty = true;  // full-screen redraw pending
 static bool ui_foot_dirty = false; // footer (BPM) redraw pending
 static bool ui_band_dirty[3] = {true, true, true};
 
+// Pending load/save confirmation prompt. CONFIRM_NONE = no prompt on screen.
+enum ConfirmAction : uint8_t { CONFIRM_NONE, CONFIRM_LOAD, CONFIRM_SAVE };
+static uint8_t ui_confirm = CONFIRM_NONE;
+static uint8_t ui_confirm_slot = 0; // target patch slot for the pending action
+
 // ============================================================
 // Menu UI — 240x320 ILI9341 TFT + 4 PEC11H encoders (CD74HC4067 mux)
 //
@@ -601,6 +606,7 @@ static void ui_bandPush(const Band &b) {
     }
     case P_DELAYSYNC:
         preset.delaySynced = !preset.delaySynced;
+        patch_dirty = true;
         SendCC(6, preset.delaySynced ? 127 : 0);
         break;
     case P_RUN:
@@ -618,6 +624,7 @@ static void ui_bandPush(const Band &b) {
             preset.bpm = fclamp(60000.f / (float)gap, 20.f, 300.f);
         tap_last_ms = now;
         manual_bpm_cc = (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
+        patch_dirty = true;
         SendCC(19, manual_bpm_cc);
         break;
     }
@@ -626,10 +633,20 @@ static void ui_bandPush(const Band &b) {
         SendCC(18, bypass ? 127 : 0);
         break;
     case P_LOAD:
-        persist::LoadPatch(ui_patch_sel);
+        // Loading discards live edits — confirm first if the patch is dirty.
+        if (patch_dirty) {
+            ui_confirm = CONFIRM_LOAD;
+            ui_confirm_slot = ui_patch_sel;
+            ui_full_dirty = true;
+        } else {
+            persist::LoadPatch(ui_patch_sel);
+        }
         break;
     case P_SAVE:
-        persist::SavePatch(ui_patch_sel);
+        // Saving overwrites the slot — always confirm.
+        ui_confirm = CONFIRM_SAVE;
+        ui_confirm_slot = ui_patch_sel;
+        ui_full_dirty = true;
         break;
     case P_SYNC:
         SendAllState();
@@ -783,6 +800,19 @@ static void ui_mixToggle() {
     if (ui_mix)
         ui_settings = ui_vu = false; // modes are exclusive
     ui_sec = 0;
+    ui_full_dirty = true;
+}
+
+// Resolve a pending load/save prompt: on confirm, run the action; either way the
+// prompt closes and the normal page redraws.
+static void ui_confirmResolve(bool ok) {
+    if (ok) {
+        if (ui_confirm == CONFIRM_LOAD)
+            persist::LoadPatch(ui_confirm_slot);
+        else if (ui_confirm == CONFIRM_SAVE)
+            persist::SavePatch(ui_confirm_slot);
+    }
+    ui_confirm = CONFIRM_NONE;
     ui_full_dirty = true;
 }
 
@@ -1031,6 +1061,9 @@ static void ui_drawBand(int i) {
                 : b.push == P_SAVE ? "PUSH:SAVE" : b.push == P_SYNC ? "PUSH:SYNC" : "";
         if (hint[0])
             tft.DrawString(8, y + 62, hint, kDimCol, kPanel, 1);
+        // Unsaved-edits indicator on the PATCH slot band.
+        if (b.kind == B_PATCH && patch_dirty)
+            tft.DrawString(8, y + 22, "MODIFIED", Ili9341::kYellow, kPanel, 1);
     }
 }
 
@@ -1074,6 +1107,15 @@ static void MenuPoll(uint32_t now) {
         bool held = b_enc[i].state;
         bool pressEdge = !prevPressed && held;
         bool releaseEdge = prevPressed && !held;
+
+        // A load/save prompt swallows all input: E1 confirms, E3 or NAV-click cancels.
+        if (ui_confirm != CONFIRM_NONE) {
+            if (i == ENC_E1 && pressEdge)
+                ui_confirmResolve(true);
+            else if ((i == ENC_E3 && pressEdge) || (i == ENC_NAV && releaseEdge))
+                ui_confirmResolve(false);
+            continue;
+        }
 
         if (i == ENC_NAV) {
             if (pressEdge)
@@ -1159,7 +1201,7 @@ static void ui_drawVuStatic() {
         tft.DrawRect(kVuBarX - 1, kVuY[i] - 1, kVuBarW + 2, kVuBarH + 2, kPanel2);
     }
     tft.FillRect(0, 300, 240, 20, kFootBg);
-    tft.DrawString(4, 306, "NAV CLICK = EXIT", kDimCol, kFootBg, 1);
+    tft.DrawString(4, 306, "NAV CLICK EXITS", kDimCol, kFootBg, 1);
 }
 
 // Redraw the four I/O level bars from the latest peak-hold values, scaled
@@ -1182,8 +1224,59 @@ static void ui_drawVuBars() {
     }
 }
 
+// Load/save confirmation prompt. Laid out as three encoder-aligned bands so the
+// action text sits beside its physical encoder: E1 (top) confirms, E3 (bottom)
+// cancels (NAV-click also cancels); E2 (middle) shows the target slot. Confirm/
+// cancel labels are right-aligned with a '~' right-arrow pointing at the knob.
+static void ui_drawConfirm() {
+    bool save = (ui_confirm == CONFIRM_SAVE);
+    tft.FillScreen(Ili9341::kBlack);
+    tft.FillRect(0, 0, 240, 28, kHdrBg);
+    tft.FillRect(4, 5, 46, 18, Ili9341::kYellow);
+    tft.DrawString(4 + (46 - ui_strw("!", 1)) / 2, 8, "!", Ili9341::kBlack, Ili9341::kYellow, 1);
+    tft.DrawString(54, 10, save ? "CONFIRM SAVE" : "CONFIRM LOAD", kTxt, kHdrBg, 1);
+
+    for (int i = 0; i < 3; i++)
+        tft.FillRect(2, 30 + i * 90, 236, 86, kPanel);
+
+    // E1 (top) — confirm action, right-aligned with arrow (green).
+    const char *cf = save ? "SAVE ~" : "LOAD ~";
+    tft.FillRect(2, 30, 3, 86, Ili9341::kGreen); // accent stripe
+    tft.DrawString(8, 35, "CONFIRM", Ili9341::kGreen, kPanel, 1);
+    tft.DrawString(232 - ui_strw(cf, 3), 60, cf, Ili9341::kGreen, kPanel, 3);
+
+    // E2 (middle) — target slot + what the action does.
+    char tgt[8];
+    char *p = ui_puts(tgt, "P");
+    if (ui_confirm_slot + 1 < 10)
+        *p++ = '0';
+    p = ui_putl(p, ui_confirm_slot + 1);
+    *p = 0;
+    tft.DrawString(8, 125, save ? "OVERWRITES" : "DISCARDS EDITS", kDimCol, kPanel, 1);
+    tft.DrawString(232 - ui_strw(tgt, 3), 150, tgt, kTxt, kPanel, 3);
+
+    // E3 (bottom) — cancel, right-aligned with arrow (red).
+    tft.FillRect(2, 210, 3, 86, Ili9341::kRed); // accent stripe
+    tft.DrawString(8, 215, "DISMISS", Ili9341::kRed, kPanel, 1);
+    tft.DrawString(232 - ui_strw("CANCEL ~", 3), 240, "CANCEL ~", Ili9341::kRed, kPanel, 3);
+
+    tft.FillRect(0, 300, 240, 20, kFootBg);
+    tft.DrawString(4, 306, "NAV CLICK CANCELS", kDimCol, kFootBg, 1);
+}
+
 // Redraw whatever is dirty, batched to ~50 Hz. Main loop only.
 static void MenuRender(uint32_t now) {
+    if (ui_confirm != CONFIRM_NONE) { // confirm prompt: static, redraw only on change
+        if (!ui_full_dirty)
+            return;
+        if (tft.FlushBusy())
+            return;
+        ui_last_render_ms = now;
+        ui_drawConfirm();
+        ui_full_dirty = false;
+        tft.FlushRows(0, Ili9341::kHeight);
+        return;
+    }
     if (ui_vu) { // VU page: static layout once, bars refreshed ~30 Hz
         if (!ui_full_dirty && now - ui_last_render_ms < 33)
             return;
@@ -1239,7 +1332,7 @@ static void MenuRender(uint32_t now) {
 // Refresh the channel activity dots (~30 Hz) without a full header redraw.
 static uint32_t ui_dots_ms = 0;
 static void MenuDots(uint32_t now) {
-    if (ui_vu || ui_settings)
+    if (ui_vu || ui_settings || ui_confirm)
         return; // dots live in the normal header only
     if (now - ui_dots_ms < 33)
         return;

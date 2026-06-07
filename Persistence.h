@@ -59,6 +59,7 @@ inline void LoadPatch(uint8_t idx) {
         return;
     cur_patch = idx;
     preset = patchStorage.GetSettings().patches[idx];
+    patch_dirty = false; // live state now matches the loaded slot
     SendAllState();
 }
 
@@ -70,6 +71,7 @@ inline void SavePatch(uint8_t idx) {
     PatchStorage &store = patchStorage.GetSettings();
     store.patches[idx] = preset;
     patchStorage.Save();          // brief audio glitch possible during flash write
+    patch_dirty = false;          // live state now matches the saved slot
     SendProgramChange(cur_patch); // echo back saved location
     SendCC(87, idx);              // confirm save to controller
 }

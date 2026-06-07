@@ -28,6 +28,7 @@ struct Channel {
 static Preset preset;              // live working preset — what the engine plays right now
 static Channel ch[NUM_CH];         // per-channel runtime DSP state (parallel to preset.ch[])
 static uint8_t cur_patch = 0;      // slot index of the most recently loaded/saved patch
+static bool patch_dirty = false;   // live preset edited since the last patch load/save
 static uint8_t manual_bpm_cc = 45; // last manually-set tempo as CC (external clock excluded)
 
 // --- Sequencer position ---
