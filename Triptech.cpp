@@ -6,20 +6,12 @@
 #include <cstring>
 #include <cstdlib>
 
+#include "Model.h"    // shared data model: constants, POD presets, scale helpers
+#include "State.h"    // shared runtime state: preset, channels, transport
+#include "ParamMap.h" // CC map module (parammap::Handle / parammap::Get)
+
 using namespace daisysp;
 using namespace daisy;
-
-// ============================================================
-// Constants
-// ============================================================
-
-static constexpr int NUM_CH = 3; // Ch1=0, Ch2=1, Ch3=2
-static constexpr int NUM_STEPS = 16;
-static constexpr int NUM_PATTERNS = 16;
-static constexpr int TICKS_PER_STEP = 6; // 24 PPQN → 6 ticks per 16th note
-static constexpr int NUM_PATCHES = 64;
-static constexpr uint32_t TRS_TIMEOUT_MS = 500;
-static constexpr float HALF_PI = 1.5707963268f;
 
 // ============================================================
 // Gate Patterns [pattern][step][channel]   (0=Ch1, 1=Ch2, 2=Ch3)
@@ -93,92 +85,8 @@ static const bool kPatterns[NUM_PATTERNS][NUM_STEPS][NUM_CH] = {
 };
 // clang-format on
 
-// ============================================================
-// Per-channel state
-// ============================================================
-
-// One channel's full voice definition: filter + envelope + LFO + output routing.
-// Stored values are in engineering units (Hz, seconds, 0–1), not raw CC bytes —
-// HandleCC()/CcGet() convert between the two.
-struct ChannelPreset {
-    float cutoff;        // Hz
-    float resonance;     // 0–0.95
-    float drive;         // 1–4 (pre-filter gain)
-    float attack;        // seconds
-    float decay;         // seconds
-    float level;         // 0–1
-    float pan;           // 0=left, 0.5=center, 1=right
-    float lfoAmount;     // -1 to +1 (14-bit bipolar, filter mod)
-    float delayAmount;   // 0–1 (post-amp send to delay)
-    float ampLfoAmount;  // -1 to +1 (amp mod depth)
-    float lfoDuty;       // 0–1 (waveform duty cycle)
-    uint8_t filterType;  // 0=LP, 1=BP, 2=HP, 3=Notch
-    uint8_t filterSlope; // 0=6dB, 1=12dB, 2=24dB
-    uint8_t lfoShape;    // 0=Saw, 1=RevSaw, 2=Tri, 3=Sin, 4=Sq
-    uint8_t lfoParam;    // CC raw value for rate
-    bool lfoSynced;      // true = clock-synced, false = free Hz
-};
-
-// A complete patch: the three channel voices plus the global sequencer, delay
-// and mix settings. This is the unit that gets saved/loaded as a "patch" and is
-// also what `preset` (the live working state) holds.
-struct Preset {
-    ChannelPreset ch[NUM_CH];
-    float bpm;             // 20–300
-    float delayFeedback;   // 0–0.95
-    float delayWidth;      // 0=mono, 1=full ping-pong
-    float dryLevel;        // 0–1
-    uint8_t pattern;       // 0–15
-    uint8_t delayParam;    // CC 1 raw value
-    uint8_t clockDivParam; // CC 5 raw value — pattern clock divider/multiplier
-    bool delaySynced;      // true = clock-synced divisions, false = free ms
-};
-
-// The whole named-patch bank as it lives in QSPI flash. `version` gates a
-// RestoreDefaults() migration when the struct layout changes; operator!= lets
-// PersistentStorage skip the flash write when nothing actually changed.
-struct PatchStorage {
-    uint32_t version;
-    Preset patches[NUM_PATCHES];
-    bool operator!=(const PatchStorage &o) const { return memcmp(this, &o, sizeof(*this)) != 0; }
-};
-
-static constexpr uint32_t PATCH_VERSION = 4;
-
-// Pattern clock divider/multiplier — steps-per-tick scaler.
-// CC byte 0–127 binned into 9 zones; midway (56–71, includes 64) = 1:1.
-static const float kClockRatios[9] = {
-    0.25f,     // /4    (slower)
-    1.f / 3.f, // /3
-    0.5f,      // /2
-    2.f / 3.f, // /1.5  (dotted slow)
-    1.f,       // 1:1   (midway)
-    1.5f,      // ×1.5  (dotted fast)
-    2.f,       // ×2    (faster)
-    3.f,       // ×3
-    4.f,       // ×4
-};
-
-// Bin a 0–127 CC byte into one of the 9 kClockRatios zones (64 → index 4 = 1:1).
-static inline uint8_t ClockDivIndex(uint8_t cc) {
-    uint8_t idx = cc * 9u / 128u;
-    return idx > 8 ? 8 : idx;
-}
-
-// Per-channel runtime DSP state — the live filters/envelope/LFO instances the
-// audio callback runs. Distinct from ChannelPreset (the stored parameters): the
-// active filter is chosen per block from the preset's type/slope.
-struct Channel {
-    Svf fltL, fltR;          // SVF: LP/HP/BP/Notch at 12 dB
-    LadderFilter ladL, ladR; // Ladder: LP/HP/BP at 12 or 24 dB
-    OnePole poleL, poleR;    // OnePole: LP/HP at 6 dB
-    AdEnv env;
-    float lfoPhase;    // 0–1 phase accumulator
-    float lfoVal;      // last computed LFO sample
-    uint8_t lfoAmtMsb; // 14-bit MSB cache for filter lfoAmount
-    bool note_active;
-    bool env_started;
-};
+// ChannelPreset / Preset / PatchStorage / PATCH_VERSION, kClockRatios +
+// ClockDivIndex, and the Channel runtime struct now live in Model.h / State.h.
 
 // ============================================================
 // Globals
@@ -189,17 +97,7 @@ struct Channel {
 // Max 192000 samples ≈ 4 s at 48 kHz (covers 1/2 bar at ~30 BPM)
 // ============================================================
 
-// Musical division table: beats per division (1 beat = 1 quarter note)
-static const float kDivBeats[8] = {
-    2.f,       // 1/2
-    4.f / 3.f, // 1/2T
-    1.f,       // 1/4
-    2.f / 3.f, // 1/4T
-    0.5f,      // 1/8
-    1.f / 3.f, // 1/8T
-    0.25f,     // 1/16
-    1.f / 6.f, // 1/16T
-};
+// kDivBeats (musical division table) now lives in Model.h.
 
 static DelayLine<float, 192001> DSY_SDRAM_BSS delayL;
 static DelayLine<float, 192001> DSY_SDRAM_BSS delayR;
@@ -246,10 +144,8 @@ static constexpr uint32_t LIVE_VERSION = 1;
 static constexpr uint32_t LIVE_QSPI_OFFSET = 0x100000; // 1 MB in (clear of patches@0, ui@0x80000)
 static PersistentStorage<LiveState> liveStore(hw.qspi);
 
-static Preset preset;          // live working preset — what the engine plays right now
-static Channel ch[NUM_CH];     // per-channel runtime DSP state (parallel to preset.ch[])
-static float sample_rate;      // audio sample rate in Hz, captured in main() after hw.Init
-static uint8_t cur_patch = 0;  // slot index of the most recently loaded/saved patch
+// preset, ch[], cur_patch now live in State.h.
+static float sample_rate; // audio sample rate in Hz, captured in main() after hw.Init
 
 // Output soft-start: ramp the audio out from silence over ~150 ms so the engine
 // starting up (and any garbage in the first DMA block) slews in instead of
@@ -272,16 +168,14 @@ static float ui_ctrl_load = 0.f; // control/main-loop load 0..1 (vs 500 µs)
 // Peak in/out levels for the VU page (written by the audio callback, decaying).
 static volatile float vu_in_l = 0.f, vu_in_r = 0.f, vu_out_l = 0.f, vu_out_r = 0.f;
 // Debounced auto-snapshot of the live working state to QSPI (see LiveState).
-static uint8_t manual_bpm_cc = 45;  // last manually-set tempo as CC (external clock excluded)
+// (manual_bpm_cc now lives in State.h.)
 static LiveState live_build;        // rebuilt each check (static => stable padding for memcmp)
 static LiveState live_last;         // value at previous check, to detect "still changing"
 static uint32_t live_check_ms = 0;  // throttles how often we rebuild/compare
 static uint32_t live_settle_ms = 0; // when the state last changed
 static bool live_pending = false;   // a change is waiting out the debounce window
 
-static uint8_t cur_step = 0;    // current sequencer step, 0..NUM_STEPS-1
-static float tick_accum = 0.f;  // fractional ticks carried between steps (clock div/mult)
-static bool seq_running = true; // sequencer runs by default at power-on
+// cur_step, tick_accum, seq_running now live in State.h.
 
 // Incoming-clock BPM detection (updates preset.bpm when external clock is active).
 // Ticks are timestamped when drained in the main loop, not on arrival, so a busy
@@ -306,18 +200,9 @@ static uint32_t int_tick_ms = 0;   // timestamp of last internal tick
 static uint32_t led2_flash_ms = 0; // timestamp of last beat flash
 static uint32_t g_step_ms = 0;     // timestamp of last sequencer step (global dot tick)
 static uint32_t tap_last_ms = 0;   // timestamp of last tap-tempo tap
-static bool bypass = false;
-static bool ch_muted[NUM_CH] = {false, false, false};
-static bool ch_solo[NUM_CH] = {false, false, false};
 
-// A channel is silenced if it's muted, or if any channel is soloed and it isn't.
-static inline bool any_solo() { return ch_solo[0] || ch_solo[1] || ch_solo[2]; }
-static inline bool ch_silenced(int c) { return ch_muted[c] || (any_solo() && !ch_solo[c]); }
-
-// MIDI CC base per channel — 16 CC slots each (offsets 0-15 used)
-static constexpr int kCcBase[NUM_CH] = {20, 36, 52};
-// Note triggers: all on MIDI channel 1 — C4, C#4, D4
-static constexpr uint8_t kTrigNote[NUM_CH] = {60, 61, 62};
+// bypass, ch_muted/ch_solo, any_solo()/ch_silenced(), and kCcBase/kTrigNote now
+// live in State.h / Model.h.
 
 // --- Menu UI state (240x320 TFT + 4 encoders). Driven from the main loop
 //     only — see the "Menu UI" section below. Declared here so ProcessMidi and
@@ -450,22 +335,7 @@ static Preset DefaultPreset() {
 // Helpers
 // ============================================================
 
-// CC byte <-> engineering-value conversions. CcLin/CcLog map a 0–127 CC into
-// [lo,hi] linearly / logarithmically (log is the musical taper for frequency and
-// time); the *Inv variants are the exact inverses used by CcGet() to recover the
-// CC for state dumps and the menu display.
-
-static float CcLin(uint8_t v, float lo, float hi) { return lo + (v / 127.f) * (hi - lo); }
-
-static float CcLog(uint8_t v, float lo, float hi) { return lo * powf(hi / lo, v / 127.f); }
-
-static uint8_t CcLinInv(float val, float lo, float hi) {
-    return (uint8_t)(fclamp((val - lo) / (hi - lo) * 127.f, 0.f, 127.f) + 0.5f);
-}
-
-static uint8_t CcLogInv(float val, float lo, float hi) {
-    return (uint8_t)(fclamp(logf(val / lo) / logf(hi / lo) * 127.f, 0.f, 127.f) + 0.5f);
-}
+// CC <-> value scaling helpers (CcLin/CcLog/CcLinInv/CcLogInv) now live in Model.h.
 
 // Cheap rational tanh approximation for the output soft-clipper — hard-saturates
 // beyond ±3 so the per-sample mix can't overflow without a real tanhf() call.
@@ -504,97 +374,18 @@ static void SendNoteOff(uint8_t note) {
     usb_midi.SendMessage(msg, 3);
 }
 
-// Inverse of HandleCC: the current 7-bit value for a given CC, derived from the
-// live preset/state. This is the single source of truth for both outbound state
-// dumps (SendAllState) and the on-device menu UI's value display + edit base.
-static uint8_t CcGet(uint8_t cc) {
-    switch (cc) {
-    case 1:
-        return preset.delayParam;
-    case 2:
-        return CcLinInv(preset.delayFeedback, 0.f, 0.95f);
-    case 3:
-        return CcLinInv(preset.delayWidth, 0.f, 1.f);
-    case 4:
-        return CcLinInv(preset.dryLevel, 0.f, 1.f);
-    case 5:
-        return preset.clockDivParam;
-    case 6:
-        return preset.delaySynced ? 127 : 0;
-    case 14:
-        return preset.pattern * 8;
-    case 15:
-        return seq_running ? 127 : 0;
-    case 18:
-        return bypass ? 127 : 0;
-    case 19:
-        return (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
-    case 68:
-        return (ch_muted[0] ? 1 : 0) | (ch_muted[1] ? 2 : 0) | (ch_muted[2] ? 4 : 0);
-    default:
-        break;
-    }
-    for (int c = 0; c < NUM_CH; c++) {
-        int off = (int)cc - kCcBase[c];
-        if (off < 0 || off > 15)
-            continue;
-        const ChannelPreset &cp = preset.ch[c];
-        switch (off) {
-        case 0:
-            return CcLogInv(cp.cutoff, 100.f, 20000.f);
-        case 1:
-            return CcLinInv(cp.resonance, 0.f, 0.95f);
-        case 2:
-            return CcLinInv(cp.drive, 1.f, 4.f);
-        case 3:
-            return cp.lfoParam;
-        case 4:
-            return CcLogInv(cp.attack, 0.001f, 2.f);
-        case 5:
-            return CcLogInv(cp.decay, 0.01f, 2.f);
-        case 6:
-            return CcLinInv(cp.level, 0.f, 1.f);
-        case 7:
-            return CcLinInv(cp.pan, 0.f, 1.f);
-        case 8: {
-            uint16_t v14 =
-                (uint16_t)(fclamp((cp.lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f) + 0.5f);
-            return v14 >> 7;
-        }
-        case 12: {
-            uint16_t v14 =
-                (uint16_t)(fclamp((cp.lfoAmount + 1.f) * 0.5f * 16383.f, 0.f, 16383.f) + 0.5f);
-            return v14 & 0x7F;
-        }
-        case 9:
-            return cp.filterType * 32;
-        case 10:
-            return cp.filterSlope * 63;
-        case 11:
-            return cp.lfoShape * 21 + (cp.lfoSynced ? 64 : 0);
-        case 13:
-            return CcLinInv(cp.delayAmount, 0.f, 1.f);
-        case 14:
-            return CcLinInv(cp.lfoDuty, 0.f, 1.f);
-        case 15:
-            return CcLinInv(cp.ampLfoAmount, -1.f, 1.f);
-        }
-    }
-    return 0;
-}
-
 // Broadcast the entire live state — every global CC, the program-change for the
 // current patch, and all 16 per-channel CCs × NUM_CH — so a freshly-connected
 // controller can mirror the device. Triggered by CC 119 or the PATCH "STATE" action.
-static void SendAllState() {
+void SendAllState() {
     static const uint8_t kGlobalCc[] = {1, 2, 3, 4, 5, 6, 14, 15, 18, 19, 68};
     for (uint8_t cc : kGlobalCc)
-        SendCC(cc, CcGet(cc));
+        SendCC(cc, parammap::Get(cc));
     SendProgramChange(cur_patch);
     for (int c = 0; c < NUM_CH; c++) {
         int base = kCcBase[c];
         for (int off = 0; off <= 15; off++)
-            SendCC(base + off, CcGet(base + off));
+            SendCC(base + off, parammap::Get(base + off));
     }
 }
 
@@ -612,7 +403,7 @@ static void LoadPatch(uint8_t idx) {
 }
 
 // Write the live preset into patch slot `idx` and commit the bank to QSPI flash.
-static void SavePatch(uint8_t idx) {
+void SavePatch(uint8_t idx) {
     if (idx >= NUM_PATCHES)
         return;
     cur_patch = idx;
@@ -699,123 +490,6 @@ static void AdvanceClock() {
 }
 
 // ============================================================
-// MIDI CC handler
-// ============================================================
-
-// Apply one incoming Control Change to the live preset/state. This is the single
-// authority on the CC map: global params (delay/seq/transport) are matched first,
-// then the per-channel block (kCcBase[c] + offset 0–15). CcGet() is its inverse.
-static void HandleCC(uint8_t ctrl, uint8_t val) {
-    switch (ctrl) {
-    case 1:
-        preset.delayParam = val;
-        return;
-    case 2:
-        preset.delayFeedback = CcLin(val, 0.f, 0.95f);
-        return;
-    case 3:
-        preset.delayWidth = CcLin(val, 0.f, 1.f);
-        return;
-    case 4:
-        preset.dryLevel = CcLin(val, 0.f, 1.f);
-        return;
-    case 5:
-        preset.clockDivParam = val;
-        return;
-    case 6:
-        preset.delaySynced = (val >= 64);
-        return;
-    case 14:
-        preset.pattern = (val * NUM_PATTERNS) / 128;
-        return;
-    case 15:
-        seq_running = (val >= 64);
-        return;
-    case 18:
-        bypass = (val >= 64);
-        return;
-    case 19:
-        preset.bpm = 20.f + (val / 127.f) * 280.f;
-        manual_bpm_cc = val; // remember the manual tempo for the live snapshot
-        return;
-    case 68: // per-channel mute bitmask
-        for (int c = 0; c < NUM_CH; c++)
-            ch_muted[c] = (val >> c) & 1;
-        return;
-    case 87: // save current preset to patch index
-        SavePatch(val);
-        return;
-    case 119:
-        SendAllState();
-        return;
-    default:
-        break;
-    }
-
-    for (int c = 0; c < NUM_CH; c++) {
-        int offset = (int)ctrl - kCcBase[c];
-        if (offset < 0 || offset > 15)
-            continue;
-        switch (offset) {
-        case 0:
-            preset.ch[c].cutoff = CcLog(val, 100.f, 20000.f);
-            break;
-        case 1:
-            preset.ch[c].resonance = CcLin(val, 0.f, 0.95f);
-            break;
-        case 2:
-            preset.ch[c].drive = CcLin(val, 1.f, 4.f);
-            break;
-        case 3:
-            preset.ch[c].lfoParam = val;
-            break;
-        case 4:
-            preset.ch[c].attack = CcLog(val, 0.001f, 2.f);
-            break;
-        case 5:
-            preset.ch[c].decay = CcLog(val, 0.01f, 2.f);
-            break;
-        case 6:
-            preset.ch[c].level = CcLin(val, 0.f, 1.f);
-            break;
-        case 7:
-            preset.ch[c].pan = CcLin(val, 0.f, 1.f);
-            break;
-        case 8: // lfo amount MSB
-            ch[c].lfoAmtMsb = val;
-            preset.ch[c].lfoAmount = ((uint16_t)val << 7) / 16383.5f * 2.f - 1.f;
-            break;
-        case 9:
-            preset.ch[c].filterType = val < 32 ? 0 : val < 64 ? 1 : val < 96 ? 2 : 3;
-            break;
-        case 10:
-            preset.ch[c].filterSlope = val < 43 ? 0 : val < 85 ? 1 : 2;
-            break;
-        case 12: { // lfo amount LSB
-            uint16_t v14 = ((uint16_t)ch[c].lfoAmtMsb << 7) | val;
-            preset.ch[c].lfoAmount = v14 / 16383.5f * 2.f - 1.f;
-            break;
-        }
-        case 11: {
-            preset.ch[c].lfoSynced = (val >= 64);
-            uint8_t raw = val & 0x3F;
-            preset.ch[c].lfoShape = raw / 21 > 2 ? 2 : raw / 21;
-            break;
-        }
-        case 13:
-            preset.ch[c].delayAmount = CcLin(val, 0.f, 1.f);
-            break;
-        case 14:
-            preset.ch[c].lfoDuty = CcLin(val, 0.f, 1.f);
-            break;
-        case 15:
-            preset.ch[c].ampLfoAmount = CcLin(val, -1.f, 1.f);
-            break;
-        }
-    }
-}
-
-// ============================================================
 // Drain events from either MIDI handler
 // TRS clock is authoritative; USB clock is ignored while TRS is active
 // ============================================================
@@ -890,7 +564,7 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
             }
         } else if (msg.type == ControlChange) {
             auto cc = msg.AsControlChange();
-            HandleCC(cc.control_number, cc.value);
+            parammap::Handle(cc.control_number, cc.value);
             ui_full_dirty = true; // reflect external edits on the screen
         } else if (msg.type == ProgramChange) {
             auto pc = msg.AsProgramChange();
@@ -922,7 +596,7 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
 // right-hand encoders (E1/E2/E3) each edit the parameter shown in their band.
 //
 // IMPORTANT: everything here runs from the main loop, never the audio callback.
-// Every edit routes through HandleCC()/SendCC(), so the MIDI map stays the one
+// Every edit routes through parammap::Handle()/SendCC(), so the MIDI map stays the one
 // source of truth and external controllers stay in sync.
 //
 // Pin map comes from the `menu` board (Seed GPIO: display on D7/D8/D9/D10/D17/
@@ -1223,7 +897,7 @@ static uint8_t ui_absCC(const Band &b) {
 
 // For an enum band, pick the option index whose optVal is closest to the live CC.
 static uint8_t ui_enumIdx(const Band &b) {
-    int raw = CcGet(ui_absCC(b));
+    int raw = parammap::Get(ui_absCC(b));
     if (b.push == P_LFOSYNC)
         raw &= 0x3F; // mask the sync bit out of the shape byte
     uint8_t best = 0;
@@ -1297,7 +971,7 @@ static void ui_text(const Band &b, char *out) {
         return;
     }
     if (b.kind == B_TOGGLE) {
-        p = ui_puts(p, CcGet(b.cc) >= 64 ? "ON" : "OFF");
+        p = ui_puts(p, parammap::Get(b.cc) >= 64 ? "ON" : "OFF");
         *p = 0;
         return;
     }
@@ -1322,7 +996,7 @@ static void ui_text(const Band &b, char *out) {
         *p = 0;
         return;
     }
-    uint8_t raw = CcGet(ui_absCC(b));
+    uint8_t raw = parammap::Get(ui_absCC(b));
     switch (b.fmt) {
     case F_CUTOFF: {
         float v = CcLog(raw, 100.f, 20000.f);
@@ -1440,7 +1114,7 @@ static void ui_bandSolo(const Band &b) {
     ch_solo[sc] = !ch_solo[sc];
 }
 
-// --- edits: all route through HandleCC()+SendCC() ---
+// --- edits: all route through parammap::Handle()+SendCC() ---
 static void ui_bandPush(const Band &b) {
     switch (b.push) {
     case P_MUTE: {
@@ -1452,7 +1126,7 @@ static void ui_bandPush(const Band &b) {
     case P_LFOSYNC: {
         preset.ch[ui_ctx].lfoSynced = !preset.ch[ui_ctx].lfoSynced;
         uint8_t v = preset.ch[ui_ctx].lfoShape * 21 + (preset.ch[ui_ctx].lfoSynced ? 64 : 0);
-        HandleCC(kCcBase[ui_ctx] + 11, v);
+        parammap::Handle(kCcBase[ui_ctx] + 11, v);
         SendCC(kCcBase[ui_ctx] + 11, v);
         break;
     }
@@ -1493,11 +1167,11 @@ static void ui_bandPush(const Band &b) {
         break;
     case P_RESET: {
         uint8_t acc = ui_absCC(b);
-        HandleCC(acc, b.muteCh);
+        parammap::Handle(acc, b.muteCh);
         SendCC(acc, b.muteCh);
         if (b.lsbOff != 255) { // 14-bit pair: zero the LSB
             uint8_t lcc = (uint8_t)(kCcBase[ui_ctx] + b.lsbOff);
-            HandleCC(lcc, 0);
+            parammap::Handle(lcc, 0);
             SendCC(lcc, 0);
         }
         break;
@@ -1518,7 +1192,7 @@ static void ui_bandTurn(const Band &b, int dir) {
         uint8_t v = b.optVal[i];
         if (b.push == P_LFOSYNC)
             v += (preset.ch[ui_ctx].lfoSynced ? 64 : 0);
-        HandleCC(acc, v);
+        parammap::Handle(acc, v);
         SendCC(acc, v);
         break;
     }
@@ -1528,7 +1202,7 @@ static void ui_bandTurn(const Band &b, int dir) {
     case B_PATIDX: {
         int i = (preset.pattern + dir + NUM_PATTERNS) % NUM_PATTERNS;
         uint8_t v = (uint8_t)(i * 8);
-        HandleCC(14, v);
+        parammap::Handle(14, v);
         SendCC(14, v);
         break;
     }
@@ -1578,16 +1252,16 @@ static void ui_bandTurn(const Band &b, int dir) {
         break;
     }
     default: {
-        int v = (int)CcGet(acc) + dir * 2;
+        int v = (int)parammap::Get(acc) + dir * 2;
         if (v < 0)
             v = 0;
         if (v > 127)
             v = 127;
-        HandleCC(acc, (uint8_t)v);
+        parammap::Handle(acc, (uint8_t)v);
         SendCC(acc, (uint8_t)v);
         if (b.lsbOff != 255) { // 14-bit pair: keep the LSB at 0
             uint8_t lcc = (uint8_t)(kCcBase[ui_ctx] + b.lsbOff);
-            HandleCC(lcc, 0);
+            parammap::Handle(lcc, 0);
             SendCC(lcc, 0);
         }
         break;
@@ -1744,7 +1418,7 @@ static void ui_drawFooter() {
     ui_drawMeter(4, 311, 'C', ui_ctrl_load);
     // bottom-right: BPM
     char t[16];
-    char *q = ui_putl(t, (long)(20.f + CcGet(19) / 127.f * 280.f + 0.5f));
+    char *q = ui_putl(t, (long)(20.f + parammap::Get(19) / 127.f * 280.f + 0.5f));
     q = ui_puts(q, "BPM");
     *q = 0;
     tft.DrawString(236 - ui_strw(t, 1), 306, t, kDimCol, kFootBg, 1);
@@ -1839,7 +1513,7 @@ static void ui_drawBand(int i) {
         return;
     }
     if (b.kind == B_TOGGLE) {
-        bool on = CcGet(b.cc) >= 64;
+        bool on = parammap::Get(b.cc) >= 64;
         uint16_t f = on ? col : kPanel2;
         tft.FillRect(8, y + 40, 222, 24, f);
         const char *tx = on ? "ON" : "OFF";
@@ -1852,7 +1526,7 @@ static void ui_drawBand(int i) {
     ui_text(b, val);
     tft.DrawString(232 - ui_strw(val, 2), y + 22, val, kTxt, kPanel, 2);
     if (b.kind == B_CONT) {
-        int raw = CcGet(ui_absCC(b));
+        int raw = parammap::Get(ui_absCC(b));
         float frac = raw / 127.f;
         tft.FillRect(8, y + 62, 222, 12, kPanel2);
         if (b.bip) {
