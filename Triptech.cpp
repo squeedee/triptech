@@ -202,14 +202,8 @@ struct UiSettings {
     uint32_t version;
     uint16_t color[4];
     uint8_t brightness;
-    // Persisted transport/global state (restored on boot).
-    uint8_t run;    // sequencer running 0/1
-    uint8_t bypass; // 0/1
-    uint8_t dry;    // dry level as CC 0..127
-    uint8_t bpm;    // manual BPM as CC 0..127
     bool operator!=(const UiSettings &o) const {
-        if (version != o.version || brightness != o.brightness || run != o.run ||
-            bypass != o.bypass || dry != o.dry || bpm != o.bpm)
+        if (version != o.version || brightness != o.brightness)
             return true;
         for (int i = 0; i < 4; i++)
             if (color[i] != o.color[i])
@@ -217,9 +211,27 @@ struct UiSettings {
         return false;
     }
 };
-static constexpr uint32_t UI_VERSION = 2;
+static constexpr uint32_t UI_VERSION = 3;           // bumped: transport moved to LiveState
 static constexpr uint32_t UI_QSPI_OFFSET = 0x80000; // 512 KB in
 static PersistentStorage<UiSettings> uiStore(hw.qspi);
+
+// "Reset-resistant" live working state, auto-snapshotted to QSPI (debounced) so a
+// power cut during a performance restores exactly where you were — the full active
+// preset plus transport (run/bypass/mute/solo). This is separate from the named
+// preset bank (patchStorage): explicit Save/Load patches still work as before; this
+// just remembers the *current* state regardless of which preset it came from.
+struct LiveState {
+    uint32_t version;
+    Preset preset;    // bpm field holds the MANUAL tempo (never the external clock)
+    uint8_t run;      // sequencer running 0/1
+    uint8_t bypass;   // 0/1
+    uint8_t muteMask; // bit c = channel c muted
+    uint8_t soloMask; // bit c = channel c soloed
+    bool operator!=(const LiveState &o) const { return memcmp(this, &o, sizeof(*this)) != 0; }
+};
+static constexpr uint32_t LIVE_VERSION = 1;
+static constexpr uint32_t LIVE_QSPI_OFFSET = 0x100000; // 1 MB in (clear of patches@0, ui@0x80000)
+static PersistentStorage<LiveState> liveStore(hw.qspi);
 
 static Preset preset;
 static Channel ch[NUM_CH];
@@ -241,9 +253,13 @@ static float ui_dsp_load = 0.f;  // audio DSP load 0..1 (for the footer meter)
 static float ui_ctrl_load = 0.f; // control/main-loop load 0..1 (vs 500 µs)
 // Peak in/out levels for the VU page (written by the audio callback, decaying).
 static volatile float vu_in_l = 0.f, vu_in_r = 0.f, vu_out_l = 0.f, vu_out_r = 0.f;
-// Debounced persistence of transport/global state (run/bypass/dry/bpm) to QSPI.
-static uint32_t ui_persist_ms = 0;
-static uint8_t ui_seen_run = 0xFF, ui_seen_byp = 0xFF, ui_seen_dry = 0xFF, ui_seen_bpm = 0xFF;
+// Debounced auto-snapshot of the live working state to QSPI (see LiveState).
+static uint8_t manual_bpm_cc = 45;  // last manually-set tempo as CC (external clock excluded)
+static LiveState live_build;        // rebuilt each check (static => stable padding for memcmp)
+static LiveState live_last;         // value at previous check, to detect "still changing"
+static uint32_t live_check_ms = 0;  // throttles how often we rebuild/compare
+static uint32_t live_settle_ms = 0; // when the state last changed
+static bool live_pending = false;   // a change is waiting out the debounce window
 
 static uint8_t cur_step = 0;
 static float tick_accum = 0.f;
@@ -561,6 +577,38 @@ static void SavePatch(uint8_t idx) {
     SendCC(87, idx);              // confirm save to controller
 }
 
+// Pack the current live working state into `s` for the auto-snapshot. bpm is forced
+// to the manual tempo so an external clock (which drives preset.bpm live) doesn't
+// churn the snapshot and starve other changes of a quiet window to save in.
+static void BuildLiveState(LiveState &s) {
+    s.version = LIVE_VERSION;
+    s.preset = preset;
+    s.preset.bpm = 20.f + (manual_bpm_cc / 127.f) * 280.f;
+    s.run = seq_running ? 1 : 0;
+    s.bypass = bypass ? 1 : 0;
+    uint8_t mm = 0, sm = 0;
+    for (int c = 0; c < NUM_CH; c++) {
+        if (ch_muted[c])
+            mm |= 1 << c;
+        if (ch_solo[c])
+            sm |= 1 << c;
+    }
+    s.muteMask = mm;
+    s.soloMask = sm;
+}
+
+// Apply a restored live snapshot to the running globals (boot-time).
+static void ApplyLiveState(const LiveState &s) {
+    preset = s.preset;
+    seq_running = s.run != 0;
+    bypass = s.bypass != 0;
+    for (int c = 0; c < NUM_CH; c++) {
+        ch_muted[c] = (s.muteMask >> c) & 1;
+        ch_solo[c] = (s.soloMask >> c) & 1;
+    }
+    manual_bpm_cc = (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
+}
+
 // ============================================================
 // Gate trigger
 // ============================================================
@@ -632,6 +680,7 @@ static void HandleCC(uint8_t ctrl, uint8_t val) {
         return;
     case 19:
         preset.bpm = 20.f + (val / 127.f) * 280.f;
+        manual_bpm_cc = val; // remember the manual tempo for the live snapshot
         return;
     case 68: // per-channel mute bitmask
         for (int c = 0; c < NUM_CH; c++)
@@ -1339,7 +1388,8 @@ static void ui_bandPush(const Band &b) {
         if (gap > 0 && gap < 2000)
             preset.bpm = fclamp(60000.f / (float)gap, 20.f, 300.f);
         tap_last_ms = now;
-        SendCC(19, (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f));
+        manual_bpm_cc = (uint8_t)((fclamp(preset.bpm, 20.f, 300.f) - 20.f) / 280.f * 127.f);
+        SendCC(19, manual_bpm_cc);
         break;
     }
     case P_BYPASS:
@@ -2185,7 +2235,7 @@ int main(void) {
     }
     if (patchStorage.GetSettings().version != PATCH_VERSION)
         patchStorage.RestoreDefaults();
-    // Load patch 0
+    // Base/fallback working state (the live snapshot below overrides this).
     preset = patchStorage.GetSettings().patches[0];
 
     // --- Init UI settings storage (separate QSPI sector) ---
@@ -2195,10 +2245,6 @@ int main(void) {
         for (int i = 0; i < 4; i++)
             d.color[i] = kDefaultColor[i];
         d.brightness = 255;
-        d.run = 1; // sequencer running
-        d.bypass = 0;
-        d.dry = 0;  // dry level 0
-        d.bpm = 45; // ~120 BPM
         uiStore.Init(d, UI_QSPI_OFFSET);
     }
     if (uiStore.GetSettings().version != UI_VERSION)
@@ -2208,12 +2254,22 @@ int main(void) {
         for (int i = 0; i < 4; i++)
             ui_color[i] = s.color[i];
         ui_brightness = s.brightness;
-        // Restore persisted transport/global state (override patch 0's values).
-        seq_running = s.run != 0;
-        bypass = s.bypass != 0;
-        HandleCC(4, s.dry);  // dry level
-        HandleCC(19, s.bpm); // manual BPM
     }
+
+    // --- Init "reset-resistant" live state (separate QSPI sector) ---
+    {
+        LiveState d;
+        memset(&d, 0, sizeof(d)); // deterministic padding for the memcmp diff
+        d.version = LIVE_VERSION;
+        d.preset = preset; // default preset, ...
+        d.preset.bpm = 120.f;
+        d.run = 1; // ... sequencer running, nothing muted/soloed
+        liveStore.Init(d, LIVE_QSPI_OFFSET);
+    }
+    if (liveStore.GetSettings().version != LIVE_VERSION)
+        liveStore.RestoreDefaults();
+    ApplyLiveState(liveStore.GetSettings());
+    BuildLiveState(live_last); // seed change-detector so we don't re-save on boot
 
     // --- Init MIDI ---
     MidiUartHandler::Config midi_cfg; // defaults: USART1, RX=PB7 (D14), TX=PB6 (D13)
@@ -2335,32 +2391,27 @@ int main(void) {
             }
         }
 
-        // Persist transport/global state (run/bypass/dry/manual bpm) to QSPI so a
-        // power cycle restores it. Only when a value has been stable for one ~1 s
-        // tick (so we don't write mid-tweak) and actually differs from flash —
-        // PersistentStorage.Save() skips the erase/write if nothing changed.
-        // BPM under external clock is left alone (only the manual tempo persists).
-        if (now - ui_persist_ms >= 1000) {
-            ui_persist_ms = now;
-            UiSettings &s = uiStore.GetSettings();
-            uint8_t run = seq_running ? 1 : 0;
-            uint8_t byp = bypass ? 1 : 0;
-            uint8_t dry = CcGet(4);
-            uint8_t bpmv = midi_active ? s.bpm : CcGet(19);
-            if (run == ui_seen_run && byp == ui_seen_byp && dry == ui_seen_dry &&
-                bpmv == ui_seen_bpm) {
-                if (s.run != run || s.bypass != byp || s.dry != dry || s.bpm != bpmv) {
-                    s.run = run;
-                    s.bypass = byp;
-                    s.dry = dry;
-                    s.bpm = bpmv;
-                    uiStore.Save();
+        // Auto-snapshot the live working state (full preset + transport) to QSPI so
+        // a power cut restores exactly where we were. Rebuild ~every 200 ms; once it
+        // stops changing for LIVE_DEBOUNCE_MS, persist it (only if it differs from
+        // flash — Save() skips the erase/write otherwise). The quiet-period debounce
+        // means a knob sweep writes once, after you settle, not continuously.
+        static constexpr uint32_t LIVE_DEBOUNCE_MS = 1500;
+        if (now - live_check_ms >= 200) {
+            live_check_ms = now;
+            BuildLiveState(live_build);
+            if (live_build != live_last) {
+                live_last = live_build;
+                live_settle_ms = now;
+                live_pending = true;
+            } else if (live_pending && (now - live_settle_ms) >= LIVE_DEBOUNCE_MS) {
+                LiveState &dst = liveStore.GetSettings();
+                if (dst != live_build) {
+                    dst = live_build;
+                    liveStore.Save(); // brief audio glitch possible during flash write
                 }
+                live_pending = false;
             }
-            ui_seen_run = run;
-            ui_seen_byp = byp;
-            ui_seen_dry = dry;
-            ui_seen_bpm = bpmv;
         }
     }
 }
