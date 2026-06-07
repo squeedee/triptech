@@ -10,9 +10,11 @@
 #include "Model.h"
 #include "State.h"
 
-// Defined elsewhere in the TU (Persistence / MidiRouter modules, currently
-// Triptech.cpp). Declared here so Handle can drive save + full-state echo.
+// Defined in other modules (Persistence / MidiOut). Declared here so Handle can
+// drive save + full-state echo without depending on those headers.
+namespace persist {
 void SavePatch(uint8_t idx);
+}
 void SendAllState();
 
 namespace parammap {
@@ -137,7 +139,7 @@ inline void Handle(uint8_t ctrl, uint8_t val) {
             ch_muted[c] = (val >> c) & 1;
         return;
     case 87: // save current preset to patch index
-        SavePatch(val);
+        persist::SavePatch(val);
         return;
     case 119:
         SendAllState();

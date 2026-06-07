@@ -43,3 +43,14 @@ static bool ch_solo[NUM_CH] = {false, false, false};
 // A channel is silenced if it's muted, or if any channel is soloed and it isn't.
 static inline bool any_solo() { return ch_solo[0] || ch_solo[1] || ch_solo[2]; }
 static inline bool ch_silenced(int c) { return ch_muted[c] || (any_solo() && !ch_solo[c]); }
+
+// --- Shared timing ---
+static float ticksPerUs = 1.f;     // System::GetTick() ticks per µs (set in main, after init)
+static uint32_t led2_flash_ms = 0; // timestamp of last beat flash (read by the menu UI)
+static uint32_t g_step_ms = 0;     // timestamp of last sequencer step (global activity dot)
+static uint32_t tap_last_ms = 0;   // timestamp of last tap-tempo tap
+
+// --- Metering (written by the audio callback / telemetry, read by the menu UI) ---
+static volatile float vu_in_l = 0.f, vu_in_r = 0.f, vu_out_l = 0.f, vu_out_r = 0.f;
+static float ui_dsp_load = 0.f;  // audio DSP load 0..1 (for the footer meter)
+static float ui_ctrl_load = 0.f; // control/main-loop load 0..1 (vs 500 µs)
