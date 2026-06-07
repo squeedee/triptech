@@ -793,19 +793,30 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
                     usb_last_ms = System::GetNow();
                 }
                 if (allow_trans) {
-                    // BPM from a sliding kClkWin-tick window (us per kClkWin ticks),
-                    // then lightly EMA-smoothed. kClkWin ticks = kClkWin/24 quarters.
-                    uint32_t now_us = System::GetUs();
-                    clk_ts[clk_idx] = now_us;
+                    // BPM from a sliding kClkWin-tick window, lightly EMA-smoothed.
+                    // Timestamp with the RAW 32-bit tick counter, not GetUs(): the
+                    // system timer runs at 240 MHz, so GetUs() (= CNT / 240) wraps
+                    // every 2^32/240e6 ≈ 17.9 s — and a span straddling that wrap
+                    // underflowed, spiking the tempo and jolting the delay length once
+                    // every 17.9 s. Raw CNT wraps cleanly at 2^32, so the unsigned
+                    // delta is correct across the wrap. kClkWin ticks = kClkWin/24 quarters.
+                    uint32_t now_tick = System::GetTick();
+                    clk_ts[clk_idx] = now_tick;
                     clk_idx = (clk_idx + 1) % kClkWin;
                     clk_count++;
                     if (clk_count > (uint32_t)kClkWin) {
-                        uint32_t span = now_us - clk_ts[clk_idx]; // oldest, kClkWin ticks back
-                        if (span > 0) {
-                            float bpm = (float)kClkWin / 24.f * 60000000.f / (float)span;
-                            clock_bpm_ema =
-                                (clock_bpm_ema == 0.f) ? bpm : (clock_bpm_ema * 0.7f + bpm * 0.3f);
-                            preset.bpm = fclamp(clock_bpm_ema, 20.f, 300.f);
+                        uint32_t span_ticks = now_tick - clk_ts[clk_idx]; // wrap-safe (clean 2^32)
+                        float span_us = span_ticks / ticksPerUs;
+                        if (span_us > 0.f) {
+                            float bpm = (float)kClkWin / 24.f * 60000000.f / span_us;
+                            // Ignore implausible spans (wrap leftovers, dropped/double
+                            // ticks): hold the last good tempo rather than lurch.
+                            if (bpm >= 20.f && bpm <= 300.f) {
+                                clock_bpm_ema = (clock_bpm_ema == 0.f)
+                                                    ? bpm
+                                                    : (clock_bpm_ema * 0.7f + bpm * 0.3f);
+                                preset.bpm = fclamp(clock_bpm_ema, 20.f, 300.f);
+                            }
                         }
                     }
                     if (seq_running)
