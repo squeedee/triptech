@@ -97,6 +97,9 @@ static const bool kPatterns[NUM_PATTERNS][NUM_STEPS][NUM_CH] = {
 // Per-channel state
 // ============================================================
 
+// One channel's full voice definition: filter + envelope + LFO + output routing.
+// Stored values are in engineering units (Hz, seconds, 0–1), not raw CC bytes —
+// HandleCC()/CcGet() convert between the two.
 struct ChannelPreset {
     float cutoff;        // Hz
     float resonance;     // 0–0.95
@@ -116,6 +119,9 @@ struct ChannelPreset {
     bool lfoSynced;      // true = clock-synced, false = free Hz
 };
 
+// A complete patch: the three channel voices plus the global sequencer, delay
+// and mix settings. This is the unit that gets saved/loaded as a "patch" and is
+// also what `preset` (the live working state) holds.
 struct Preset {
     ChannelPreset ch[NUM_CH];
     float bpm;             // 20–300
@@ -128,6 +134,9 @@ struct Preset {
     bool delaySynced;      // true = clock-synced divisions, false = free ms
 };
 
+// The whole named-patch bank as it lives in QSPI flash. `version` gates a
+// RestoreDefaults() migration when the struct layout changes; operator!= lets
+// PersistentStorage skip the flash write when nothing actually changed.
 struct PatchStorage {
     uint32_t version;
     Preset patches[NUM_PATCHES];
@@ -150,11 +159,15 @@ static const float kClockRatios[9] = {
     4.f,       // ×4
 };
 
+// Bin a 0–127 CC byte into one of the 9 kClockRatios zones (64 → index 4 = 1:1).
 static inline uint8_t ClockDivIndex(uint8_t cc) {
     uint8_t idx = cc * 9u / 128u;
     return idx > 8 ? 8 : idx;
 }
 
+// Per-channel runtime DSP state — the live filters/envelope/LFO instances the
+// audio callback runs. Distinct from ChannelPreset (the stored parameters): the
+// active filter is chosen per block from the preset's type/slope.
 struct Channel {
     Svf fltL, fltR;          // SVF: LP/HP/BP/Notch at 12 dB
     LadderFilter ladL, ladR; // Ladder: LP/HP/BP at 12 or 24 dB
@@ -233,10 +246,10 @@ static constexpr uint32_t LIVE_VERSION = 1;
 static constexpr uint32_t LIVE_QSPI_OFFSET = 0x100000; // 1 MB in (clear of patches@0, ui@0x80000)
 static PersistentStorage<LiveState> liveStore(hw.qspi);
 
-static Preset preset;
-static Channel ch[NUM_CH];
-static float sample_rate;
-static uint8_t cur_patch = 0;
+static Preset preset;          // live working preset — what the engine plays right now
+static Channel ch[NUM_CH];     // per-channel runtime DSP state (parallel to preset.ch[])
+static float sample_rate;      // audio sample rate in Hz, captured in main() after hw.Init
+static uint8_t cur_patch = 0;  // slot index of the most recently loaded/saved patch
 
 // Output soft-start: ramp the audio out from silence over ~150 ms so the engine
 // starting up (and any garbage in the first DMA block) slews in instead of
@@ -249,7 +262,7 @@ static float soft_inc = 1.f;
 // read pointer never jumps. -1 = uninitialised (seed on first audio block).
 static float delaySmpsSmoothed = -1.f;
 
-static CpuLoadMeter dspLoad;
+static CpuLoadMeter dspLoad;    // audio-callback CPU load (fraction of block budget)
 static float loopLoadAvg = 0.f; // smoothed main-loop µs per iteration
 static float loopPeak = 0.f;    // peak µs in current 250ms window
 static uint32_t lastLoadMs = 0;
@@ -266,8 +279,8 @@ static uint32_t live_check_ms = 0;  // throttles how often we rebuild/compare
 static uint32_t live_settle_ms = 0; // when the state last changed
 static bool live_pending = false;   // a change is waiting out the debounce window
 
-static uint8_t cur_step = 0;
-static float tick_accum = 0.f;
+static uint8_t cur_step = 0;    // current sequencer step, 0..NUM_STEPS-1
+static float tick_accum = 0.f;  // fractional ticks carried between steps (clock div/mult)
 static bool seq_running = true; // sequencer runs by default at power-on
 
 // Incoming-clock BPM detection (updates preset.bpm when external clock is active).
@@ -323,6 +336,8 @@ static bool ui_band_dirty[3] = {true, true, true};
 // Per-channel LFO — phase-accumulator with duty cycle
 // ============================================================
 
+// One LFO sample for `phase` (0..1) given a waveform `shape` and `duty` skew.
+// Returns a bipolar value in [-1, +1].
 // `ramp` is the transition width in phase units (0..1). Only used by the
 // trapezoidal "square" shape; ignored otherwise. Caller sizes it from lfoFreq
 // so the slew stays roughly constant in wall-clock time across all rates.
@@ -363,6 +378,7 @@ static float LfoSample(float phase, uint8_t shape, float duty, float ramp) {
 // Default preset factory
 // ============================================================
 
+// Seed a channel's LFO fields with the factory defaults (clock-synced sine, 50% duty).
 static void InitChannelLfo(ChannelPreset &cp) {
     cp.lfoParam = 55;
     cp.lfoSynced = true;
@@ -371,6 +387,9 @@ static void InitChannelLfo(ChannelPreset &cp) {
     cp.ampLfoAmount = 0.f;
 }
 
+// Build the factory default preset: three voices (Ch1 LP/centre, Ch2 BP/left,
+// Ch3 HP/right) plus default global tempo, delay and pattern. Every patch slot
+// is initialised from this on first boot / version bump.
 static Preset DefaultPreset() {
     Preset p = {};
     p.bpm = 120.f;
@@ -431,6 +450,11 @@ static Preset DefaultPreset() {
 // Helpers
 // ============================================================
 
+// CC byte <-> engineering-value conversions. CcLin/CcLog map a 0–127 CC into
+// [lo,hi] linearly / logarithmically (log is the musical taper for frequency and
+// time); the *Inv variants are the exact inverses used by CcGet() to recover the
+// CC for state dumps and the menu display.
+
 static float CcLin(uint8_t v, float lo, float hi) { return lo + (v / 127.f) * (hi - lo); }
 
 static float CcLog(uint8_t v, float lo, float hi) { return lo * powf(hi / lo, v / 127.f); }
@@ -443,6 +467,8 @@ static uint8_t CcLogInv(float val, float lo, float hi) {
     return (uint8_t)(fclamp(logf(val / lo) / logf(hi / lo) * 127.f, 0.f, 127.f) + 0.5f);
 }
 
+// Cheap rational tanh approximation for the output soft-clipper — hard-saturates
+// beyond ±3 so the per-sample mix can't overflow without a real tanhf() call.
 static inline float fasttanh(float x) {
     if (x > 3.f)
         return 1.f;
@@ -452,6 +478,8 @@ static inline float fasttanh(float x) {
     return x * (27.f + x2) / (27.f + 9.f * x2);
 }
 
+// MIDI out helpers — every message goes to BOTH ports (TRS + USB) so an attached
+// controller and a host DAW stay in sync regardless of which one is driving us.
 static void SendCC(uint8_t cc, uint8_t val) {
     uint8_t msg[3] = {0xB0, cc, val};
     midi.SendMessage(msg, 3);
@@ -555,6 +583,9 @@ static uint8_t CcGet(uint8_t cc) {
     return 0;
 }
 
+// Broadcast the entire live state — every global CC, the program-change for the
+// current patch, and all 16 per-channel CCs × NUM_CH — so a freshly-connected
+// controller can mirror the device. Triggered by CC 119 or the PATCH "STATE" action.
 static void SendAllState() {
     static const uint8_t kGlobalCc[] = {1, 2, 3, 4, 5, 6, 14, 15, 18, 19, 68};
     for (uint8_t cc : kGlobalCc)
@@ -571,6 +602,7 @@ static void SendAllState() {
 // Patch management
 // ============================================================
 
+// Copy patch slot `idx` from the QSPI bank into the live preset and broadcast it.
 static void LoadPatch(uint8_t idx) {
     if (idx >= NUM_PATCHES)
         return;
@@ -579,6 +611,7 @@ static void LoadPatch(uint8_t idx) {
     SendAllState();
 }
 
+// Write the live preset into patch slot `idx` and commit the bank to QSPI flash.
 static void SavePatch(uint8_t idx) {
     if (idx >= NUM_PATCHES)
         return;
@@ -626,6 +659,9 @@ static void ApplyLiveState(const LiveState &s) {
 // Gate trigger
 // ============================================================
 
+// Fire channel `c`: re-arm its AD envelope from the preset's attack/decay and
+// (re)trigger it, emitting a MIDI note so the gate is visible/playable downstream.
+// Cuts any still-open note first so rapid re-triggers don't leave notes hanging.
 static void TriggerGate(int c) {
     ch[c].env.SetTime(ADENV_SEG_ATTACK, preset.ch[c].attack);
     ch[c].env.SetTime(ADENV_SEG_DECAY, preset.ch[c].decay);
@@ -641,6 +677,10 @@ static void TriggerGate(int c) {
 // Sequencer step (called every TICKS_PER_STEP MIDI clocks)
 // ============================================================
 
+// Advance the sequencer by one clock tick. Applies the clock divider/multiplier,
+// and for every step it crosses: bumps cur_step, flashes the beat/activity dots,
+// and triggers each channel whose gate is set in the active pattern. Called from
+// both the external-clock path (ProcessMidi) and the internal clock (main loop).
 static void AdvanceClock() {
     // ratio = pattern-steps consumed per incoming tick. >1 multiplies, <1 divides.
     float ratio = kClockRatios[ClockDivIndex(preset.clockDivParam)];
@@ -662,6 +702,9 @@ static void AdvanceClock() {
 // MIDI CC handler
 // ============================================================
 
+// Apply one incoming Control Change to the live preset/state. This is the single
+// authority on the CC map: global params (delay/seq/transport) are matched first,
+// then the per-channel block (kCcBase[c] + offset 0–15). CcGet() is its inverse.
 static void HandleCC(uint8_t ctrl, uint8_t val) {
     switch (ctrl) {
     case 1:
@@ -895,6 +938,8 @@ static Mux4067 mux;
 // --- Quadrature decode + button debounce (from menu/firmware encoder-test) ---
 static const int8_t kQuadLut[16] = {0, -1, 1, 0, 1, 0, 0, -1, -1, 0, 0, 1, 0, 1, -1, 0};
 
+// Quadrature decoder for one encoder. Feed the raw A/B levels each scan; Update
+// returns +1/-1 per detent (4 quarter-steps) or 0 between detents.
 struct Quad {
     uint8_t prev = 0;
     int8_t accum = 0;
@@ -914,6 +959,8 @@ struct Quad {
     }
 };
 
+// Debounce for one encoder push-button. Update returns true once on a confirmed
+// press edge, after the raw level has held steady for kStable scans.
 struct EncBtn {
     static constexpr uint8_t kStable = 5; // ~5 ms at a 1 kHz scan
     bool state = false;
@@ -1149,9 +1196,15 @@ static const uint16_t kDefaultColor[4] = {0x07E0, 0xFFE0, 0x801F, 0x4C7F};
 static uint16_t ui_color[4] = {0x07E0, 0xFFE0, 0x801F, 0x4C7F};
 static uint8_t ui_brightness = 255;
 
+// --- Current-page accessors. The visible page is (mode, context, section):
+//     settings mode picks kSetSections; otherwise channels 0–2 use kChSections
+//     and context 3 (GLOBAL) uses kGlSections. ---
+
+// The section table for the active mode/context.
 static const Section *ui_sectionTbl() {
     return ui_settings ? kSetSections : (ui_ctx < 3 ? kChSections : kGlSections);
 }
+// The section currently on screen.
 static const Section &ui_cur() { return ui_sectionTbl()[ui_sec]; }
 static uint16_t ui_col() {
     if (ui_settings) {
@@ -1162,10 +1215,13 @@ static uint16_t ui_col() {
     }
     return ui_color[ui_ctx < 3 ? ui_ctx : 3];
 }
+// Resolve a band's CC to an absolute number: per-channel bands (chRel) add the
+// current context's kCcBase; global bands use b.cc verbatim.
 static uint8_t ui_absCC(const Band &b) {
     return b.chRel ? (uint8_t)(kCcBase[ui_ctx] + b.cc) : b.cc;
 }
 
+// For an enum band, pick the option index whose optVal is closest to the live CC.
 static uint8_t ui_enumIdx(const Band &b) {
     int raw = CcGet(ui_absCC(b));
     if (b.push == P_LFOSYNC)
@@ -1187,11 +1243,13 @@ static uint8_t ui_enumIdx(const Band &b) {
 // --- tiny string builders. Hand-rolled to avoid linking newlib's printf,
 //     which alone overflows the 128 KB internal flash. Glyphs are limited to
 //     what the 5x7 font provides (uppercase, digits, . - : / % + >). ---
+// Append string `s`; returns the new write cursor.
 static char *ui_puts(char *p, const char *s) {
     while (*s)
         *p++ = *s++;
     return p;
 }
+// Append signed integer `v` in base 10; returns the new write cursor.
 static char *ui_putl(char *p, long v) {
     if (v < 0) {
         *p++ = '-';
@@ -1228,6 +1286,8 @@ static char *ui_putf(char *p, float v, int dec) {
     return p;
 }
 
+// Render a band's current value into `out` as a display string, applying the
+// band's formatter (Hz/kHz, ms/s, %, BPM, pan, clock division, …).
 static void ui_text(const Band &b, char *out) {
     char *p = out;
     if (b.kind == B_ENUM) {
@@ -1447,6 +1507,9 @@ static void ui_bandPush(const Band &b) {
     }
 }
 
+// Encoder turn on a value band (dir = ±1). Continuous bands step the CC; enum
+// bands cycle options; pattern/patch bands index their list; colour/brightness
+// bands edit the UI prefs directly. Everything else routes through HandleCC+SendCC.
 static void ui_bandTurn(const Band &b, int dir) {
     uint8_t acc = ui_absCC(b);
     switch (b.kind) {
@@ -1532,10 +1595,12 @@ static void ui_bandTurn(const Band &b, int dir) {
     }
 }
 
+// NAV encoder: move between sections within the current context (wraps).
 static void ui_navTurn(int dir) {
     ui_sec = (uint8_t)((ui_sec + dir + kNumSec) % kNumSec);
     ui_full_dirty = true;
 }
+// NAV encoder (shifted): cycle the context CH1/CH2/CH3/GLOBAL (wraps).
 static void ui_navCtx(int dir) {
     ui_ctx = (uint8_t)((ui_ctx + dir + 4) % 4);
     if (ui_sec >= kNumSec)
@@ -1569,6 +1634,7 @@ static void ui_vuToggle() {
 }
 
 // --- rendering ---
+// Pixel width of string `s` at text scale `size` (6px advance per glyph).
 static int ui_strw(const char *s, uint8_t size) {
     int n = 0;
     while (s[n])
@@ -1586,6 +1652,8 @@ static constexpr int kDotSz = 9;
 static constexpr int kDotRowY = 5; // flush region (covers the selection box)
 static constexpr int kDotRowH = 16;
 
+// Scale an RGB565 colour's brightness by `f` (0..1), per channel. Used to fade
+// the activity dots with their envelope level.
 static uint16_t ui_scale(uint16_t c, float f) {
     if (f < 0.f)
         f = 0.f;
@@ -1636,6 +1704,8 @@ static void ui_drawDots() {
     }
 }
 
+// Draw the top bar: context badge (CH1/CH2/CH3/GLBL/SET), section name, the
+// section-position dots, and the channel activity dots.
 static void ui_drawHeader() {
     tft.FillRect(0, 0, 240, 28, kHdrBg);
     uint16_t col = ui_col();
@@ -1666,6 +1736,7 @@ static void ui_drawMeter(int x, int y, char label, float load) {
         tft.FillRect(bx, y, w, 7, c);
 }
 
+// Draw the bottom bar: audio (A) + control (C) CPU meters on the left, BPM right.
 static void ui_drawFooter() {
     tft.FillRect(0, 300, 240, 20, kFootBg);
     // bottom-left: audio (A) and control (C) CPU meters
@@ -1679,6 +1750,8 @@ static void ui_drawFooter() {
     tft.DrawString(236 - ui_strw(t, 1), 306, t, kDimCol, kFootBg, 1);
 }
 
+// Draw band `i` (0–2) of the current section: label, status badge, the value, and
+// the kind-specific widget (bar / enum chips / toggle / colour or brightness bar).
 static void ui_drawBand(int i) {
     const Section &s = ui_cur();
     int y = 30 + i * 90; // 30, 120, 210
@@ -1810,6 +1883,8 @@ static void ui_drawBand(int i) {
 static uint16_t menu_fb[Ili9341::kWidth * Ili9341::kHeight] __attribute__((aligned(32)))
 DSY_SDRAM_BSS;
 
+// Bring up the display + encoder mux and point drawing at the framebuffer.
+// Called from main() after audio is running (see the call site for why).
 static void MenuInit() {
     tft.Init();                  // SPI1 first ...
     mux.Init();                  // ... then mux, so D9 ends configured as the mux SIG input
@@ -1906,6 +1981,8 @@ static const int kVuBarH = 26;
 static const int kVuY[4] = {54, 92, 168, 206};
 static const char *const kVuLab[4] = {"IN L", "IN R", "OUT L", "OUT R"};
 
+// Paint the VU page's fixed chrome (header, labels, bar outlines). Drawn once;
+// only the bars themselves refresh after this.
 static void ui_drawVuStatic() {
     tft.FillScreen(Ili9341::kBlack);
     tft.FillRect(0, 0, 240, 28, kHdrBg);
@@ -1922,6 +1999,8 @@ static void ui_drawVuStatic() {
     tft.DrawString(4, 306, "NAV CLICK = EXIT", kDimCol, kFootBg, 1);
 }
 
+// Redraw the four I/O level bars from the latest peak-hold values, scaled
+// -60 dB..0 dB with a green/yellow/red gradient.
 static void ui_drawVuBars() {
     const float lv[4] = {vu_in_l, vu_in_r, vu_out_l, vu_out_r};
     for (int i = 0; i < 4; i++) {
@@ -2021,6 +2100,10 @@ static void VuCommit(float iL, float iR, float oL, float oR) {
     vu_out_r = oR > vu_out_r ? oR : vu_out_r * k;
 }
 
+// The audio engine. Per block: update filter/delay/LFO coefficients once, then
+// per sample run each channel's filter → envelope → amp → pan, sum into the
+// ping-pong delay and dry path, soft-clip, and apply the startup fade. Reads the
+// live `preset`/transport globals directly; must never block or call MIDI/flash.
 static void AudioCallback(const float *const *in, float **out, size_t size) {
     dspLoad.OnBlockStart();
 
@@ -2236,6 +2319,9 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
 // Main
 // ============================================================
 
+// Boot the hardware and run the control loop forever. Order matters: codec/MIDI
+// first, then the display; the main loop services MIDI, runs the internal clock,
+// scans encoders, repaints the screen, emits telemetry, and auto-snapshots state.
 int main(void) {
     hw.Configure();
     hw.Init(true); // boost to 480 MHz for audio + display headroom
