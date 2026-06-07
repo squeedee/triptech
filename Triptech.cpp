@@ -244,6 +244,11 @@ static uint8_t cur_patch = 0;
 static float soft_gain = 0.f;
 static float soft_inc = 1.f;
 
+// Slewed delay length (samples). The synced length is derived from preset.bpm,
+// which jitters when slaved to external MIDI clock; slewing absorbs that so the
+// read pointer never jumps. -1 = uninitialised (seed on first audio block).
+static float delaySmpsSmoothed = -1.f;
+
 static CpuLoadMeter dspLoad;
 static float loopLoadAvg = 0.f; // smoothed main-loop µs per iteration
 static float loopPeak = 0.f;    // peak µs in current 250ms window
@@ -265,8 +270,16 @@ static uint8_t cur_step = 0;
 static float tick_accum = 0.f;
 static bool seq_running = true; // sequencer runs by default at power-on
 
-// Incoming-clock BPM detection (updates preset.bpm when external clock is active)
-static uint32_t last_clock_us = 0;
+// Incoming-clock BPM detection (updates preset.bpm when external clock is active).
+// Ticks are timestamped when drained in the main loop, not on arrival, so a busy
+// main loop (display render) makes them bunch up. A single inter-tick interval is
+// therefore far too noisy; estimate over a sliding window of ticks instead so the
+// burst-clustering between the endpoints cancels and only the (well-separated)
+// endpoints set the tempo.
+static constexpr int kClkWin = 24; // window length in ticks (24 PPQN => 1 quarter)
+static uint32_t clk_ts[kClkWin] = {0};
+static uint8_t clk_idx = 0;
+static uint32_t clk_count = 0;
 static float clock_bpm_ema = 0.f;
 static uint8_t last_bpm_cc = 255;
 
@@ -780,19 +793,21 @@ template <typename Handler> static void ProcessMidi(Handler &midi, bool from_trs
                     usb_last_ms = System::GetNow();
                 }
                 if (allow_trans) {
-                    // BPM estimate from inter-tick interval (24 PPQN), EMA-smoothed.
+                    // BPM from a sliding kClkWin-tick window (us per kClkWin ticks),
+                    // then lightly EMA-smoothed. kClkWin ticks = kClkWin/24 quarters.
                     uint32_t now_us = System::GetUs();
-                    if (last_clock_us != 0) {
-                        uint32_t dt = now_us - last_clock_us;
-                        if (dt > 1000u && dt < 200000u) {
-                            float inst = 60000000.f / ((float)dt * 24.f);
-                            clock_bpm_ema = (clock_bpm_ema == 0.f)
-                                                ? inst
-                                                : (clock_bpm_ema * 0.8f + inst * 0.2f);
+                    clk_ts[clk_idx] = now_us;
+                    clk_idx = (clk_idx + 1) % kClkWin;
+                    clk_count++;
+                    if (clk_count > (uint32_t)kClkWin) {
+                        uint32_t span = now_us - clk_ts[clk_idx]; // oldest, kClkWin ticks back
+                        if (span > 0) {
+                            float bpm = (float)kClkWin / 24.f * 60000000.f / (float)span;
+                            clock_bpm_ema =
+                                (clock_bpm_ema == 0.f) ? bpm : (clock_bpm_ema * 0.7f + bpm * 0.3f);
                             preset.bpm = fclamp(clock_bpm_ema, 20.f, 300.f);
                         }
                     }
-                    last_clock_us = now_us;
                     if (seq_running)
                         AdvanceClock();
                 }
@@ -2021,14 +2036,23 @@ static void AudioCallback(const float *const *in, float **out, size_t size) {
     float panL[NUM_CH], panR[NUM_CH];
     bool use6[NUM_CH], use24[NUM_CH];
 
-    // Delay time: synced to clock divisions or free ms
+    // Delay time: synced to clock divisions or free ms. The synced length is
+    // derived from preset.bpm, which jitters when slaved to external MIDI clock
+    // (a per-tick EMA estimate). Writing that jittery length straight to SetDelay()
+    // jumps the read pointer every block — a click per block — which is what made
+    // the delay sound crunchy under external clock. Slew the length toward its
+    // target instead: jitter is absorbed, and an intentional tempo/division change
+    // glides smoothly (tape-style) rather than stepping.
     {
         float delaySec = preset.delaySynced
                              ? kDivBeats[preset.delayParam / 16] * 60.f / preset.bpm
                              : CcLog(preset.delayParam, 0.01f, 2.f); // 10 ms – 2000 ms
-        size_t delaySmps = (size_t)fclamp(delaySec * sample_rate, 1.f, 192000.f);
-        delayL.SetDelay(delaySmps);
-        delayR.SetDelay(delaySmps);
+        float target = fclamp(delaySec * sample_rate, 1.f, 192000.f);
+        if (delaySmpsSmoothed < 0.f)
+            delaySmpsSmoothed = target; // seed on first block
+        delaySmpsSmoothed += (target - delaySmpsSmoothed) * 0.01f;
+        delayL.SetDelay(delaySmpsSmoothed);
+        delayR.SetDelay(delaySmpsSmoothed);
     }
 
     // Per-channel LFO phase increment + trapezoid slew width.
@@ -2307,7 +2331,8 @@ int main(void) {
         // Drop tempo estimator when no external clock is streaming, so resumes
         // don't average across a long silence.
         if (!midi_active) {
-            last_clock_us = 0;
+            clk_count = 0;
+            clk_idx = 0;
             clock_bpm_ema = 0.f;
         }
 
