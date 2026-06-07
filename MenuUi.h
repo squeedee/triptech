@@ -28,6 +28,7 @@ static uint8_t ui_sec = 0;         // section within the current context
 static uint8_t ui_patch_sel = 0;   // patch slot highlighted on the PATCH page
 static bool ui_settings = false;   // hidden settings mode (hold NAV + click E1)
 static bool ui_vu = false;         // hidden I/O VU meter (hold NAV + click E2)
+static bool ui_mix = false;        // mixer page: level/mute/solo (hold NAV + click E3)
 static bool ui_full_dirty = true;  // full-screen redraw pending
 static bool ui_foot_dirty = false; // footer (BPM) redraw pending
 static bool ui_band_dirty[3] = {true, true, true};
@@ -245,10 +246,15 @@ static const Band kDelay[] = {
     {"FDBK", B_CONT, 2, 0, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"WIDTH", B_CONT, 3, 0, F_LEVEL, 0, P_RESET, 255, 127, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
+// Mixer page bands: per-channel level (turn), mute (click), solo (NAV + click).
+// Reached via NAV-hold + click E3; not part of the GLOBAL section list.
 static const Band kMix[] = {
     {"CH1 LVL", B_CONT, 26, 0, F_LEVEL, 0, P_MUTE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"CH2 LVL", B_CONT, 42, 0, F_LEVEL, 0, P_MUTE, 255, 1, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"CH3 LVL", B_CONT, 58, 0, F_LEVEL, 0, P_MUTE, 255, 2, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Section kMixSections[] = {
+    {"MIXER", kMix, 3},
 };
 static const Band kMaster[] = {
     {"DRY", B_CONT, 4, 0, F_LEVEL, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
@@ -261,8 +267,10 @@ static const Band kPatch[] = {
     {"STATE", B_ACTION, 0, 0, F_NONE, 0, P_SYNC, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Section kGlSections[] = {
-    {"SEQ", kSeq, 3},       {"DELAY", kDelay, 3}, {"MIX", kMix, 3},
-    {"MASTER", kMaster, 3}, {"PATCH", kPatch, 3},
+    {"SEQ", kSeq, 3},
+    {"DELAY", kDelay, 3},
+    {"MASTER", kMaster, 3},
+    {"PATCH", kPatch, 3},
 };
 
 // Hidden settings mode. Colour pages carry the colour index in `cc` (0..3).
@@ -294,7 +302,11 @@ static const Section kSetSections[] = {
     {"GBL COL", kColGbl, 3}, {"DISPLAY", kDisplay, 1},
 };
 
-static constexpr uint8_t kNumSec = 5; // both normal and settings modes have 5
+// Section counts per page table (channels/settings have 5, global 4, mixer 1).
+static constexpr uint8_t kNChSec = sizeof(kChSections) / sizeof(kChSections[0]);
+static constexpr uint8_t kNGlSec = sizeof(kGlSections) / sizeof(kGlSections[0]);
+static constexpr uint8_t kNSetSec = sizeof(kSetSections) / sizeof(kSetSections[0]);
+static constexpr uint8_t kNMixSec = sizeof(kMixSections) / sizeof(kMixSections[0]);
 
 static const char *const kDivName[8] = {"1/2", "1/2T", "1/4",  "1/4T",
                                         "1/8", "1/8T", "1/16", "1/16T"};
@@ -321,11 +333,23 @@ static uint8_t ui_brightness = 255;
 
 // The section table for the active mode/context.
 static const Section *ui_sectionTbl() {
+    if (ui_mix)
+        return kMixSections;
     return ui_settings ? kSetSections : (ui_ctx < 3 ? kChSections : kGlSections);
+}
+// How many sections the active table has (global has one fewer than the channels).
+static uint8_t ui_numSec() {
+    if (ui_mix)
+        return kNMixSec;
+    if (ui_settings)
+        return kNSetSec;
+    return ui_ctx < 3 ? kNChSec : kNGlSec;
 }
 // The section currently on screen.
 static const Section &ui_cur() { return ui_sectionTbl()[ui_sec]; }
 static uint16_t ui_col() {
+    if (ui_mix)
+        return kAccent;
     if (ui_settings) {
         const Band &b0 = ui_cur().bands[0];
         if (b0.kind == B_COL_R) // colour page: preview the colour being edited
@@ -716,14 +740,15 @@ static void ui_bandTurn(const Band &b, int dir) {
 
 // NAV encoder: move between sections within the current context (wraps).
 static void ui_navTurn(int dir) {
-    ui_sec = (uint8_t)((ui_sec + dir + kNumSec) % kNumSec);
+    uint8_t n = ui_numSec();
+    ui_sec = (uint8_t)((ui_sec + dir + n) % n);
     ui_full_dirty = true;
 }
 // NAV encoder (shifted): cycle the context CH1/CH2/CH3/GLOBAL (wraps).
 static void ui_navCtx(int dir) {
     ui_ctx = (uint8_t)((ui_ctx + dir + 4) % 4);
-    if (ui_sec >= kNumSec)
-        ui_sec = kNumSec - 1;
+    if (ui_sec >= ui_numSec()) // global has fewer sections than the channels
+        ui_sec = ui_numSec() - 1;
     ui_full_dirty = true;
 }
 // Commit colours + brightness to QSPI (no-op if unchanged). Called on exit so we
@@ -741,14 +766,23 @@ static void ui_settingsToggle() {
         ui_settingsSave(); // leaving settings → persist
     ui_settings = !ui_settings;
     if (ui_settings)
-        ui_vu = false; // modes are exclusive
+        ui_vu = ui_mix = false; // modes are exclusive
     ui_sec = 0;
     ui_full_dirty = true;
 }
 static void ui_vuToggle() {
     ui_vu = !ui_vu;
     if (ui_vu)
-        ui_settings = false; // modes are exclusive
+        ui_settings = ui_mix = false; // modes are exclusive
+    ui_full_dirty = true;
+}
+// Mixer page (level/mute/solo for all three channels). Entered/exited like the
+// other hidden modes; NAV-click exits it (see MenuPoll).
+static void ui_mixToggle() {
+    ui_mix = !ui_mix;
+    if (ui_mix)
+        ui_settings = ui_vu = false; // modes are exclusive
+    ui_sec = 0;
     ui_full_dirty = true;
 }
 
@@ -786,6 +820,8 @@ static uint16_t ui_scale(uint16_t c, float f) {
 
 // Which dot the selection box belongs to (0..3, or -1 for none).
 static int ui_selDot() {
+    if (ui_mix)
+        return -1; // mixer shows all channels — no single-context box
     if (ui_settings)
         return ui_sec < 4 ? ui_sec : -1; // colour pages map onto the dots
     return ui_ctx;                       // 0..2 channels, 3 global
@@ -829,11 +865,12 @@ static void ui_drawHeader() {
     tft.FillRect(0, 0, 240, 28, kHdrBg);
     uint16_t col = ui_col();
     tft.FillRect(4, 5, 46, 18, col);
-    const char *cn = ui_settings ? "SET" : (ui_ctx < 3 ? CH_NAME[ui_ctx] : "GLBL");
+    const char *cn = ui_mix ? "MIX" : ui_settings ? "SET" : (ui_ctx < 3 ? CH_NAME[ui_ctx] : "GLBL");
     tft.DrawString(4 + (46 - ui_strw(cn, 1)) / 2, 8, cn, Ili9341::kBlack, col, 1);
     tft.DrawString(54, 10, ui_cur().name, kTxt, kHdrBg, 1); // size 1, left of the dots
-    int dx = 240 - 6 - kNumSec * 8;
-    for (int i = 0; i < kNumSec; i++)
+    uint8_t ns = ui_numSec();
+    int dx = 240 - 6 - ns * 8;
+    for (int i = 0; i < ns; i++)
         tft.FillRect(dx + i * 8, 12, 5, 5, i == ui_sec ? col : kDimCol);
     ui_drawDots();
 }
@@ -1041,7 +1078,7 @@ static void MenuPoll(uint32_t now) {
         if (i == ENC_NAV) {
             if (pressEdge)
                 nav_turned_while_held = false;
-            if (d != 0 && !ui_vu) {
+            if (d != 0 && !ui_vu && !ui_mix) {
                 if (ui_settings) {
                     ui_navTurn(d); // settings: turn = page
                 } else if (held) {
@@ -1054,6 +1091,8 @@ static void MenuPoll(uint32_t now) {
             if (releaseEdge && !nav_turned_while_held) {
                 if (ui_vu)
                     ui_vuToggle(); // click exits VU
+                else if (ui_mix)
+                    ui_mixToggle(); // click exits the mixer
                 else if (ui_settings)
                     ui_settingsToggle(); // click exits settings
                 else
@@ -1064,16 +1103,21 @@ static void MenuPoll(uint32_t now) {
 
         int idx = (i == ENC_E1) ? 0 : (i == ENC_E2) ? 1 : 2;
 
-        // Shift (NAV held) + click. E1/E2 are the hidden mode toggles (settings /
-        // VU); on any other encoder, shift-click on a mute band solos it instead.
+        // Shift (NAV held) + click. From a normal page E1/E2/E3 open the hidden
+        // modes (settings / VU / mixer). Inside the mixer, shift-click instead
+        // solos the channel under that encoder.
         if (pressEdge && b_enc[ENC_NAV].state) {
-            if (i == ENC_E1)
+            if (ui_mix) {
+                if (idx < ui_cur().n && ui_cur().bands[idx].push == P_MUTE) {
+                    ui_bandSolo(ui_cur().bands[idx]);
+                    ui_full_dirty = true;
+                }
+            } else if (i == ENC_E1) {
                 ui_settingsToggle();
-            else if (i == ENC_E2)
+            } else if (i == ENC_E2) {
                 ui_vuToggle();
-            else if (idx >= 0 && idx < ui_cur().n && ui_cur().bands[idx].push == P_MUTE) {
-                ui_bandSolo(ui_cur().bands[idx]);
-                ui_full_dirty = true;
+            } else if (i == ENC_E3) {
+                ui_mixToggle();
             }
             nav_turned_while_held = true; // suppress NAV's own click on release
             continue;
