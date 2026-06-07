@@ -153,7 +153,6 @@ enum Push : uint8_t {
     P_BYPASS,
     P_LOAD,
     P_SAVE,
-    P_SYNC,
     P_RESET // click resets the band to a value held in its muteCh field
 };
 
@@ -269,13 +268,12 @@ static const Band kMaster[] = {
 static const Band kPatch[] = {
     {"PATCH", B_PATCH, 0, 0, F_NONE, 0, P_LOAD, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"SAVE", B_ACTION, 0, 0, F_NONE, 0, P_SAVE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"STATE", B_ACTION, 0, 0, F_NONE, 0, P_SYNC, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
 static const Section kGlSections[] = {
     {"SEQ", kSeq, 3},
     {"DELAY", kDelay, 3},
     {"MASTER", kMaster, 3},
-    {"PATCH", kPatch, 3},
+    {"PATCH", kPatch, 2},
 };
 
 // Hidden settings mode. Colour pages carry the colour index in `cc` (0..3).
@@ -647,9 +645,6 @@ static void ui_bandPush(const Band &b) {
         ui_confirm = CONFIRM_SAVE;
         ui_confirm_slot = ui_patch_sel;
         ui_full_dirty = true;
-        break;
-    case P_SYNC:
-        SendAllState();
         break;
     case P_RESET: {
         uint8_t acc = ui_absCC(b);
@@ -1055,10 +1050,7 @@ static void ui_drawBand(int i) {
             tft.FillRect(8, y + 62, w, 12, col);
         }
     } else {
-        const char *hint =
-            b.kind == B_PATCH
-                ? "PUSH:LOAD"
-                : b.push == P_SAVE ? "PUSH:SAVE" : b.push == P_SYNC ? "PUSH:SYNC" : "";
+        const char *hint = b.kind == B_PATCH ? "PUSH:LOAD" : b.push == P_SAVE ? "PUSH:SAVE" : "";
         if (hint[0])
             tft.DrawString(8, y + 62, hint, kDimCol, kPanel, 1);
         // Unsaved-edits indicator on the PATCH slot band.
