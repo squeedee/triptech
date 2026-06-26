@@ -55,3 +55,18 @@ static uint32_t tap_last_ms = 0;   // timestamp of last tap-tempo tap
 static volatile float vu_in_l = 0.f, vu_in_r = 0.f, vu_out_l = 0.f, vu_out_r = 0.f;
 static float ui_dsp_load = 0.f;  // audio DSP load 0..1 (for the footer meter)
 static float ui_ctrl_load = 0.f; // control/main-loop load 0..1 (vs 500 µs)
+
+// --- MIDI I/O routing (edited in the menu, persisted in UiSettings) ---
+// Which physical port(s) a stream uses. NONE silences/ignores that direction.
+enum MidiIface : uint8_t { MIDI_USB, MIDI_TRS, MIDI_BOTH, MIDI_NONE };
+static uint8_t echo_iface = MIDI_BOTH; // outbound: CC echo + note triggers + telemetry
+static uint8_t echo_chan = 0;          // outbound channel, 0-15 (shown as 1-16)
+static uint8_t in_iface = MIDI_BOTH;   // main MIDI in (notes/CC/PC AND clock) port(s)
+static uint8_t in_chan = 16;           // input channel filter: 0-15 = ch 1-16, 16 = OMNI
+
+static inline bool echoTRS() { return echo_iface == MIDI_TRS || echo_iface == MIDI_BOTH; }
+static inline bool echoUSB() { return echo_iface == MIDI_USB || echo_iface == MIDI_BOTH; }
+static inline bool inTRS() { return in_iface == MIDI_TRS || in_iface == MIDI_BOTH; }
+static inline bool inUSB() { return in_iface == MIDI_USB || in_iface == MIDI_BOTH; }
+// True if an incoming channel-voice message on `chan` (0-15) passes the input filter.
+static inline bool inChanOk(uint8_t chan) { return in_chan >= 16 || chan == in_chan; }

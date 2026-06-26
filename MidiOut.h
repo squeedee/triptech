@@ -11,29 +11,29 @@
 #include "ParamMap.h"
 #include "State.h"
 
-inline void SendCC(uint8_t cc, uint8_t val) {
-    uint8_t msg[3] = {0xB0, cc, val};
-    midi.SendMessage(msg, 3);
-    usb_midi.SendMessage(msg, 3);
+// Emit a channel-voice message (high nibble `statusHi`, e.g. 0xB0, + 1 or 2 data
+// bytes) on the enabled echo port(s), on the echo channel — or duplicated across
+// all 16 channels when the feedback channel is set to OMNI (echo_chan >= 16).
+inline void EchoSend(uint8_t statusHi, uint8_t d1, uint8_t d2, size_t ndata) {
+    if (echo_iface == MIDI_NONE)
+        return;
+    uint8_t first = echo_chan >= 16 ? 0 : echo_chan;
+    uint8_t last = echo_chan >= 16 ? 15 : echo_chan;
+    uint8_t msg[3] = {0, d1, d2};
+    size_t n = ndata + 1;
+    for (uint8_t ch = first; ch <= last; ch++) {
+        msg[0] = (uint8_t)(statusHi | ch);
+        if (echoTRS())
+            midi.SendMessage(msg, n);
+        if (echoUSB())
+            usb_midi.SendMessage(msg, n);
+    }
 }
 
-inline void SendProgramChange(uint8_t prog) {
-    uint8_t msg[2] = {0xC0, prog};
-    midi.SendMessage(msg, 2);
-    usb_midi.SendMessage(msg, 2);
-}
-
-inline void SendNoteOn(uint8_t note, uint8_t vel) {
-    uint8_t msg[3] = {0x90, note, vel};
-    midi.SendMessage(msg, 3);
-    usb_midi.SendMessage(msg, 3);
-}
-
-inline void SendNoteOff(uint8_t note) {
-    uint8_t msg[3] = {0x80, note, 0};
-    midi.SendMessage(msg, 3);
-    usb_midi.SendMessage(msg, 3);
-}
+inline void SendCC(uint8_t cc, uint8_t val) { EchoSend(0xB0, cc, val, 2); }
+inline void SendProgramChange(uint8_t prog) { EchoSend(0xC0, prog, 0, 1); }
+inline void SendNoteOn(uint8_t note, uint8_t vel) { EchoSend(0x90, note, vel, 2); }
+inline void SendNoteOff(uint8_t note) { EchoSend(0x80, note, 0, 2); }
 
 // Broadcast the entire live state — every global CC, the program-change for the
 // current patch, and all 16 per-channel CCs × NUM_CH — so a freshly-connected

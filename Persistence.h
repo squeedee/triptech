@@ -17,8 +17,10 @@ struct UiSettings {
     uint32_t version;
     uint16_t color[4];
     uint8_t brightness;
+    uint8_t echoIface, echoChan, inIface, inChan; // MIDI I/O routing (see State.h)
     bool operator!=(const UiSettings &o) const {
-        if (version != o.version || brightness != o.brightness)
+        if (version != o.version || brightness != o.brightness || echoIface != o.echoIface ||
+            echoChan != o.echoChan || inIface != o.inIface || inChan != o.inChan)
             return true;
         for (int i = 0; i < 4; i++)
             if (color[i] != o.color[i])
@@ -26,7 +28,7 @@ struct UiSettings {
         return false;
     }
 };
-static constexpr uint32_t UI_VERSION = 3;           // bumped: transport moved to LiveState
+static constexpr uint32_t UI_VERSION = 4;           // bumped: added MIDI I/O routing
 static constexpr uint32_t UI_QSPI_OFFSET = 0x80000; // 512 KB in
 
 // "Reset-resistant" live working state, auto-snapshotted to QSPI (debounced) so a

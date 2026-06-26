@@ -26,9 +26,9 @@ static const char *const CH_NAME[NUM_CH] = {"CH1", "CH2", "CH3"};
 static uint8_t ui_ctx = 0;         // 0..2 = channel, 3 = global
 static uint8_t ui_sec = 0;         // section within the current context
 static uint8_t ui_patch_sel = 0;   // patch slot highlighted on the PATCH page
-static bool ui_settings = false;   // hidden settings mode (hold NAV + click E1)
-static bool ui_vu = false;         // hidden I/O VU meter (hold NAV + click E2)
-static bool ui_mix = false;        // mixer page: level/mute/solo (hold NAV + click E3)
+static bool ui_sys = false;        // system pages: VU / patch / MIDI (NAV + click E1)
+static bool ui_settings = false;   // colour + display settings (NAV + click E2)
+static bool ui_mix = false;        // mixer page: level/mute/solo (NAV + click E3)
 static bool ui_full_dirty = true;  // full-screen redraw pending
 static bool ui_foot_dirty = false; // footer (BPM) redraw pending
 static bool ui_band_dirty[3] = {true, true, true};
@@ -126,6 +126,8 @@ enum BandKind : uint8_t {
     B_COL_G,
     B_COL_B,
     B_BRIGHT,
+    B_MIDI_IF, // MIDI interface select (USB/5PIN/BOTH/NONE); cc 0=echo out, 1=main in
+    B_MIDI_CH, // MIDI channel select; cc 0=echo out (1-16), 1=main in (1-16/OMNI)
 };
 enum Fmt : uint8_t {
     F_NONE,
@@ -265,15 +267,33 @@ static const Band kMaster[] = {
     {"BYPASS", B_TOGGLE, 18, 0, F_NONE, 0, P_BYPASS, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
     {"RUN", B_TOGGLE, 15, 0, F_NONE, 0, P_RUN, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
 };
-static const Band kPatch[] = {
-    {"PATCH", B_PATCH, 0, 0, F_NONE, 0, P_LOAD, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-    {"SAVE", B_ACTION, 0, 0, F_NONE, 0, P_SAVE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
-};
 static const Section kGlSections[] = {
     {"SEQ", kSeq, 3},
     {"DELAY", kDelay, 3},
     {"MASTER", kMaster, 3},
+};
+
+// --- System pages (NAV + click E1): VU meter, patch mgmt, MIDI feedback/in. The
+//     MIDI bands' `cc` selects the stream (0 = feedback/echo out, 1 = main in);
+//     they edit the routing globals in State.h, not a CC. ---
+static const Band kPatch[] = {
+    {"PATCH", B_PATCH, 0, 0, F_NONE, 0, P_LOAD, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"SAVE", B_ACTION, 0, 0, F_NONE, 0, P_SAVE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kMidiOut[] = {
+    {"INTERFACE", B_MIDI_IF, 0, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"CHANNEL", B_MIDI_CH, 0, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+static const Band kMidiIn[] = {
+    {"INTERFACE", B_MIDI_IF, 1, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+    {"CHANNEL", B_MIDI_CH, 1, 0, F_NONE, 0, P_NONE, 255, 0, {0, 0, 0, 0}, {0, 0, 0, 0}, 0},
+};
+// Page 0 (VU) has no bands — it is custom-rendered (see MenuRender).
+static const Section kSysSections[] = {
+    {"VU", nullptr, 0},
     {"PATCH", kPatch, 2},
+    {"MIDI FEEDBACK", kMidiOut, 2},
+    {"MIDI IN", kMidiIn, 2},
 };
 
 // Hidden settings mode. Colour pages carry the colour index in `cc` (0..3).
@@ -310,6 +330,7 @@ static constexpr uint8_t kNChSec = sizeof(kChSections) / sizeof(kChSections[0]);
 static constexpr uint8_t kNGlSec = sizeof(kGlSections) / sizeof(kGlSections[0]);
 static constexpr uint8_t kNSetSec = sizeof(kSetSections) / sizeof(kSetSections[0]);
 static constexpr uint8_t kNMixSec = sizeof(kMixSections) / sizeof(kMixSections[0]);
+static constexpr uint8_t kNSysSec = sizeof(kSysSections) / sizeof(kSysSections[0]);
 
 static const char *const kDivName[8] = {"1/2", "1/2T", "1/4",  "1/4T",
                                         "1/8", "1/8T", "1/16", "1/16T"};
@@ -336,12 +357,16 @@ static uint8_t ui_brightness = 255;
 
 // The section table for the active mode/context.
 static const Section *ui_sectionTbl() {
+    if (ui_sys)
+        return kSysSections;
     if (ui_mix)
         return kMixSections;
     return ui_settings ? kSetSections : (ui_ctx < 3 ? kChSections : kGlSections);
 }
 // How many sections the active table has (global has one fewer than the channels).
 static uint8_t ui_numSec() {
+    if (ui_sys)
+        return kNSysSec;
     if (ui_mix)
         return kNMixSec;
     if (ui_settings)
@@ -351,7 +376,7 @@ static uint8_t ui_numSec() {
 // The section currently on screen.
 static const Section &ui_cur() { return ui_sectionTbl()[ui_sec]; }
 static uint16_t ui_col() {
-    if (ui_mix)
+    if (ui_sys || ui_mix)
         return kAccent;
     if (ui_settings) {
         const Band &b0 = ui_cur().bands[0];
@@ -732,6 +757,21 @@ static void ui_bandTurn(const Band &b, int dir) {
         tft.SetBrightness(ui_brightness / 255.f);
         break;
     }
+    case B_MIDI_IF: { // cycle USB/5PIN/BOTH/NONE (cc 0 = echo out, 1 = main in)
+        uint8_t &dst = b.cc == 0 ? echo_iface : in_iface;
+        dst = (uint8_t)((dst + dir + 4) % 4);
+        ui_full_dirty = true;
+        break;
+    }
+    case B_MIDI_CH: {
+        // 0-15 = CH 1-16, 16 = OMNI (broadcast out / accept-all in).
+        uint8_t &dst = b.cc == 0 ? echo_chan : in_chan;
+        int v = (int)dst + dir;
+        v = v < 0 ? 0 : v > 16 ? 16 : v;
+        dst = (uint8_t)v;
+        ui_full_dirty = true;
+        break;
+    }
     default: {
         int v = (int)parammap::Get(acc) + dir * 2;
         if (v < 0)
@@ -763,29 +803,38 @@ static void ui_navCtx(int dir) {
         ui_sec = ui_numSec() - 1;
     ui_full_dirty = true;
 }
-// Commit colours + brightness to QSPI (no-op if unchanged). Called on exit so we
-// write at most once per settings session, not on every encoder tick.
-static void ui_settingsSave() {
+// Commit colours + brightness + MIDI routing to QSPI (no-op if unchanged). Called
+// on exit of the settings/system modes so we write at most once per session.
+static void ui_prefsSave() {
     UiSettings &s = uiStore.GetSettings();
     s.version = UI_VERSION;
     for (int i = 0; i < 4; i++)
         s.color[i] = ui_color[i];
     s.brightness = ui_brightness;
+    s.echoIface = echo_iface;
+    s.echoChan = echo_chan;
+    s.inIface = in_iface;
+    s.inChan = in_chan;
     uiStore.Save();
 }
 static void ui_settingsToggle() {
     if (ui_settings)
-        ui_settingsSave(); // leaving settings → persist
+        ui_prefsSave(); // leaving settings → persist
     ui_settings = !ui_settings;
     if (ui_settings)
-        ui_vu = ui_mix = false; // modes are exclusive
+        ui_sys = ui_mix = false; // modes are exclusive
     ui_sec = 0;
     ui_full_dirty = true;
 }
-static void ui_vuToggle() {
-    ui_vu = !ui_vu;
-    if (ui_vu)
-        ui_settings = ui_mix = false; // modes are exclusive
+// System pages (VU / patch / MIDI). VU is page 0 (front). NAV-click exits; leaving
+// persists the MIDI routing. Modes are mutually exclusive.
+static void ui_sysToggle() {
+    if (ui_sys)
+        ui_prefsSave(); // leaving → persist MIDI routing
+    ui_sys = !ui_sys;
+    if (ui_sys)
+        ui_settings = ui_mix = false;
+    ui_sec = 0; // VU up front
     ui_full_dirty = true;
 }
 // Mixer page (level/mute/solo for all three channels). Entered/exited like the
@@ -793,7 +842,7 @@ static void ui_vuToggle() {
 static void ui_mixToggle() {
     ui_mix = !ui_mix;
     if (ui_mix)
-        ui_settings = ui_vu = false; // modes are exclusive
+        ui_settings = ui_sys = false; // modes are exclusive
     ui_sec = 0;
     ui_full_dirty = true;
 }
@@ -845,8 +894,8 @@ static uint16_t ui_scale(uint16_t c, float f) {
 
 // Which dot the selection box belongs to (0..3, or -1 for none).
 static int ui_selDot() {
-    if (ui_mix)
-        return -1; // mixer shows all channels — no single-context box
+    if (ui_sys || ui_mix)
+        return -1; // system/mixer pages aren't tied to one channel — no box
     if (ui_settings)
         return ui_sec < 4 ? ui_sec : -1; // colour pages map onto the dots
     return ui_ctx;                       // 0..2 channels, 3 global
@@ -884,20 +933,24 @@ static void ui_drawDots() {
     }
 }
 
-// Draw the top bar: context badge (CH1/CH2/CH3/GLBL/SET), section name, the
-// section-position dots, and the channel activity dots.
+// Draw the top bar: context badge (CH1/CH2/CH3/GLBL/SET/SYS/MIX), section name,
+// the section-position (page) dots, and — except on the system pages, which aren't
+// channel-related — the channel activity/trigger dots.
 static void ui_drawHeader() {
     tft.FillRect(0, 0, 240, 28, kHdrBg);
     uint16_t col = ui_col();
     tft.FillRect(4, 5, 46, 18, col);
-    const char *cn = ui_mix ? "MIX" : ui_settings ? "SET" : (ui_ctx < 3 ? CH_NAME[ui_ctx] : "GLBL");
+    const char *cn =
+        ui_sys ? "SYS"
+               : ui_mix ? "MIX" : ui_settings ? "SET" : (ui_ctx < 3 ? CH_NAME[ui_ctx] : "GLBL");
     tft.DrawString(4 + (46 - ui_strw(cn, 1)) / 2, 8, cn, Ili9341::kBlack, col, 1);
     tft.DrawString(54, 10, ui_cur().name, kTxt, kHdrBg, 1); // size 1, left of the dots
     uint8_t ns = ui_numSec();
     int dx = 240 - 6 - ns * 8;
     for (int i = 0; i < ns; i++)
         tft.FillRect(dx + i * 8, 12, 5, 5, i == ui_sec ? col : kDimCol);
-    ui_drawDots();
+    if (!ui_sys) // system pages have no channel triggers to show
+        ui_drawDots();
 }
 
 // One labelled CPU meter: a letter + a bar that goes green -> yellow -> red as
@@ -1019,6 +1072,34 @@ static void ui_drawBand(int i) {
         }
         return;
     }
+    if (b.kind == B_MIDI_IF) { // four chips: USB / 5PIN / BOTH / NONE
+        static const char *const kIf[4] = {"USB", "5PIN", "BOTH", "NONE"};
+        uint8_t cur = (b.cc == 0) ? echo_iface : in_iface;
+        int n = 4, gap = 4, cw = (222 - (n - 1) * gap) / n;
+        for (int k = 0; k < n; k++) {
+            int cx = 8 + k * (cw + gap);
+            uint16_t f = (k == cur) ? col : kPanel2;
+            tft.FillRect(cx, y + 40, cw, 22, f);
+            int tw = ui_strw(kIf[k], 1);
+            tft.DrawString(cx + (cw - tw) / 2, y + 47, kIf[k], k == cur ? Ili9341::kBlack : kDimCol,
+                           f, 1);
+        }
+        return;
+    }
+    if (b.kind == B_MIDI_CH) { // "CH n" (1-16), or "OMNI" (broadcast out / all in)
+        uint8_t cn = (b.cc == 0) ? echo_chan : in_chan;
+        char v[8];
+        char *p;
+        if (cn >= 16) {
+            p = ui_puts(v, "OMNI");
+        } else {
+            p = ui_puts(v, "CH ");
+            p = ui_putl(p, cn + 1);
+        }
+        *p = 0;
+        tft.DrawString(232 - ui_strw(v, 2), y + 22, v, kTxt, kPanel, 2);
+        return;
+    }
     if (b.kind == B_TOGGLE) {
         bool on = parammap::Get(b.cc) >= 64;
         uint16_t f = on ? col : kPanel2;
@@ -1112,9 +1193,9 @@ static void MenuPoll(uint32_t now) {
         if (i == ENC_NAV) {
             if (pressEdge)
                 nav_turned_while_held = false;
-            if (d != 0 && !ui_vu && !ui_mix) {
-                if (ui_settings) {
-                    ui_navTurn(d); // settings: turn = page
+            if (d != 0 && !ui_mix) {
+                if (ui_settings || ui_sys) {
+                    ui_navTurn(d); // settings / system: turn = page
                 } else if (held) {
                     ui_navCtx(d); // shifted: cycle CH1/CH2/CH3/GLOBAL
                     nav_turned_while_held = true;
@@ -1123,8 +1204,8 @@ static void MenuPoll(uint32_t now) {
                 }
             }
             if (releaseEdge && !nav_turned_while_held) {
-                if (ui_vu)
-                    ui_vuToggle(); // click exits VU
+                if (ui_sys)
+                    ui_sysToggle(); // click exits the system pages
                 else if (ui_mix)
                     ui_mixToggle(); // click exits the mixer
                 else if (ui_settings)
@@ -1138,7 +1219,7 @@ static void MenuPoll(uint32_t now) {
         int idx = (i == ENC_E1) ? 0 : (i == ENC_E2) ? 1 : 2;
 
         // Shift (NAV held) + click. From a normal page E1/E2/E3 open the hidden
-        // modes (settings / VU / mixer). Inside the mixer, shift-click instead
+        // modes (system / settings / mixer). Inside the mixer, shift-click instead
         // solos the channel under that encoder.
         if (pressEdge && b_enc[ENC_NAV].state) {
             if (ui_mix) {
@@ -1147,9 +1228,9 @@ static void MenuPoll(uint32_t now) {
                     ui_full_dirty = true;
                 }
             } else if (i == ENC_E1) {
-                ui_settingsToggle();
+                ui_sysToggle();
             } else if (i == ENC_E2) {
-                ui_vuToggle();
+                ui_settingsToggle();
             } else if (i == ENC_E3) {
                 ui_mixToggle();
             }
@@ -1157,8 +1238,8 @@ static void MenuPoll(uint32_t now) {
             continue;
         }
 
-        if (ui_vu)
-            continue; // VU page ignores the value encoders
+        if (ui_sys && ui_sec == 0)
+            continue; // the VU page (system page 0) ignores the value encoders
 
         if (d != 0 && idx < ui_cur().n) {
             ui_bandTurn(ui_cur().bands[idx], d);
@@ -1182,10 +1263,7 @@ static const char *const kVuLab[4] = {"IN L", "IN R", "OUT L", "OUT R"};
 // only the bars themselves refresh after this.
 static void ui_drawVuStatic() {
     tft.FillScreen(Ili9341::kBlack);
-    tft.FillRect(0, 0, 240, 28, kHdrBg);
-    tft.FillRect(4, 5, 46, 18, kAccent);
-    tft.DrawString(4 + (46 - ui_strw("VU", 1)) / 2, 8, "VU", Ili9341::kBlack, kAccent, 1);
-    tft.DrawString(56, 10, "I/O METER", kTxt, kHdrBg, 1);
+    ui_drawHeader(); // standard SYS header + page dots (so paging is discoverable)
     tft.DrawString(8, 36, "INPUT", kDimCol, Ili9341::kBlack, 1);
     tft.DrawString(8, 150, "OUTPUT", kDimCol, Ili9341::kBlack, 1);
     for (int i = 0; i < 4; i++) {
@@ -1193,7 +1271,7 @@ static void ui_drawVuStatic() {
         tft.DrawRect(kVuBarX - 1, kVuY[i] - 1, kVuBarW + 2, kVuBarH + 2, kPanel2);
     }
     tft.FillRect(0, 300, 240, 20, kFootBg);
-    tft.DrawString(4, 306, "NAV CLICK EXITS", kDimCol, kFootBg, 1);
+    tft.DrawString(4, 306, "NAV TURN PAGES  CLICK EXITS", kDimCol, kFootBg, 1);
 }
 
 // Redraw the four I/O level bars from the latest peak-hold values, scaled
@@ -1269,7 +1347,7 @@ static void MenuRender(uint32_t now) {
         tft.FlushRows(0, Ili9341::kHeight);
         return;
     }
-    if (ui_vu) { // VU page: static layout once, bars refreshed ~30 Hz
+    if (ui_sys && ui_sec == 0) { // system page 0 = VU: static layout, bars ~30 Hz
         if (!ui_full_dirty && now - ui_last_render_ms < 33)
             return;
         if (tft.FlushBusy())
@@ -1324,7 +1402,7 @@ static void MenuRender(uint32_t now) {
 // Refresh the channel activity dots (~30 Hz) without a full header redraw.
 static uint32_t ui_dots_ms = 0;
 static void MenuDots(uint32_t now) {
-    if (ui_vu || ui_settings || ui_confirm)
+    if (ui_sys || ui_settings || ui_confirm)
         return; // dots live in the normal header only
     if (now - ui_dots_ms < 33)
         return;

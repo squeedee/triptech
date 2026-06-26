@@ -523,6 +523,10 @@ int main(void) {
         for (int i = 0; i < 4; i++)
             d.color[i] = menu::kDefaultColor[i];
         d.brightness = 255;
+        d.echoIface = MIDI_BOTH; // defaults: echo both ports on ch 1, listen both/omni
+        d.echoChan = 0;
+        d.inIface = MIDI_BOTH;
+        d.inChan = 16; // OMNI
         uiStore.Init(d, UI_QSPI_OFFSET);
     }
     if (uiStore.GetSettings().version != UI_VERSION)
@@ -532,6 +536,10 @@ int main(void) {
         for (int i = 0; i < 4; i++)
             menu::ui_color[i] = s.color[i];
         menu::ui_brightness = s.brightness;
+        echo_iface = s.echoIface;
+        echo_chan = s.echoChan;
+        in_iface = s.inIface;
+        in_chan = s.inChan;
     }
 
     // --- Init "reset-resistant" live state (separate QSPI sector) ---
@@ -602,10 +610,6 @@ int main(void) {
                 }
             }
         }
-
-        // Physical controls (run/tap/bypass/pattern) and status LEDs are all
-        // handled by the menu UI now. The old DaisyPod button/encoder/LED code
-        // is gone: those pins (D17-D21) are the display + mux, not Pod LEDs/pots.
 
         // Menu UI — encoder scan + screen redraw. Never touches audio.
         menu::MenuPoll(now);
